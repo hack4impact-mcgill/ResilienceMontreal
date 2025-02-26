@@ -22,7 +22,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## ⚒️ Contributing
 
-When you're assigned a ticket, create a branch to your work on, and push your code there. Once you've finished your ticket, create a pull request and assign a tech lead to review it. Make sure to run `npx prettier --write` to format your code before creating your PR.
+When you're assigned a ticket, create a branch to your work on, and push your code there. Once you've finished your ticket, create a pull request and assign a tech lead to review it. Prettier will automatically format your code when you create your PR.
 
 ## 🧗 Setting Up
 

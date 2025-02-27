@@ -1,0 +1,34 @@
+name: Format
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - run: npm ci
+
+      - run: npm run format
+
+      - name: Commit changes
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes detected by Prettier. Exiting gracefully."
+            exit 0
+            # The rest of the script must be within the same step to really stop the execution
+          fi
+          # Add changes
+          git add .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Commit changes without including .github/workflows
+          git reset .github/workflows/*.yaml
+          git commit -m "Prettify!"
+          # Push changes to the branch
+          git push
+        shell: bash

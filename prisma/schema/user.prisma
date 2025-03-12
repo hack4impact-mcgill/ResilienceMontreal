@@ -4,8 +4,7 @@ model User {
     email String  @unique
     password String
     role  Role   
-    refresh_token String
-    access_token String
+    refresh_token String?
 }
 
 enum Role {

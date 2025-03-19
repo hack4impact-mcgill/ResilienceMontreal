@@ -1,0 +1,15 @@
+model Grant {
+    id    Int     @id @default(autoincrement())
+    title String
+    description String 
+    amount        Decimal    @db.Decimal(10, 2)
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+    endDate       DateTime?
+    status        Status
+}
+
+enum Status {
+    PENDING 
+    APPROVED
+}

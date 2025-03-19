@@ -26,14 +26,6 @@ When you're assigned a ticket, create a branch to your work on, and push your co
 
 ## 🧗 Setting Up
 
-If you don't already have them, install [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://www.docker.com/products/docker-desktop/) and [PostgresQL](https://www.postgresql.org/download/).
-
-Create a docker container for the database, replacing PASSWORD with a password of your choice:
-
-```bash
-docker run -d --name resilience-postgres -e POSTGRES_USER="postgres" -e POSTGRES_PASSWORD="PASSWORD" -e POSTGRES_DB=resilience -p 12345:5432 docker.io/postgres
-```
-
 Create a file called `.env` in the root of the project. Copy the file from Notion.
 
 Finally, run `npx prisma db push` to match your database with the prisma schema.

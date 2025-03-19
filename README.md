@@ -34,18 +34,7 @@ Create a docker container for the database, replacing PASSWORD with a password o
 docker run -d --name resilience-postgres -e POSTGRES_USER="postgres" -e POSTGRES_PASSWORD="PASSWORD" -e POSTGRES_DB=resilience -p 12345:5432 docker.io/postgres
 ```
 
-Create a file called `.env` in the root of the project, and copy the following into it, replacing `PASSWORD` with the one you chose above:
-
-```
-# copy the contents of this file to a .env file in the root of the project
-DATABASE_URL="postgresql://postgres:PASSWORD@localhost:12345/resilience?schema=public"
-```
-
-Then you can access the database using:
-
-```bash
-psql --username postgres -p 12345
-```
+Create a file called `.env` in the root of the project. Copy the file from Notion.
 
 Finally, run `npx prisma db push` to match your database with the prisma schema.
 

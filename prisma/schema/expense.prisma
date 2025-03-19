@@ -1,0 +1,9 @@
+model Expense {
+    id            Int     @id @default(autoincrement())
+    fundPoolId Int
+    fundPool   FundPool @relation(fields: [fundPoolId], references: [id])
+    amount     Decimal  @db.Decimal(10, 2)
+    description String
+    date       DateTime @default(now())
+    invoiceUrl String?
+}

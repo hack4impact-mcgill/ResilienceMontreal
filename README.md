@@ -32,6 +32,15 @@ Finally, run `npx prisma db push` to match your database with the prisma schema.
 
 Now you should be all ready to run the project!
 
+## Styling
+
+This project uses both Material UI and Tailwind CSS.
+
+Some guidelines:
+
+1. Import a Material UI component.
+2. Use Tailwind CSS to change the styling.
+
 ## 🗨️ Contact
 
 If you have any inquiries about the development of this project, you can reach the Hack4Impact McGill chapter at:

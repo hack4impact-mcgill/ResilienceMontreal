@@ -1,9 +1,7 @@
 import { type Metadata } from "next";
-import "./globals.css";
 import { ThemeProvider } from "@mui/material/styles";
 import theme from "../styles/theme";
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
-
 
 export const metadata: Metadata = {
   title: "Dashboard",

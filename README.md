@@ -36,10 +36,12 @@ Now you should be all ready to run the project!
 
 This project uses both Material UI and Tailwind CSS.
 
-Some guidelines:
+### Applying custom styling
 
-1. Import a Material UI component.
-2. Use Tailwind CSS to change the styling.
+1. Use Material UI to import specific components.
+2. Use Tailwind CSS utility classes to apply custom styling.
+3. Apply global theme changes (ex. colors, font size) inside of `sharedTheme.ts` if you need them to apply to both MUI components/app overall.
+4. Ensure that these changes are also updated inside of `styles/theme.ts` and `tailwind.config.ts` if applicable.
 
 ## 🗨️ Contact
 

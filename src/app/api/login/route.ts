@@ -1,16 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import type { NextApiRequest, NextApiResponse } from 'next';
 import { serialize } from 'cookie';
+import { NextResponse } from "next/server";
 
-export async function POST(request: Request, response: NextResponse) {
+export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return response.status(401).json(
+      return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 },
       );
@@ -18,7 +18,7 @@ export async function POST(request: Request, response: NextResponse) {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return response.status(401).json(
+      return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 },
       );
@@ -41,17 +41,18 @@ export async function POST(request: Request, response: NextResponse) {
       data: { refresh_token: refreshToken },
     });
 
+    const cookieData = JSON.stringify({ accessToken, refreshToken });
+
     // save the cookie to the browser
-    const cookie = serialize('session', encryptedSessionData, {
+    const cookie = serialize('token', cookieData, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
       maxAge: 60 * 60 * 24 * 7, // One week
       path: '/',
-    })
+    });
 
-    response.setHeader('Set-Cookie', cookie)
-
-    return response.status(200).json({
+    return NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
@@ -59,10 +60,14 @@ export async function POST(request: Request, response: NextResponse) {
       },
       accessToken,
       refreshToken,
+    }, {
+      headers: {
+        'Set-Cookie': cookie,
+      },
     });
   } catch (error) {
     console.error("Login error:", error);
-    return response.status(500).json(
+    return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },
     );

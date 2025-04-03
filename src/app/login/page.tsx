@@ -7,6 +7,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { redirect } from 'next/navigation';
 
 interface LoginResponse {
   user: {
@@ -48,6 +49,8 @@ const Login: React.FC = () => {
       // store the tokens in local storage
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
+      // redirect to dashboard
+      redirect("/dashboard");
     } else {
       // check the error
       const data = await response.json();

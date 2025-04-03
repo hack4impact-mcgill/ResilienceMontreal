@@ -53,13 +53,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      accessToken,
-      refreshToken,
+      status: "success",
     }, {
       headers: {
         'Set-Cookie': cookie,

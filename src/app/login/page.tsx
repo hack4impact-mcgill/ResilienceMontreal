@@ -45,10 +45,6 @@ const Login: React.FC = () => {
     
     // check success
     if (response.ok) {
-      const data: LoginResponse = await response.json();
-      // store the tokens in local storage
-      localStorage.setItem("accessToken", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
       // redirect to dashboard
       redirect("/dashboard");
     } else {

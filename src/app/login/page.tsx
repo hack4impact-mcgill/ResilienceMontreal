@@ -9,16 +9,6 @@ import {
 } from "@mui/material";
 import { redirect } from 'next/navigation';
 
-interface LoginResponse {
-  user: {
-    id: number;
-    email: string;
-    role: string;
-  },
-  accessToken: string;
-  refreshToken: string;
-};
-
 const Login: React.FC = () => {
 
   const [email, setEmail] = useState("");

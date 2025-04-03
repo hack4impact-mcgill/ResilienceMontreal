@@ -1,6 +1,6 @@
-"use client";
 import React from "react";
 import { Button, Card, CardContent, Typography } from "@mui/material";
+import Link from 'next/link';
 
 const HomePage: React.FC = () => {
   return (
@@ -21,9 +21,9 @@ const HomePage: React.FC = () => {
             continue.
           </Typography>
           <div className="flex justify-center space-x-4 mt-6">
-            <Button variant="contained" color="primary">
+            <Link href="/login"><Button variant="contained" color="primary">
               Log In
-            </Button>
+            </Button></Link>
             <Button variant="contained" color="secondary">
               Register
             </Button>

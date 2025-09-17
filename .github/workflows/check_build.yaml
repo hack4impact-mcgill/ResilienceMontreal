@@ -3,9 +3,7 @@ name: Frontend Successfully Builds
 on:
   pull_request:
     branches: [main]
-
-env:
-
+    
 jobs:
   compile:
     runs-on: ubuntu-latest

@@ -6,8 +6,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/resilience_montreal
       - DIRECT_URL=postgresql://postgres:password@db:5432/resilience_montreal
-      - JWT_SECRET=your-jwt-secret-here
-      - NODE_ENV=production
+      - NODE_ENV=development
     depends_on:
       db:
         condition: service_healthy

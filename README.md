@@ -16,6 +16,12 @@ npm i
 
 # start the development server
 npm run dev
+
+# start the development server inside the docker container
+npm run docker:up
+
+# tear down the containers
+npm run docker:down
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

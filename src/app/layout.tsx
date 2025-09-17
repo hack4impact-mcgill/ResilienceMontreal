@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@mui/material/styles";
 import theme from "./styles/theme";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
+import DrawerAppBar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "Resilience Montreal",
@@ -18,7 +19,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AppRouterCacheProvider>
-          <ThemeProvider theme={theme}>{children}</ThemeProvider>
+          <ThemeProvider theme={theme}>
+            <DrawerAppBar />
+            {children}
+          </ThemeProvider>
         </AppRouterCacheProvider>
       </body>
     </html>

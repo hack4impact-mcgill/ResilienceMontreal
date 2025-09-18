@@ -20,6 +20,9 @@ npm run dev
 # start the development server inside the docker container
 npm run docker:up
 
+# sync db inside container with local
+docker exec -it resiliencemontreal-app-1 npx prisma db push
+
 # tear down the containers
 npm run docker:down
 ```

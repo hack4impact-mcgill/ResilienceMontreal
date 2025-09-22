@@ -26,9 +26,13 @@ jobs:
           git add .
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Commit changes without including .github/workflows
+          # Unstage workflow files
           git reset .github/workflows/*.yaml
+          # Exit if nothing to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit after removing workflow files. Exiting gracefully."
+            exit 0
+          fi
           git commit -m "Prettify!"
-          # Push changes to the branch
           git push
         shell: bash

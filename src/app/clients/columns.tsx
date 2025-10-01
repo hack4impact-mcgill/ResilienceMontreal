@@ -67,7 +67,7 @@ export const columns: ColumnDef<Client>[] = [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuLabel>Actions for {client.firstName} {client.lastName}</DropdownMenuLabel>
             <DropdownMenuItem>View client details</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

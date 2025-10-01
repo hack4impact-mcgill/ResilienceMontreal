@@ -1,12 +1,12 @@
-import { ClientsTable } from './data-table';
-import { Client } from './columns';
-import { 
-  dehydrate, 
-  HydrationBoundary, 
+import { ClientsTable } from "./data-table";
+import { Client } from "./columns";
+import {
+  dehydrate,
+  HydrationBoundary,
   QueryClient,
-  useMutation
+  useMutation,
 } from "@tanstack/react-query";
-import { fetchClients } from '@/lib/api';
+import { fetchClients } from "@/lib/api";
 
 export default async function ClientsPage() {
   const queryClient = new QueryClient();
@@ -20,8 +20,7 @@ export default async function ClientsPage() {
     <HydrationBoundary state={dehydrate(new QueryClient())}>
       <div className="p-8">
         <h1 className="text-4xl mb-8">Clients</h1>
-        <ClientsTable 
-        />
+        <ClientsTable />
       </div>
     </HydrationBoundary>
   );

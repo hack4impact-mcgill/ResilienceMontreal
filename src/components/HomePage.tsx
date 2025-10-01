@@ -7,9 +7,10 @@ export const HomePage: React.FC = () => {
       <div>
         <h2 className="text-2xl font-bold">Home page</h2>
         <p className="mt-2 text-muted-foreground">
-          This is the home page of the Resilience Montreal grant tracking application.
+          This is the home page of the Resilience Montreal grant tracking
+          application.
         </p>
       </div>
     </div>
-  )
+  );
 }

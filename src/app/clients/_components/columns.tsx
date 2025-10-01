@@ -16,8 +16,8 @@ export type Client = {
   firstName: string;
   lastName: string;
   email: string;
-  rentStartDate: Date;
-  rentEndDate: Date;
+  leaseStartDate: Date;
+  leaseEndDate: Date;
 };
 
 export const columns: ColumnDef<Client>[] = [
@@ -37,18 +37,18 @@ export const columns: ColumnDef<Client>[] = [
     cell: (info) => info.getValue(),
   },
   {
-    accessorKey: "rentStartDate",
-    header: "Rent Start Date",
+    accessorKey: "leaseStartDate",
+    header: "Lease Start Date",
     cell: ({ row }) => {
-      const date: Date = row.original.rentStartDate;
+      const date: Date = row.original.leaseStartDate;
       return <div>{date.toLocaleDateString()}</div>;
     },
   },
   {
-    accessorKey: "rentEndDate",
-    header: "Rent End Date",
+    accessorKey: "leaseEndDate",
+    header: "Lease End Date",
     cell: ({ row }) => {
-      const date: Date = row.original.rentStartDate;
+      const date: Date = row.original.leaseEndDate;
       return <div>{date.toLocaleDateString()}</div>;
     },
   },

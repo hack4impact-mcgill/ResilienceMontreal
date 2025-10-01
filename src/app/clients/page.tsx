@@ -1,4 +1,4 @@
-import { ClientsTable } from "./data-table";
+import { ClientsTable } from "./_components/data-table";
 import {
   dehydrate,
   HydrationBoundary,

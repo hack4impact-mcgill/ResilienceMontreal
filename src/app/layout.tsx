@@ -25,7 +25,7 @@ export default function RootLayout({
               <SidebarTrigger />
               {children}
             </main>
-        </SidebarProvider>
+          </SidebarProvider>
         </Providers>
       </body>
     </html>

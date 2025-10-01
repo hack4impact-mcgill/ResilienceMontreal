@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import * as React from "react";
 import {
@@ -12,7 +12,7 @@ import {
   SortingState,
   useReactTable,
   VisibilityState,
-} from "@tanstack/react-table"
+} from "@tanstack/react-table";
 import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,21 +40,23 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchClients } from "@/lib/api";
 
 interface DataTableDemoProps {
-    onAddClient?: () => void
+  onAddClient?: () => void;
 }
 
-export const ClientsTable: React.FC<DataTableDemoProps> = ({ 
-    onAddClient 
-}) => {
-  const [sorting, setSorting] = React.useState<SortingState>([])
+export const ClientsTable: React.FC<DataTableDemoProps> = ({ onAddClient }) => {
+  const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
+    [],
+  );
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = React.useState({})
+    React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState({});
 
-  const { data: clients, isLoading, isError } = useQuery({
+  const {
+    data: clients,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["clients"],
     queryFn: fetchClients,
   });
@@ -91,15 +93,12 @@ export const ClientsTable: React.FC<DataTableDemoProps> = ({
           onChange={(event) =>
             table.getColumn("email")?.setFilterValue(event.target.value)
           }
-            className="max-w-sm"
+          className="max-w-sm"
         />
         {onAddClient && (
-            <Button
-                onClick={onAddClient}
-                className="ml-4"
-            >
-                Add Client
-            </Button>
+          <Button onClick={onAddClient} className="ml-4">
+            Add Client
+          </Button>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -123,7 +122,7 @@ export const ClientsTable: React.FC<DataTableDemoProps> = ({
                   >
                     {column.id}
                   </DropdownMenuCheckboxItem>
-                )
+                );
               })}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -140,10 +139,10 @@ export const ClientsTable: React.FC<DataTableDemoProps> = ({
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
@@ -159,7 +158,7 @@ export const ClientsTable: React.FC<DataTableDemoProps> = ({
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -199,6 +198,5 @@ export const ClientsTable: React.FC<DataTableDemoProps> = ({
         </div>
       </div>
     </div>
-  )
+  );
 };
-

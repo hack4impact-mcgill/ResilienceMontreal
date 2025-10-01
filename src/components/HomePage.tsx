@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 
-export default function HomePage() {
+export const HomePage: React.FC = () => {
   return (
     <div className="p-8">
       <div>

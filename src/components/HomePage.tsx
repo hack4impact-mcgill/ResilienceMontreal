@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 
-export const HomePage: React.FC = () => {
+const HomePage: React.FC = () => {
   return (
     <div className="p-8">
       <div>
@@ -14,3 +14,5 @@ export const HomePage: React.FC = () => {
     </div>
   );
 }
+
+export default HomePage;

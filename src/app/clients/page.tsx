@@ -1,10 +1,8 @@
 import { ClientsTable } from "./data-table";
-import { Client } from "./columns";
 import {
   dehydrate,
   HydrationBoundary,
   QueryClient,
-  useMutation,
 } from "@tanstack/react-query";
 import { fetchClients } from "@/lib/api";
 

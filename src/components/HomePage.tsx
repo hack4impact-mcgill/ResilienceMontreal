@@ -1,37 +1,15 @@
 "use client";
 import React from "react";
-import { Button, Card, CardContent, Typography } from "@mui/material";
 
-const HomePage: React.FC = () => {
+export default function HomePage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardContent className="p-6">
-          <Typography
-            variant="h4"
-            className="text-center text-gray-800 font-bold"
-          >
-            Resilience Montreal
-          </Typography>
-          <Typography
-            variant="body1"
-            className="text-center text-gray-600 mt-2"
-          >
-            Welcome to Resilience Montreal. Please log in or register to
-            continue.
-          </Typography>
-          <div className="flex justify-center space-x-4 mt-6">
-            <Button variant="contained" color="primary">
-              Log In
-            </Button>
-            <Button variant="contained" color="secondary">
-              Register
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="p-8">
+      <div>
+        <h2 className="text-2xl font-bold">Home page</h2>
+        <p className="mt-2 text-muted-foreground">
+          This is the home page of the Resilience Montreal grant tracking application.
+        </p>
+      </div>
     </div>
-  );
-};
-
-export default HomePage;
+  )
+}

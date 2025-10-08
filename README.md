@@ -41,18 +41,37 @@ Finally, run `npx prisma db push` to match your database with the prisma schema.
 
 Now you should be all ready to run the project!
 
-## Styling
+## � TanStack Query & Data Hooks
 
-This project uses both Material UI and Tailwind CSS.
+This project uses [TanStack Query (React Query)](https://tanstack.com/query/latest) for efficient data fetching, caching, and synchronization. Data is managed using hooks:
 
-### Applying custom styling
+- `useQuery` for fetching and caching data (e.g., client lists)
+- `useMutation` for updating or creating data (e.g., adding a client)
 
-1. Use Material UI to import specific components.
-2. Use Tailwind CSS utility classes to apply custom styling.
-3. Apply global theme changes (ex. colors, font size) inside of `sharedTheme.ts` if you need them to apply to both MUI components/app overall.
-4. Ensure that these changes are also updated inside of `styles/theme.ts` and `tailwind.config.ts` if applicable.
+Example usage:
 
-## 🗨️ Contact
+```tsx
+const { data, isLoading, isError } = useQuery({
+  queryKey: ["clients"],
+  queryFn: fetchClients,
+});
+
+const mutation = useMutation({
+  mutationFn: addClient,
+});
+```
+
+Queries and mutations automatically update the UI and keep data in sync with the server.
+
+## 💅 Styling
+
+Styling is managed globally using [Tailwind CSS](https://tailwindcss.com/) and custom variables in [`src/app/globals.css`](src/app/globals.css). This file defines color schemes, spacing, and theming for both light and dark modes. Use Tailwind utility classes in your components for layout and appearance.
+
+## 🧩 shadcn/ui
+
+[shadcn/ui](https://ui.shadcn.com/) is used for modern, accessible UI components such as buttons, dropdowns, inputs, and tables. These components are styled with Tailwind and provide a consistent look and feel across the app.
+
+## �🗨️ Contact
 
 If you have any inquiries about the development of this project, you can reach the Hack4Impact McGill chapter at:
 

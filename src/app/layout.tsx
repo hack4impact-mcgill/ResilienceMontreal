@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { ThemeProvider } from "@mui/material/styles";
-import theme from "./styles/theme";
-import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
-import DrawerAppBar from "@/components/Navbar";
+import { Providers } from "@/components/Providers";
+
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 
 export const metadata: Metadata = {
   title: "Resilience Montreal",
@@ -18,12 +18,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AppRouterCacheProvider>
-          <ThemeProvider theme={theme}>
-            <DrawerAppBar />
-            {children}
-          </ThemeProvider>
-        </AppRouterCacheProvider>
+        <Providers>
+          <SidebarProvider>
+            <AppSidebar />
+            <main className="w-full">
+              <SidebarTrigger />
+              {children}
+            </main>
+          </SidebarProvider>
+        </Providers>
       </body>
     </html>
   );

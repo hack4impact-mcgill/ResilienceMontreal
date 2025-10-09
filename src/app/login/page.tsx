@@ -1,46 +1,14 @@
-"use client";
-import React from "react";
-import {
-  Button,
-  Card,
-  CardContent,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { login, signup } from './actions'
 
-const Login: React.FC = () => {
+export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardContent className="p-6">
-          <Typography
-            variant="h4"
-            className="text-center text-gray-800 font-bold mb-4"
-          >
-            Login
-          </Typography>
-          <form className="space-y-4">
-            <TextField
-              label="Email"
-              variant="outlined"
-              fullWidth
-              className="bg-white"
-            />
-            <TextField
-              label="Password"
-              type="password"
-              variant="outlined"
-              fullWidth
-              className="bg-white"
-            />
-            <Button variant="contained" color="primary" fullWidth>
-              Sign In
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default Login;
+    <form>
+      <label htmlFor="email">Email:</label>
+      <input id="email" name="email" type="email" required />
+      <label htmlFor="password">Password:</label>
+      <input id="password" name="password" type="password" required />
+      <button formAction={login}>Log in</button>
+      <button formAction={signup}>Sign up</button>
+    </form>
+  )
+}

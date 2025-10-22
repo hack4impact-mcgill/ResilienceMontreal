@@ -9,7 +9,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export function LoginForm({
+export default function SignupForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
@@ -17,7 +17,7 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="w-[400px] bg-[#E9EFF1]">
         <CardHeader>
-          <CardTitle className="text-2xl">Login to your account</CardTitle>
+          <CardTitle className="text-2xl">Sign up</CardTitle>
         </CardHeader>
         <CardContent>
           <form>
@@ -32,15 +32,7 @@ export function LoginForm({
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                     id="password"
                     type="password"
@@ -49,13 +41,13 @@ export function LoginForm({
                 />
               </div>
               <Button type="submit" className="w-full bg-[#246178]">
-                Login
+                Sign Up
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{" "}
-              <a href="/signup" className="underline underline-offset-4">
-                Sign up
+              Already have an account?{" "}
+              <a href="/login" className="underline underline-offset-4">
+                Log in
               </a>
             </div>
           </form>

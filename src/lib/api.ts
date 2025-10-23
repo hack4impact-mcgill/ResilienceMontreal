@@ -7,11 +7,11 @@ export async function fetchClients(): Promise<Client[]> {
       resolve([
         {
           id: "1",
-          firstName: "John",
-          lastName: "Doe",
-          email: "john.doe@example.com",
-          leaseStartDate: new Date("2023-01-01"),
-          leaseEndDate: new Date("2023-12-31"),
+          firstName: "Zach",
+          lastName: "Olsen",
+          email: "zach.olsen@example.com",
+          leaseStartDate: new Date("2025-10-22"),
+          leaseEndDate: new Date("2100-12-31"),
         },
         {
           id: "2",

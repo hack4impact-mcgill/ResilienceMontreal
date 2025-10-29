@@ -22,7 +22,7 @@ export function LoginForm({
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" className="bg-white" required />
+                <Input id="email" type="email" name="email" className="bg-white" required />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
@@ -37,6 +37,7 @@ export function LoginForm({
                 <Input
                   id="password"
                   type="password"
+                  name="password"
                   className="bg-white"
                   required
                 />

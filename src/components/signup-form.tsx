@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signup } from "@/app/(auth)/actions";
 
-
 export default function SignupForm({
   className,
   ...props
@@ -21,7 +20,13 @@ export default function SignupForm({
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" name="email" className="bg-white" required />
+                <Input
+                  id="email"
+                  type="email"
+                  name="email"
+                  className="bg-white"
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>

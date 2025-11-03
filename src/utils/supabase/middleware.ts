@@ -56,11 +56,9 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/login";
     return NextResponse.redirect(url);
   } else if (
-      user &&
-      (
-        request.nextUrl.pathname.startsWith("/login") ||
-        request.nextUrl.pathname.startsWith("/signup")
-      )
+    user &&
+    (request.nextUrl.pathname.startsWith("/login") ||
+      request.nextUrl.pathname.startsWith("/signup"))
   ) {
     // Redirect to home page if user is logged in and tries to go to /login or /signup
     const url = request.nextUrl.clone();

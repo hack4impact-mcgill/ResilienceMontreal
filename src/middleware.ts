@@ -4,8 +4,8 @@ import { updateSession } from "@/utils/supabase/middleware";
 export async function middleware(request: NextRequest) {
   // Only apply jitter to API routes in development
   if (
-      request.nextUrl.pathname.startsWith("/api/") &&
-      process.env.NODE_ENV === "development"
+    request.nextUrl.pathname.startsWith("/api/") &&
+    process.env.NODE_ENV === "development"
   ) {
     // Calculate random jitter between 100-500ms (hardcoded)
     const waitMs = Math.floor(Math.random() * 400) + 100;

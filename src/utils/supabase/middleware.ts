@@ -39,11 +39,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user?.email) {
-    console.log("User:", user.email);
-  } else {
-    console.log("No user logged in");
-  }
+  // if (user?.email) {
+  //   console.log("User:", user.email);
+  // } else {
+  //   console.log("No user logged in");
+  // }
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&

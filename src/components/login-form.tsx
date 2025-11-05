@@ -1,8 +1,11 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { login } from "@/app/(auth)/actions";
 
 export function LoginForm({
   className,
@@ -15,11 +18,17 @@ export function LoginForm({
           <CardTitle className="text-2xl">Login to your account</CardTitle>
         </CardHeader>
         <CardContent>
-          <form>
+          <form action={login}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" className="bg-white" required />
+                <Input
+                  id="email"
+                  type="email"
+                  name="email"
+                  className="bg-white"
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
@@ -34,6 +43,7 @@ export function LoginForm({
                 <Input
                   id="password"
                   type="password"
+                  name="password"
                   className="bg-white"
                   required
                 />

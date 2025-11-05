@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         where: { id: grantId },
         data: {
           unassignedAmount: new Prisma.Decimal(grant.unassignedAmount).minus(
-            distributionAmount
+            distributionAmount,
           ),
         },
       });
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     console.error("Create GrantDistribution error:", error);
     return NextResponse.json(
       { message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

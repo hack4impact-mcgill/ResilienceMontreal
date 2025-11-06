@@ -5,10 +5,10 @@ import { Prisma } from "@prisma/client";
 // Get a specific grant by ID
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id, 10);
+    const id = parseInt((await params).id, 10);
     const grant = await prisma.grant.findUnique({
       where: { id },
       include: {
@@ -21,9 +21,10 @@ export async function GET(
 
     return NextResponse.json({ grant }, { status: 200 });
   } catch (error) {
+    console.error("Get Grant error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -31,10 +32,10 @@ export async function GET(
 // Update a specific grant by ID
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id, 10);
+    const id = parseInt((await params).id, 10);
 
     const { title, description, endDate, status } = await request.json();
 
@@ -48,7 +49,7 @@ export async function PATCH(
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { error: "No fields to update" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -59,9 +60,10 @@ export async function PATCH(
 
     return NextResponse.json({ grant: updatedGrant }, { status: 200 });
   } catch (error) {
+    console.error("Update Grant error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -69,18 +71,19 @@ export async function PATCH(
 // Delete a specific grant by ID
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id, 10);
+    const id = parseInt((await params).id, 10);
     await prisma.grant.delete({
       where: { id },
     });
     return NextResponse.json({ message: "Grant deleted" }, { status: 200 });
   } catch (error) {
+    console.error("Delete Grant error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

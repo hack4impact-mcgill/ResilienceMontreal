@@ -63,7 +63,11 @@ export default function SignupForm({
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              <Button type="submit" className="w-full bg-[#246178]" disabled={mutation.status === "pending"}>
+              <Button
+                type="submit"
+                className="w-full bg-[#246178]"
+                disabled={mutation.status === "pending"}
+              >
                 {mutation.status === "pending" ? "Signing up..." : "Sign Up"}
               </Button>
             </div>

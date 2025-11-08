@@ -21,10 +21,11 @@ export const authRouter = createTRPCRouter({
         // return the session so the client can ask the server to persist
         // the Supabase session cookies (Set-Cookie) in a separate route
         return { ok: true, session: result.data.session ?? null };
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: err?.message ?? "Failed to sign in",
+          message: message ?? "Failed to sign in",
         });
       }
     }),
@@ -44,10 +45,11 @@ export const authRouter = createTRPCRouter({
           });
         }
         return { ok: true };
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: err?.message ?? "Failed to sign up",
+          message: message ?? "Failed to sign up",
         });
       }
     }),

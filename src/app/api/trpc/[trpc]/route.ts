@@ -11,7 +11,7 @@ import { createTRPCContext } from "~/server/api/trpc";
  */
 const createContext = async (req: NextRequest) => {
   try {
-    const headers = new Headers(req.headers as any);
+    const headers = req.headers;
     return createTRPCContext({ headers });
   } catch (err) {
     console.error("tRPC createContext failed:", err);

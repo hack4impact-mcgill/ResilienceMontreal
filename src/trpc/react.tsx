@@ -1,7 +1,12 @@
 "use client";
 
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { loggerLink, httpBatchStreamLink, httpBatchLink, splitLink } from "@trpc/client";
+import {
+  loggerLink,
+  httpBatchStreamLink,
+  httpBatchLink,
+  splitLink,
+} from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
@@ -30,7 +35,10 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
 // type HelloOutput = RouterOutputs['example']['hello']
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
-export function TRPCReactProvider(props: { children: React.ReactNode, headers?: Headers }) {
+export function TRPCReactProvider(props: {
+  children: React.ReactNode;
+  headers?: Headers;
+}) {
   const queryClient = getQueryClient();
 
   const [trpcClient] = useState(() =>
@@ -67,7 +75,7 @@ export function TRPCReactProvider(props: { children: React.ReactNode, headers?: 
               return headers;
             },
           }),
-        })
+        }),
       ],
     }),
   );

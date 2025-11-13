@@ -1,4 +1,7 @@
+"use client";
+
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
 import {
   Sidebar,
@@ -17,6 +20,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { api } from "@/trpc/react";
 
 const items = [
   {
@@ -38,6 +43,18 @@ const items = [
 ];
 
 export function AppSidebar() {
+  const router = useRouter();
+  
+  const signOutMutation = api.auth.signOut.useMutation({
+    onSuccess: () => {
+      router.push("/login");
+    },
+    onError: (err) => {
+      console.error("signOut error:", err);
+      alert(err?.message ?? "Sign out failed");
+    },
+  });
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -77,10 +94,14 @@ export function AppSidebar() {
                 <DropdownMenuItem>
                   <span>Role displays here</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <span>Sign out</span>
-                </DropdownMenuItem>
               </DropdownMenuContent>
+              <Button
+                className="w-full"
+                onClick={() => signOutMutation.mutate()}
+                disabled={signOutMutation.isPending}
+              >
+                {signOutMutation.isPending ? "Signing out..." : "Log Out"}
+              </Button>
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -88,3 +109,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+

@@ -26,7 +26,7 @@ When you're assigned a ticket, create a branch to your work on, and push your co
 
 ## 🧗 Setting Up
 
-Create a file called `.env` in the root of the project. Copy the file from Notion.
+Create a file called `.env` in the root of the project. Create another file called `.env.local`. Copy the two files from Notion.
 
 Finally, run `npx prisma db push` to match your database with the prisma schema.
 
@@ -61,6 +61,10 @@ Styling is managed globally using [Tailwind CSS](https://tailwindcss.com/) and c
 ## 🧩 shadcn/ui
 
 [shadcn/ui](https://ui.shadcn.com/) is used for modern, accessible UI components such as buttons, dropdowns, inputs, and tables. These components are styled with Tailwind and provide a consistent look and feel across the app.
+
+## Supabase
+
+Create a file called `.env.local` and paste the file from Notion.
 
 ## �🗨️ Contact
 

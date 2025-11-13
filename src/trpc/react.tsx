@@ -49,24 +49,7 @@ export function TRPCReactProvider(props: {
             process.env.NODE_ENV === "development" ||
             (op.direction === "down" && op.result instanceof Error),
         }),
-        splitLink({
-          // Using code from: https://github.com/trpc/trpc/discussions/4226#discussioncomment-14351911
-          // to get around the issue of cookie-setting (for Supabase sessions) not working
-          // with httpBatchStreamLink
-          condition(op) {
-            // Return true for any paths/routes that need to set cookies
-            return op.path.startsWith("auth.");
-          },
-          true: httpBatchLink({
-            transformer: SuperJSON,
-            url: getBaseUrl() + "/api/trpc",
-            headers: () => {
-              const heads = new Map(props.headers);
-              heads.set("x-trpc-source", "react-no-stream");
-              return Object.fromEntries(heads);
-            },
-          }),
-          false: httpBatchStreamLink({
+        httpBatchLink({
             transformer: SuperJSON,
             url: getBaseUrl() + "/api/trpc",
             headers: () => {
@@ -74,8 +57,13 @@ export function TRPCReactProvider(props: {
               headers.set("x-trpc-source", "nextjs-react");
               return headers;
             },
+            fetch(url, options) {
+              return fetch(url, {
+                ...options,
+                credentials: "include",
+              })
+            }
           }),
-        }),
       ],
     }),
   );

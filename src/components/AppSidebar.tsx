@@ -33,7 +33,7 @@ const items = [
   },
   {
     title: "Expenses",
-    url: "#",
+    url: "/expenses",
   },
 ];
 

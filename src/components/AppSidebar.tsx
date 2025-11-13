@@ -44,7 +44,7 @@ const items = [
 
 export function AppSidebar() {
   const router = useRouter();
-  
+
   const signOutMutation = api.auth.signOut.useMutation({
     onSuccess: () => {
       router.push("/login");
@@ -109,4 +109,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Providers } from "@/components/Providers";
+import { TRPCReactProvider } from "~/trpc/react";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>
+        <TRPCReactProvider>
           <SidebarProvider>
             <AppSidebar />
             <main className="w-full">
@@ -26,7 +26,7 @@ export default function RootLayout({
               {children}
             </main>
           </SidebarProvider>
-        </Providers>
+        </TRPCReactProvider>
       </body>
     </html>
   );

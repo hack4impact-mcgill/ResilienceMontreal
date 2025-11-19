@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
-import { getServerAuthSession } from "~/server/auth";
+import { api } from "~/trpc/react";
+
 
 export default async function PrivatePage() {
-  const session = await getServerAuthSession();
-  if (!session.user) {
+  const session = api.auth.getSession.useQuery().data;
+
+  if (!session) {
     redirect("/login");
   }
 

@@ -55,9 +55,23 @@ export const authRouter = createTRPCRouter({
     }),
 
   signOut: publicProcedure.mutation(async () => {
-    const supabase = await createClient();
-    await supabase.auth.signOut();
-    return { ok: true };
+    try {
+      const supabase = await createClient();
+      const result = await supabase.auth.signOut();
+      if (result.error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: result.error.message,
+        });
+      }
+      return { ok: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: message ?? "Failed to sign out",
+      });
+    }
   }),
 
   getSession: publicProcedure.query(async () => {

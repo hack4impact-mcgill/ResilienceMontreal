@@ -18,7 +18,12 @@ export default function SignupForm({
   const [password, setPassword] = useState("");
 
   const mutation = api.auth.signUp.useMutation({
-    onSuccess: () => router.push("/"),
+    onSuccess: async () => {
+      // navigate to home and refresh so server components (layout) re-run
+      // ensuring the sidebar appears immediately after signup
+      await router.push("/");
+      router.refresh();
+    },
     onError: (err) => {
       console.error("signUp error:", err);
       alert(err?.message ?? "Sign up failed");

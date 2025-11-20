@@ -18,9 +18,11 @@ export function LoginForm({
   const [password, setPassword] = useState("");
 
   const mutation = api.auth.signIn.useMutation({
-    onSuccess: () => {
-      // navigate to home on success
-      router.push("/");
+    onSuccess: async () => {
+      // navigate to home on success and refresh so server components (like the layout) re-run
+      // which ensures the sidebar is rendered without requiring a manual page reload
+      await router.push("/");
+      router.refresh();
     },
     onError: (err) => {
       console.error("signIn error:", err);

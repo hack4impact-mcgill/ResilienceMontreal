@@ -78,9 +78,9 @@ export function LoginForm({
               <Button
                 type="submit"
                 className="w-full bg-[#246178]"
-                disabled={mutation.status === "pending"}
+                disabled={mutation.isPending}
               >
-                {mutation.status === "pending" ? "Signing in..." : "Login"}
+                {mutation.isPending ? "Signing in..." : "Login"}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">

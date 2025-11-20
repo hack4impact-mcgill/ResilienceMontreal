@@ -19,9 +19,7 @@ export function LoginForm({
 
   const mutation = api.auth.signIn.useMutation({
     onSuccess: async () => {
-      // navigate to home on success and refresh so server components (like the layout) re-run
-      // which ensures the sidebar is rendered without requiring a manual page reload
-      await router.push("/");
+      router.push("/");
       router.refresh();
     },
     onError: (err) => {

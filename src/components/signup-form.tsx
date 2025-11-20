@@ -19,9 +19,7 @@ export default function SignupForm({
 
   const mutation = api.auth.signUp.useMutation({
     onSuccess: async () => {
-      // navigate to home and refresh so server components (layout) re-run
-      // ensuring the sidebar appears immediately after signup
-      await router.push("/");
+      router.push("/");
       router.refresh();
     },
     onError: (err) => {

@@ -47,9 +47,7 @@ export function AppSidebar() {
 
   const signOutMutation = api.auth.signOut.useMutation({
     onSuccess: async () => {
-      // navigate to the login page and then refresh so server components (layout) re-run
-      // This forces the server-side session check to run again so the sidebar will be removed
-      await router.push("/login");
+      router.push("/login");
       router.refresh();
     },
     onError: (err) => {

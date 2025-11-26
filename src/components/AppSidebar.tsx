@@ -44,6 +44,7 @@ const items = [
 
 export function AppSidebar() {
   const router = useRouter();
+  const { data: me } = api.users.me.useQuery(undefined, { refetchOnWindowFocus: false });
   const signOut = api.auth.signOut.useMutation({
     onSuccess: () => {
       // After signing out on the server, navigate to the login page
@@ -90,10 +91,10 @@ export function AppSidebar() {
                 className="w-[--radix-popper-anchor-width]"
               >
                 <DropdownMenuItem>
-                  <span>Name</span>
+                  <span>{me?.name ?? "Name"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <span>Role displays here</span>
+                  <span>{me?.role?.name ?? "Role"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {

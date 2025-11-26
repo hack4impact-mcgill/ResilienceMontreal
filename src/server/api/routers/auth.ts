@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { createClient } from "~/utils/supabase/server";
 import { getServerAuthSession } from "~/server/auth";
+import { prisma } from "@/lib/prisma";
 
 export const authRouter = createTRPCRouter({
   signIn: publicProcedure
@@ -34,9 +35,11 @@ export const authRouter = createTRPCRouter({
     .input(z.object({ email: z.email(), password: z.string().min(6) }))
     .mutation(async ({ input }) => {
       try {
+        const { email, password } = input;
         const supabase = await createClient();
-        console.log("Signing up user:", input.email);
-        const result = await supabase.auth.signUp(input);
+        console.log("Signing up user:", email);
+
+        const result = await supabase.auth.signUp({ email, password });
         console.log("signUp result:", result);
         if (result.error) {
           throw new TRPCError({
@@ -44,6 +47,33 @@ export const authRouter = createTRPCRouter({
             message: result.error.message,
           });
         }
+
+        // Find default role (Unassigned)
+        const defaultRole = await prisma.role.findUnique({ where: { name: "Unassigned" } });
+
+        // Upsert Prisma user to link auth user with application user data
+        const supabaseId = result.data?.user?.id ?? null;
+        // derive a name from the email prefix if desired, otherwise leave empty
+        const derivedName = email.split("@")[0];
+
+        await prisma.user.upsert({
+          where: { email },
+          update: {
+            name: derivedName,
+            supabaseId: supabaseId ?? undefined,
+            isConfirmed: (result.data?.user as any)?.email_confirmed ?? false,
+            roleId: defaultRole?.id ?? undefined,
+          },
+          create: {
+            email,
+            name: derivedName,
+            supabaseId: supabaseId ?? undefined,
+            password: "",
+            roleId: defaultRole?.id ?? undefined,
+            isConfirmed: (result.data?.user as any)?.email_confirmed ?? false,
+          },
+        });
+
         return { ok: true };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

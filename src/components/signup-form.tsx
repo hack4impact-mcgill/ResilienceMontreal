@@ -39,6 +39,7 @@ export default function SignupForm({
         <CardContent>
           <form onSubmit={onSubmit}>
             <div className="flex flex-col gap-6">
+              {/* Name removed: we only require email & password */}
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input

@@ -1,4 +1,9 @@
+"use client";
+
 import * as React from "react";
+
+import { useRouter } from "next/navigation";
+import { api } from "~/trpc/react";
 
 import {
   Sidebar,
@@ -38,6 +43,19 @@ const items = [
 ];
 
 export function AppSidebar() {
+  const router = useRouter();
+  const signOut = api.auth.signOut.useMutation({
+    onSuccess: () => {
+      // After signing out on the server, navigate to the login page
+      router.push("/login");
+    },
+    onError: (err) => {
+      console.error("Sign out failed:", err);
+      // still navigate to login to clear client state
+      router.push("/login");
+    },
+  });
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -77,7 +95,16 @@ export function AppSidebar() {
                 <DropdownMenuItem>
                   <span>Role displays here</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    try {
+                      signOut.mutate();
+                    } catch (e) {
+                      console.error(e);
+                      router.push("/login");
+                    }
+                  }}
+                >
                   <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -99,6 +99,7 @@ export function AppSidebar() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
+                    if (signOut.status === "pending") return;
                     try {
                       signOut.mutate();
                     } catch (e) {
@@ -106,8 +107,9 @@ export function AppSidebar() {
                       router.push("/login");
                     }
                   }}
+                  aria-disabled={signOut.status === "pending"}
                 >
-                  <span>Sign out</span>
+                  <span>{signOut.status === "pending" ? "Signing out..." : "Sign out"}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

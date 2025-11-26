@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
@@ -24,8 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { api } from "@/trpc/react";
+
 
 const items = [
   {
@@ -113,13 +110,6 @@ export function AppSidebar() {
                   <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
-              <Button
-                className="w-full"
-                onClick={() => signOutMutation.mutate()}
-                disabled={signOutMutation.isPending}
-              >
-                {signOutMutation.isPending ? "Signing out..." : "Log Out"}
-              </Button>
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>

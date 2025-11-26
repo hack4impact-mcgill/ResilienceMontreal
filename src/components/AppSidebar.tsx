@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
@@ -24,8 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { api } from "@/trpc/react";
+
 
 const items = [
   {
@@ -48,6 +45,7 @@ const items = [
 
 export function AppSidebar() {
   const router = useRouter();
+  const { data: me } = api.users.me.useQuery(undefined, { refetchOnWindowFocus: false });
   const signOut = api.auth.signOut.useMutation({
     onSuccess: () => {
       // After signing out on the server, navigate to the login page
@@ -94,10 +92,10 @@ export function AppSidebar() {
                 className="w-[--radix-popper-anchor-width]"
               >
                 <DropdownMenuItem>
-                  <span>Name</span>
+                  <span>{me?.name ?? "Name"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <span>Role displays here</span>
+                  <span>{me?.role?.name ?? "Role"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -112,13 +110,6 @@ export function AppSidebar() {
                   <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
-              <Button
-                className="w-full"
-                onClick={() => signOutMutation.mutate()}
-                disabled={signOutMutation.isPending}
-              >
-                {signOutMutation.isPending ? "Signing out..." : "Log Out"}
-              </Button>
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>

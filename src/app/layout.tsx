@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Providers } from "@/components/Providers";
+import { TRPCReactProvider } from "~/trpc/react";
+import { getServerAuthSession } from "~/server/auth";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -10,23 +11,28 @@ export const metadata: Metadata = {
   description: "TBA",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fetch server-side session so we can decide whether to render the sidebar
+  const session = await getServerAuthSession();
+
+  const isLoggedIn = Boolean(session?.user);
+
   return (
     <html lang="en">
       <body>
-        <Providers>
+        <TRPCReactProvider>
           <SidebarProvider>
-            <AppSidebar />
+            {isLoggedIn ? <AppSidebar /> : null}
             <main className="w-full">
-              <SidebarTrigger />
+              {isLoggedIn ? <SidebarTrigger /> : null}
               {children}
             </main>
           </SidebarProvider>
-        </Providers>
+        </TRPCReactProvider>
       </body>
     </html>
   );

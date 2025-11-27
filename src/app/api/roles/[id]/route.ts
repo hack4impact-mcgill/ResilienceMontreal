@@ -45,13 +45,19 @@ export async function PATCH(
     const body = await request.json().catch(() => ({}));
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request body", details: parsed.error.flatten() }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid request body", details: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
     const { roleId } = parsed.data;
 
     // Prevent changing own role
     if (requestingUser.id === targetId) {
-      return NextResponse.json({ error: "Cannot change own role" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Cannot change own role" },
+        { status: 403 },
+      );
     }
 
     // Verify role exists
@@ -80,6 +86,9 @@ export async function PATCH(
     return NextResponse.json({ user: updatedUser }, { status: 200 });
   } catch (error) {
     console.error("Assign role error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

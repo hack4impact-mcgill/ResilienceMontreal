@@ -32,11 +32,11 @@ export async function PATCH(
       );
     }
 
-  // 3. Get userId from URL params and roleId from body
-  const paramsObj = (await params) as { id: string };
-  const { id } = paramsObj;
-  const body = (await request.json()) as { roleId?: string | number };
-  const roleId = body.roleId;
+    // 3. Get userId from URL params and roleId from body
+    const paramsObj = (await params) as { id: string };
+    const { id } = paramsObj;
+    const body = (await request.json()) as { roleId?: string | number };
+    const roleId = body.roleId;
 
     if (roleId === undefined || roleId === null || isNaN(Number(roleId))) {
       return NextResponse.json({ error: "Invalid roleId" }, { status: 400 });

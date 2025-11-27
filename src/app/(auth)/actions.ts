@@ -18,13 +18,6 @@ export async function login(formData: FormData) {
   // console.log(data);
   const { error } = await supabase.auth.signInWithPassword(data);
 
-<<<<<<< HEAD
-=======
-  const defaultRoleName = "Unassigned";
-  const defaultRole = await prisma.role.findUnique({
-    where: { name: defaultRoleName },
-  });
->>>>>>> fdfd4c2dedc5b99cc4cf407200921c5edd08d0ee
 
   if (error) {
     console.log(error);

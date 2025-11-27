@@ -17,9 +17,9 @@ export default async function ClientsPage() {
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="p-8">
-        <h1 className="text-4xl mb-8">Clients</h1>
+        <h1 className="text-4xl mb-4">Clients</h1>
         <ClientsTable />
       </div>
     </HydrationBoundary>
-  );
+  );3
 }

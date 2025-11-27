@@ -23,22 +23,22 @@ export type Client = {
 export const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "firstName",
-    header: "First Name",
+    header: "FIRST NAME",
     cell: (info) => info.getValue(),
   },
   {
     accessorKey: "lastName",
-    header: "Last Name",
+    header: "LAST NAME",
     cell: (info) => info.getValue(),
   },
   {
     accessorKey: "email",
-    header: "Email",
+    header: "EMAIL",
     cell: (info) => info.getValue(),
   },
   {
     accessorKey: "leaseStartDate",
-    header: "Lease Start Date",
+    header: "LEASE START DATE",
     cell: ({ row }) => {
       const date: Date = row.original.leaseStartDate;
       return <div>{date.toLocaleDateString()}</div>;
@@ -46,7 +46,7 @@ export const columns: ColumnDef<Client>[] = [
   },
   {
     accessorKey: "leaseEndDate",
-    header: "Lease End Date",
+    header: "LEASE END DATE",
     cell: ({ row }) => {
       const date: Date = row.original.leaseEndDate;
       return <div>{date.toLocaleDateString()}</div>;

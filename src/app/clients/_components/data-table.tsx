@@ -243,6 +243,7 @@ export const ClientsTable = () => {
   if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>Error loading data.</div>;
 
+  type FilterColumn = "firstName" | "lastName" | "email";
   return (
     <div className="w-full">
       {/* Filter Row */}
@@ -279,7 +280,7 @@ export const ClientsTable = () => {
                 key={col}
                 onClick={() => {
                   table.getColumn(filterColumn)?.setFilterValue("");
-                  setFilterColumn(col as any);
+                  setFilterColumn(col as FilterColumn);
                   setFilterMenuOpen(false);
                 }}
                 className="flex items-center gap-2"

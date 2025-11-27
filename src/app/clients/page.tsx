@@ -22,5 +22,4 @@ export default async function ClientsPage() {
       </div>
     </HydrationBoundary>
   );
-  3;
 }

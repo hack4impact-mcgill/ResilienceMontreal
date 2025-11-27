@@ -2,10 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{}> }
-) {
+export async function PATCH(request: NextRequest) {
   try {
     // 1. Check authentication
     const supabase = await createClient();
@@ -28,12 +25,10 @@ export async function PATCH(
       );
     }
 
-    // 3. Get userId from URL params and roleId from body
-  const paramsObj = (await params) as { id: string };
-  const { id } = paramsObj;
-    const { roleId } = await request.json();
+    // 3. Get userId and roleId from request body
+    const { userId, roleId } = await request.json();
 
-    if (!roleId || isNaN(Number(roleId))) {
+    if (!roleId || isNaN(Number(roleId)) || !userId || isNaN(Number(userId))) {
       return NextResponse.json({ error: "Invalid roleId" }, { status: 400 });
     }
 
@@ -48,7 +43,7 @@ export async function PATCH(
 
     // 5. Update user's role
     const updatedUser = await prisma.user.update({
-      where: { id: Number(id) },
+  where: { id: Number(userId) },
       data: { roleId: role.id },
       select: {
         id: true,

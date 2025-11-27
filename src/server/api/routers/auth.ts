@@ -61,7 +61,7 @@ export const authRouter = createTRPCRouter({
           update: {
             name: derivedName,
             supabaseId: supabaseId ?? undefined,
-            isConfirmed: (result.data?.user as any)?.email_confirmed ?? false,
+            isConfirmed: !!result.data?.user?.email_confirmed_at,
             roleId: defaultRole?.id ?? undefined,
           },
           create: {
@@ -70,7 +70,7 @@ export const authRouter = createTRPCRouter({
             supabaseId: supabaseId ?? undefined,
             password: "",
             roleId: defaultRole?.id ?? undefined,
-            isConfirmed: (result.data?.user as any)?.email_confirmed ?? false,
+            isConfirmed: !!result.data?.user?.email_confirmed_at,
           },
         });
 

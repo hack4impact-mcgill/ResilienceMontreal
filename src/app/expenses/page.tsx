@@ -131,7 +131,9 @@ export default function ExpensesPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Expenses</h1>
-        <p className="text-sm text-gray-500">Create a new expense and view recent ones.</p>
+        <p className="text-sm text-gray-500">
+          Create a new expense and view recent ones.
+        </p>
       </div>
 
       <div className="max-w-md space-y-3 border rounded-md p-4">
@@ -198,7 +200,11 @@ export default function ExpensesPage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Recent expenses</h2>
-          <button onClick={() => refetchExpenses()} className="text-sm underline" disabled={loadingList}>
+          <button
+            onClick={() => refetchExpenses()}
+            className="text-sm underline"
+            disabled={loadingList}
+          >
             {loadingList ? "Refreshing..." : "Refresh"}
           </button>
         </div>
@@ -207,18 +213,30 @@ export default function ExpensesPage() {
             <div className="p-4 text-sm text-gray-500">No expenses yet.</div>
           )}
           {listData?.expenses?.map((e) => (
-            <div key={e.id} className="p-4 flex items-center justify-between gap-4">
+            <div
+              key={e.id}
+              className="p-4 flex items-center justify-between gap-4"
+            >
               <div>
                 <div className="font-medium">{e.description}</div>
                 {/* Use a stable, timezone-agnostic format to avoid SSR/client mismatches */}
-                <div className="text-xs text-gray-500">{new Date(e.date).toISOString().slice(0, 10)}</div>
+                <div className="text-xs text-gray-500">
+                  {new Date(e.date).toISOString().slice(0, 10)}
+                </div>
                 {e.invoiceUrl && (
-                  <a href={e.invoiceUrl} target="_blank" rel="noreferrer" className="text-xs underline text-blue-600">
+                  <a
+                    href={e.invoiceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs underline text-blue-600"
+                  >
                     Invoice
                   </a>
                 )}
               </div>
-              <div className="font-mono">${Number(e.totalAmount).toFixed(2)}</div>
+              <div className="font-mono">
+                ${Number(e.totalAmount).toFixed(2)}
+              </div>
             </div>
           ))}
         </div>

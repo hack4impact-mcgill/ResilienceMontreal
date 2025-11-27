@@ -1,14 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { z } from "zod";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+const bodySchema = z.object({ roleId: z.coerce.number().int().positive() });
+
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{}> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // 1. Check authentication
+    // Authenticate
     const supabase = await createClient();
     const {
       data: { user: sbUser },
@@ -19,7 +21,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Check if requesting user is Admin
+    // Ensure requester is an Admin
     const requestingUser = await prisma.user.findUnique({
       where: { email: sbUser.email },
       include: { role: true },
@@ -32,28 +34,35 @@ export async function PATCH(
       );
     }
 
-  // 3. Get userId from URL params and roleId from body
-  const paramsObj = (await params) as { id: string };
-  const { id } = paramsObj;
-  const body = (await request.json()) as { roleId?: string | number };
-  const roleId = body.roleId;
-
-    if (roleId === undefined || roleId === null || isNaN(Number(roleId))) {
-      return NextResponse.json({ error: "Invalid roleId" }, { status: 400 });
+    // Validate params
+    const paramsObj = (await params) as { id: string };
+    const targetId = Number(paramsObj.id);
+    if (Number.isNaN(targetId) || targetId <= 0) {
+      return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
     }
 
-    // 4. Verify role exists
-    const role = await prisma.role.findUnique({
-      where: { id: Number(roleId) },
-    });
+    // Validate body
+    const body = await request.json().catch(() => ({}));
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request body", details: parsed.error.flatten() }, { status: 400 });
+    }
+    const { roleId } = parsed.data;
 
+    // Prevent changing own role
+    if (requestingUser.id === targetId) {
+      return NextResponse.json({ error: "Cannot change own role" }, { status: 403 });
+    }
+
+    // Verify role exists
+    const role = await prisma.role.findUnique({ where: { id: roleId } });
     if (!role) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
-    // 5. Update user's role
+    // Update user's role
     const updatedUser = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: targetId },
       data: { roleId: role.id },
       select: {
         id: true,
@@ -71,9 +80,6 @@ export async function PATCH(
     return NextResponse.json({ user: updatedUser }, { status: 200 });
   } catch (error) {
     console.error("Assign role error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -46,7 +46,7 @@ export async function PATCH(request: NextRequest) {
 
     // 5. Update user's role
     const updatedUser = await prisma.user.update({
-  where: { id: Number(userId) },
+      where: { id: Number(userId) },
       data: { roleId: role.id },
       select: {
         id: true,

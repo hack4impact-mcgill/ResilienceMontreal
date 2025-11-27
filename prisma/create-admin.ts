@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const adminEmail = process.argv[2];
-  
+
   if (!adminEmail) {
     console.error("Please provide an email address:");
     console.log("   npx tsx prisma/create-admin.ts your-email@example.com");

@@ -4,12 +4,15 @@ import { createClient } from "@/utils/supabase/server";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{}> }
+  { params }: { params: Promise<{}> },
 ) {
   try {
     // 1. Check authentication
     const supabase = await createClient();
-    const { data: { user: sbUser }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user: sbUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !sbUser?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,13 +27,13 @@ export async function PATCH(
     if (!requestingUser || requestingUser.role?.name !== "Admin") {
       return NextResponse.json(
         { error: "Forbidden - Admin access required" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     // 3. Get userId from URL params and roleId from body
-  const paramsObj = (await params) as { id: string };
-  const { id } = paramsObj;
+    const paramsObj = (await params) as { id: string };
+    const { id } = paramsObj;
     const { roleId } = await request.json();
 
     if (!roleId || isNaN(Number(roleId))) {
@@ -68,7 +71,7 @@ export async function PATCH(
     console.error("Assign role error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

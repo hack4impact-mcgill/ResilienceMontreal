@@ -1,6 +1,44 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "~/trpc/react";
+import { TRPCClientError } from "@trpc/client";
+
+const getFriendlyError = (err: unknown) => {
+  if (err instanceof TRPCClientError) {
+    const zodError: any = (err as any)?.data?.zodError;
+    if (zodError?.fieldErrors) {
+      const fields: Record<string, string[]> = zodError.fieldErrors;
+      const messages: string[] = [];
+      for (const key of Object.keys(fields)) {
+        const first = fields[key]?.[0];
+        if (!first) continue;
+        switch (key) {
+          case "description":
+            messages.push("Missing required fields: description");
+            break;
+          case "date":
+            messages.push("Invalid input: date must be a valid date");
+            break;
+          case "totalAmount":
+            messages.push("Invalid input: totalAmount must be a number");
+            break;
+          case "invoiceUrl":
+            messages.push("Invalid input: invoiceUrl must be a valid URL");
+            break;
+          default:
+            messages.push(first);
+        }
+      }
+      if (messages.length > 0) return messages.join(". ");
+    }
+    return err.message ?? "Something went wrong";
+  }
+  if (err && typeof err === "object" && "message" in err) {
+    return (err as any).message ?? "Something went wrong";
+  }
+  return "Something went wrong";
+};
 
 type Expense = {
   id: number;
@@ -21,26 +59,15 @@ export default function ExpensesPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loadingList, setLoadingList] = useState(false);
-
-  const loadExpenses = async () => {
-    try {
-      setLoadingList(true);
-      const res = await fetch(`/api/expenses?page=1&limit=10`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to fetch expenses");
-      setExpenses(data.expenses || []);
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setLoadingList(false);
-    }
-  };
+  const {
+    data: listData,
+    isLoading: loadingList,
+    refetch: refetchExpenses,
+  } = api.expenses.list.useQuery({ page: 1, limit: 10 });
 
   useEffect(() => {
     // Only load existing expenses; do not prefill form values so backend validation is exercised
-    loadExpenses();
+    // Data loads via tRPC useQuery
   }, []);
 
   const handleCreate = async () => {
@@ -48,37 +75,56 @@ export default function ExpensesPage() {
     setMessage(null);
     setSubmitting(true);
     try {
-      const res = await fetch("/api/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          totalAmount: totalAmount, // send raw value (string) so backend validates
-          description,
-          date,
-          invoiceUrl: invoiceUrl || undefined,
-        }),
+      await createExpense.mutateAsync({
+        totalAmount: totalAmount,
+        description,
+        date,
+        invoiceUrl: invoiceUrl || undefined,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to create expense");
       setMessage("Expense created");
       setTotalAmount("");
       setDescription("");
       // Leave date empty to avoid client-side defaults
       setDate("");
       setInvoiceUrl("");
-      await loadExpenses();
+      await refetchExpenses();
     } catch (e: any) {
-      setError(e.message || "Something went wrong");
+      setError(getFriendlyError(e));
     } finally {
       setSubmitting(false);
     }
   };
 
+  const createExpense = api.expenses.create.useMutation();
+
   const createSample = async () => {
-    setTotalAmount("12.34");
-    setDescription("Sample expense");
-    setDate(new Date().toISOString().slice(0, 10));
-    await handleCreate();
+    setError(null);
+    setMessage(null);
+    const sampleAmount = "12.34";
+    const sampleDescription = "Sample expense";
+    const sampleDateStr = new Date().toISOString().slice(0, 10);
+    const sampleInvoice = "";
+
+    setSubmitting(true);
+    try {
+      await createExpense.mutateAsync({
+        totalAmount: sampleAmount,
+        description: sampleDescription,
+        date: sampleDateStr,
+        invoiceUrl: undefined,
+      });
+      // reflect in UI
+      setTotalAmount("");
+      setDescription("");
+      setDate("");
+      setInvoiceUrl(sampleInvoice);
+      setMessage("Expense created");
+      await refetchExpenses();
+    } catch (e: any) {
+      setError(getFriendlyError(e));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -152,15 +198,15 @@ export default function ExpensesPage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Recent expenses</h2>
-          <button onClick={loadExpenses} className="text-sm underline" disabled={loadingList}>
+          <button onClick={() => refetchExpenses()} className="text-sm underline" disabled={loadingList}>
             {loadingList ? "Refreshing..." : "Refresh"}
           </button>
         </div>
         <div className="border rounded-md divide-y">
-          {expenses.length === 0 && (
+          {(listData?.expenses?.length ?? 0) === 0 && (
             <div className="p-4 text-sm text-gray-500">No expenses yet.</div>
           )}
-          {expenses.map((e) => (
+          {listData?.expenses?.map((e) => (
             <div key={e.id} className="p-4 flex items-center justify-between gap-4">
               <div>
                 <div className="font-medium">{e.description}</div>
@@ -172,7 +218,7 @@ export default function ExpensesPage() {
                   </a>
                 )}
               </div>
-              <div className="font-mono">${typeof e.totalAmount === "number" ? e.totalAmount.toFixed(2) : e.totalAmount}</div>
+              <div className="font-mono">${Number(e.totalAmount).toFixed(2)}</div>
             </div>
           ))}
         </div>

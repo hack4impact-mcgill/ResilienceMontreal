@@ -1,0 +1,20 @@
+model Client {
+  id          Int      @id @default(autoincrement())
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime
+
+  // Worker (staff) responsible for the client - relation to User model
+  worker   User @relation(fields: [workerId], references: [id])
+  workerId Int
+
+  email String? @unique
+  phone String?
+
+  landlordName String?
+  leaseStart   DateTime?
+  leaseEnd     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -23,7 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-
 const items = [
   {
     title: "Dashboard",
@@ -45,7 +44,9 @@ const items = [
 
 export function AppSidebar() {
   const router = useRouter();
-  const { data: me } = api.users.me.useQuery(undefined, { refetchOnWindowFocus: false });
+  const { data: me } = api.users.me.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
   const signOut = api.auth.signOut.useMutation({
     onSuccess: () => {
       // After signing out on the server, navigate to the login page

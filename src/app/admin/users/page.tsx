@@ -2,12 +2,26 @@
 
 import React, { useState } from "react";
 import { api } from "~/trpc/react";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 
 export default function AdminUsersPage() {
-  const { data: users, isLoading: usersLoading, error: usersError, refetch: refetchUsers } = api.users.list.useQuery(undefined, { refetchOnWindowFocus: false });
-  const { data: roles } = api.users.roles.useQuery(undefined, { refetchOnWindowFocus: false });
+  const {
+    data: users,
+    isLoading: usersLoading,
+    error: usersError,
+    refetch: refetchUsers,
+  } = api.users.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  const { data: roles } = api.users.roles.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
   const setRole = api.users.setRole.useMutation({
     onSuccess: () => {
       refetchUsers();
@@ -29,8 +43,13 @@ export default function AdminUsersPage() {
     return (
       <div className="p-6">
         <h2 className="text-2xl mb-4">Access denied</h2>
-        <p className="mb-4">You do not have permission to view this page. This area is for administrators only.</p>
-        <a href="/" className="underline">Return to home</a>
+        <p className="mb-4">
+          You do not have permission to view this page. This area is for
+          administrators only.
+        </p>
+        <a href="/" className="underline">
+          Return to home
+        </a>
       </div>
     );
   }
@@ -59,7 +78,10 @@ export default function AdminUsersPage() {
                 <select
                   value={selected[u.id] ?? u.role?.id ?? ""}
                   onChange={(e) =>
-                    setSelected((s) => ({ ...s, [u.id]: Number(e.target.value) }))
+                    setSelected((s) => ({
+                      ...s,
+                      [u.id]: Number(e.target.value),
+                    }))
                   }
                 >
                   <option value="">-- select role --</option>

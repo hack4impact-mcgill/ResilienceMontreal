@@ -18,10 +18,6 @@ export async function login(formData: FormData) {
   // console.log(data);
   const { error } = await supabase.auth.signInWithPassword(data);
 
-  const defaultRoleName = "Unassigned";
-  const defaultRole = await prisma.role.findUnique({
-    where: { name: defaultRoleName },
-  });
 
   if (error) {
     console.log(error);
@@ -64,7 +60,7 @@ export async function signup(formData: FormData) {
       update: {
         name,
         supabaseId: supabaseUser?.id ?? undefined,
-        isConfirmed: (supabaseUser as any)?.email_confirmed ?? false,
+  isConfirmed: !!supabaseUser?.email_confirmed_at,
         roleId: defaultRole?.id ?? undefined,
       },
       create: {
@@ -73,7 +69,7 @@ export async function signup(formData: FormData) {
         supabaseId: supabaseUser?.id ?? undefined,
         password: "",
         roleId: defaultRole?.id ?? undefined,
-        isConfirmed: (supabaseUser as any)?.email_confirmed ?? false,
+  isConfirmed: !!supabaseUser?.email_confirmed_at,
       },
     });
 

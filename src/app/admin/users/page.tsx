@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { api } from "~/trpc/react";
 import {
   Table,
@@ -47,9 +48,9 @@ export default function AdminUsersPage() {
           You do not have permission to view this page. This area is for
           administrators only.
         </p>
-        <a href="/" className="underline">
+        <Link href="/" className="underline">
           Return to home
-        </a>
+        </Link>
       </div>
     );
   }

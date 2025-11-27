@@ -38,7 +38,6 @@ import { columns, Client } from "./columns";
 import { useQuery } from "@tanstack/react-query";
 import { fetchClients } from "@/lib/api";
 
-
 // ------------------------------------------------------------
 // ADD CLIENT MODAL
 // ------------------------------------------------------------
@@ -73,12 +72,32 @@ function AddClientModal({
         <h2 className="text-xl font-semibold mb-4 text-center">Add Client</h2>
 
         <div className="space-y-3">
-          <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First Name" />
-          <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last Name" />
-          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+          <Input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="First Name"
+          />
+          <Input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Last Name"
+          />
+          <Input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+          />
 
-          <Input type="date" value={leaseStart} onChange={(e) => setLeaseStart(e.target.value)} />
-          <Input type="date" value={leaseEnd} onChange={(e) => setLeaseEnd(e.target.value)} />
+          <Input
+            type="date"
+            value={leaseStart}
+            onChange={(e) => setLeaseStart(e.target.value)}
+          />
+          <Input
+            type="date"
+            value={leaseEnd}
+            onChange={(e) => setLeaseEnd(e.target.value)}
+          />
         </div>
 
         <div className="flex justify-end gap-2 mt-6">
@@ -123,8 +142,14 @@ const exportToCSV = (clients: Client[]) => {
   if (!clients.length) return;
 
   // CSV header
-  const header = ["First Name", "Last Name", "Email", "Lease Start Date", "Lease End Date"];
-  
+  const header = [
+    "First Name",
+    "Last Name",
+    "Email",
+    "Lease Start Date",
+    "Lease End Date",
+  ];
+
   // CSV rows
   const rows = clients.map((c) => [
     c.firstName,
@@ -135,8 +160,7 @@ const exportToCSV = (clients: Client[]) => {
   ]);
 
   // combine header + rows
-  const csvContent =
-    [header, ...rows].map((row) => row.join(",")).join("\n");
+  const csvContent = [header, ...rows].map((row) => row.join(",")).join("\n");
 
   // create filename with current date
   const now = new Date();
@@ -161,17 +185,26 @@ export const ClientsTable = () => {
   const [localClients, setLocalClients] = React.useState<Client[]>([]);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const [filterColumn, setFilterColumn] = React.useState<"firstName" | "lastName" | "email">("email");
+  const [filterColumn, setFilterColumn] = React.useState<
+    "firstName" | "lastName" | "email"
+  >("email");
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
   const [addModalOpen, setAddModalOpen] = React.useState(false);
 
   // fetch initial server data
-  const { data: fetchedClients, isLoading, isError } = useQuery({
+  const {
+    data: fetchedClients,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["clients"],
     queryFn: fetchClients,
   });
@@ -214,20 +247,28 @@ export const ClientsTable = () => {
     <div className="w-full">
       {/* Filter Row */}
       <div className="border-t border-border -mx-8 px-8 flex items-center py-4">
-
         {/* Search Input */}
         <Input
           placeholder={`Search by ${prettyLabel(filterColumn)}...`}
-          value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
-          onChange={(e) => table.getColumn(filterColumn)?.setFilterValue(e.target.value)}
+          value={
+            (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""
+          }
+          onChange={(e) =>
+            table.getColumn(filterColumn)?.setFilterValue(e.target.value)
+          }
           className="max-w-sm"
         />
 
         {/* Filter Dropdown */}
         <DropdownMenu open={filterMenuOpen} onOpenChange={setFilterMenuOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="ml-2 flex items-center gap-2 px-2 py-1 h-auto hover:bg-transparent">
-              <ListFilter className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`} />
+            <Button
+              variant="ghost"
+              className="ml-2 flex items-center gap-2 px-2 py-1 h-auto hover:bg-transparent"
+            >
+              <ListFilter
+                className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`}
+              />
               <span>Filter</span>
             </Button>
           </DropdownMenuTrigger>
@@ -243,13 +284,16 @@ export const ClientsTable = () => {
                 }}
                 className="flex items-center gap-2"
               >
-                {filterColumn === col ? <Check className="h-4 w-4" /> : <span className="h-4 w-4 opacity-0" />}
+                {filterColumn === col ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <span className="h-4 w-4 opacity-0" />
+                )}
                 {prettyLabel(col)}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
 
         {/* Export Button */}
         <Button
@@ -278,7 +322,10 @@ export const ClientsTable = () => {
               <TableRow key={group.id}>
                 {group.headers.map((header) => (
                   <TableHead key={header.id}>
-                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -290,13 +337,21 @@ export const ClientsTable = () => {
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   No results.
                 </TableCell>
               </TableRow>
@@ -309,10 +364,20 @@ export const ClientsTable = () => {
 
       {/* Pagination */}
       <div className="flex items-center justify-end space-x-2 py-4 px-8">
-        <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
           Previous
         </Button>
-        <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
           Next
         </Button>
       </div>

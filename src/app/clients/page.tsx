@@ -21,5 +21,6 @@ export default async function ClientsPage() {
         <ClientsTable />
       </div>
     </HydrationBoundary>
-  );3
+  );
+  3;
 }

@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const roles = ["Bookkeeper", "InterventionTeam", "Admin", "Unassigned"];
-  
+
   for (const name of roles) {
     await prisma.role.upsert({
       where: { name },
@@ -12,7 +12,7 @@ async function main() {
       create: { name },
     });
   }
-  
+
   console.log("Seeded roles:", roles.join(", "));
 }
 

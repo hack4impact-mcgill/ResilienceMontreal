@@ -18,6 +18,13 @@ export async function login(formData: FormData) {
   // console.log(data);
   const { error } = await supabase.auth.signInWithPassword(data);
 
+<<<<<<< HEAD
+=======
+  const defaultRoleName = "Unassigned";
+  const defaultRole = await prisma.role.findUnique({
+    where: { name: defaultRoleName },
+  });
+>>>>>>> fdfd4c2dedc5b99cc4cf407200921c5edd08d0ee
 
   if (error) {
     console.log(error);
@@ -36,7 +43,9 @@ export async function signup(formData: FormData) {
   const name = (formData.get("name") as string) || email.split("@")[0]; // Use email prefix if no name
 
   const defaultRoleName = "Unassigned";
-  const defaultRole = await prisma.role.findUnique({ where: { name: defaultRoleName } });
+  const defaultRole = await prisma.role.findUnique({
+    where: { name: defaultRoleName },
+  });
 
   // Step 1: Create Supabase Auth user
   const { data: authData, error: authError } = await supabase.auth.signUp({

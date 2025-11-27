@@ -49,7 +49,9 @@ export const authRouter = createTRPCRouter({
         }
 
         // Find default role (Unassigned)
-        const defaultRole = await prisma.role.findUnique({ where: { name: "Unassigned" } });
+        const defaultRole = await prisma.role.findUnique({
+          where: { name: "Unassigned" },
+        });
 
         // Upsert Prisma user to link auth user with application user data
         const supabaseId = result.data?.user?.id ?? null;

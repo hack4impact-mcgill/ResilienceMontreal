@@ -6,7 +6,10 @@ export async function PATCH(request: NextRequest) {
   try {
     // 1. Check authentication
     const supabase = await createClient();
-    const { data: { user: sbUser }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user: sbUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !sbUser?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,7 +24,7 @@ export async function PATCH(request: NextRequest) {
     if (!requestingUser || requestingUser.role?.name !== "Admin") {
       return NextResponse.json(
         { error: "Forbidden - Admin access required" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -63,7 +66,7 @@ export async function PATCH(request: NextRequest) {
     console.error("Assign role error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

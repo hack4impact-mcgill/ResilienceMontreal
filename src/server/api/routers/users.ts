@@ -50,11 +50,17 @@ export const usersRouter = createTRPCRouter({
       }
 
       if (actor.id === input.userId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot change your own role" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot change your own role",
+        });
       }
 
-      const role = await prisma.role.findUnique({ where: { id: input.roleId } });
-      if (!role) throw new TRPCError({ code: "NOT_FOUND", message: "Role not found" });
+      const role = await prisma.role.findUnique({
+        where: { id: input.roleId },
+      });
+      if (!role)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Role not found" });
 
       const updated = await prisma.user.update({
         where: { id: input.userId },

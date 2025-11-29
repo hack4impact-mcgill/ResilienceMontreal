@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { type EmailOtpType } from "@supabase/supabase-js";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { createClient } from "~/utils/supabase/server";
@@ -78,4 +79,35 @@ export const authRouter = createTRPCRouter({
     const session = await getServerAuthSession();
     return session;
   }),
+
+  confirmEmail: publicProcedure
+    .input(
+      z.object({
+        token_hash: z.string(),
+        type: z.enum(["signup", "email", "recovery", "email_change", "invite"]),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        console.log("Confirm email was hit!!!");
+        const supabase = await createClient();
+        const result = await supabase.auth.verifyOtp({
+          type: input.type as EmailOtpType,
+          token_hash: input.token_hash,
+        });
+        if (result.error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: result.error.message,
+          });
+        }
+        return { ok: true };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: message ?? "Failed to confirm email",
+        });
+      }
+    }),
 });

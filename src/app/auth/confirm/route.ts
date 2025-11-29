@@ -16,13 +16,18 @@ export async function GET(request: NextRequest) {
       const headers = new Headers(request.headers);
       const ctx = await createTRPCContext({ headers });
       const caller = createCaller(ctx);
-      
+
       await caller.auth.confirmEmail({
         token_hash,
-        type: type as "signup" | "email" | "recovery" | "email_change" | "invite",
+        type: type as
+          | "signup"
+          | "email"
+          | "recovery"
+          | "email_change"
+          | "invite",
       });
 
-     // redirect user to specified redirect URL or root of app
+      // redirect user to specified redirect URL or root of app
       redirect(next);
     } catch (err: unknown) {
       console.error("Error " + err);

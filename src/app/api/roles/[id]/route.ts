@@ -2,8 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { z } from "zod";
+import { RoleName } from "@prisma/client";
 
-const bodySchema = z.object({ roleId: z.coerce.number().int().positive() });
+const bodySchema = z.object({ role: z.nativeEnum(RoleName) });
 
 export async function PATCH(
   request: NextRequest,
@@ -24,10 +25,9 @@ export async function PATCH(
     // Ensure requester is an Admin
     const requestingUser = await prisma.user.findUnique({
       where: { email: sbUser.email },
-      include: { role: true },
     });
 
-    if (!requestingUser || requestingUser.role?.name !== "Admin") {
+    if (!requestingUser || requestingUser.role !== "Admin") {
       return NextResponse.json(
         { error: "Forbidden - Admin access required" },
         { status: 403 },
@@ -50,36 +50,51 @@ export async function PATCH(
         { status: 400 },
       );
     }
-    const { roleId } = parsed.data;
+    const { role } = parsed.data;
 
     // Prevent changing own role
     if (requestingUser.id === targetId) {
       return NextResponse.json(
-        { error: "Cannot change own role" },
+        { error: "Cannot change your own role" },
         { status: 403 },
       );
     }
 
-    // Verify role exists
-    const role = await prisma.role.findUnique({ where: { id: roleId } });
-    if (!role) {
-      return NextResponse.json({ error: "Role not found" }, { status: 404 });
+    // Get the target user to check if they're currently an Admin
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetId },
+    });
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // If demoting an admin, check if they're the last admin
+    if (targetUser.role === "Admin" && role !== "Admin") {
+      const adminCount = await prisma.user.count({
+        where: { role: "Admin" },
+      });
+
+      if (adminCount <= 1) {
+        return NextResponse.json(
+          {
+            error:
+              "Cannot remove the last admin. Please promote another user to Admin first.",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     // Update user's role
     const updatedUser = await prisma.user.update({
       where: { id: targetId },
-      data: { roleId: role.id },
+      data: { role },
       select: {
         id: true,
         name: true,
         email: true,
-        role: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        role: true,
       },
     });
 

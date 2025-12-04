@@ -48,11 +48,6 @@ export const authRouter = createTRPCRouter({
           });
         }
 
-        // Find default role (Unassigned)
-        const defaultRole = await prisma.role.findUnique({
-          where: { name: "Unassigned" },
-        });
-
         // Upsert Prisma user to link auth user with application user data
         const supabaseId = result.data?.user?.id ?? null;
         // derive a name from the email prefix if desired, otherwise leave empty
@@ -64,14 +59,14 @@ export const authRouter = createTRPCRouter({
             name: derivedName,
             supabaseId: supabaseId ?? undefined,
             isConfirmed: !!result.data?.user?.email_confirmed_at,
-            roleId: defaultRole?.id ?? undefined,
+            role: "Unassigned", // Default role enum value
           },
           create: {
             email,
             name: derivedName,
             supabaseId: supabaseId ?? undefined,
             password: "",
-            roleId: defaultRole?.id ?? undefined,
+            role: "Unassigned", // Default role enum value
             isConfirmed: !!result.data?.user?.email_confirmed_at,
           },
         });

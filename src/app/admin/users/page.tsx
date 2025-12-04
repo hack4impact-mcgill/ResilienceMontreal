@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { api } from "~/trpc/react";
+import { RoleName } from "@prisma/client";
 import {
   Table,
   TableHeader,
@@ -34,7 +35,7 @@ export default function AdminUsersPage() {
     },
   });
 
-  const [selected, setSelected] = useState<Record<number, number>>({});
+  const [selected, setSelected] = useState<Record<number, RoleName>>({});
 
   if (usersLoading) return <div>Loading users...</div>;
 
@@ -74,20 +75,20 @@ export default function AdminUsersPage() {
             <TableRow key={u.id}>
               <TableCell>{u.email}</TableCell>
               <TableCell>{u.name}</TableCell>
-              <TableCell>{u.role?.name ?? "Unassigned"}</TableCell>
+              <TableCell>{u.role ?? "Unassigned"}</TableCell>
               <TableCell>
                 <select
-                  value={selected[u.id] ?? u.role?.id ?? ""}
+                  value={selected[u.id] ?? u.role ?? ""}
                   onChange={(e) =>
                     setSelected((s) => ({
                       ...s,
-                      [u.id]: Number(e.target.value),
+                      [u.id]: e.target.value as RoleName,
                     }))
                   }
                 >
                   <option value="">-- select role --</option>
                   {roles?.map((r) => (
-                    <option key={r.id} value={r.id}>
+                    <option key={r.name} value={r.name}>
                       {r.name}
                     </option>
                   ))}
@@ -97,12 +98,12 @@ export default function AdminUsersPage() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    const roleId = selected[u.id] ?? u.role?.id;
-                    if (!roleId) {
+                    const role = selected[u.id] ?? u.role;
+                    if (!role) {
                       alert("Please select a role");
                       return;
                     }
-                    setRole.mutate({ userId: u.id, roleId: Number(roleId) });
+                    setRole.mutate({ userId: u.id, role });
                   }}
                 >
                   Save

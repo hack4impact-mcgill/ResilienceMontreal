@@ -96,7 +96,7 @@ export function AppSidebar() {
                   <span>{me?.name ?? "Name"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <span>{me?.role?.name ?? "Role"}</span>
+                  <span>{me?.role ?? "Role"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {

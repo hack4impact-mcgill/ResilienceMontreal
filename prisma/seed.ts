@@ -1,19 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, RoleName } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const roles = ["Bookkeeper", "InterventionTeam", "Admin", "Unassigned"];
+  console.log("Available roles (enum values):");
+  console.log(Object.values(RoleName).join(", "));
 
-  for (const name of roles) {
-    await prisma.role.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
-
-  console.log("Seeded roles:", roles.join(", "));
 }
 
 main()

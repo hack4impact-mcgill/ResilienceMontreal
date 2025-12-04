@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { RoleName } from "@prisma/client";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +13,6 @@ export const usersRouter = createTRPCRouter({
 
     const user = await prisma.user.findUnique({
       where: { email: sessionUser.email },
-      include: { role: true },
     });
 
     return user;
@@ -23,32 +23,32 @@ export const usersRouter = createTRPCRouter({
     // check admin
     const actor = await prisma.user.findUnique({
       where: { email: ctx.user?.email ?? undefined },
-      include: { role: true },
     });
-    if (!actor || actor.role?.name !== "Admin") {
+    if (!actor || actor.role !== "Admin") {
       throw new TRPCError({ code: "FORBIDDEN", message: "Admin required" });
     }
 
-    return prisma.user.findMany({ include: { role: true } });
+    return prisma.user.findMany();
   }),
 
-  // list available roles
+  // list available roles (returns enum values)
   roles: protectedProcedure.query(async () => {
-    return prisma.role.findMany();
+    // Return the RoleName enum values
+    return Object.values(RoleName).map((name) => ({ name }));
   }),
 
   // set another user's role (admin-only)
   setRole: protectedProcedure
-    .input(z.object({ userId: z.number(), roleId: z.number() }))
+    .input(z.object({ userId: z.number(), role: z.nativeEnum(RoleName) }))
     .mutation(async ({ input, ctx }) => {
       const actor = await prisma.user.findUnique({
         where: { email: ctx.user?.email ?? undefined },
-        include: { role: true },
       });
-      if (!actor || actor.role?.name !== "Admin") {
+      if (!actor || actor.role !== "Admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Admin required" });
       }
 
+      // Prevent changing own role
       if (actor.id === input.userId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -56,16 +56,36 @@ export const usersRouter = createTRPCRouter({
         });
       }
 
-      const role = await prisma.role.findUnique({
-        where: { id: input.roleId },
+      // Get the target user to check if they're currently an Admin
+      const targetUser = await prisma.user.findUnique({
+        where: { id: input.userId },
       });
-      if (!role)
-        throw new TRPCError({ code: "NOT_FOUND", message: "Role not found" });
+
+      if (!targetUser) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "User not found",
+        });
+      }
+
+      // If demoting an admin, check if they're the last admin
+      if (targetUser.role === "Admin" && input.role !== "Admin") {
+        const adminCount = await prisma.user.count({
+          where: { role: "Admin" },
+        });
+
+        if (adminCount <= 1) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Cannot remove the last admin. Please promote another user to Admin first.",
+          });
+        }
+      }
 
       const updated = await prisma.user.update({
         where: { id: input.userId },
-        data: { roleId: role.id },
-        include: { role: true },
+        data: { role: input.role },
       });
 
       return updated;

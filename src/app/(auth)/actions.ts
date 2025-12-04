@@ -34,11 +34,6 @@ export async function signup(formData: FormData) {
   const password = formData.get("password") as string;
   const name = (formData.get("name") as string) || email.split("@")[0]; // Use email prefix if no name
 
-  const defaultRoleName = "Unassigned";
-  const defaultRole = await prisma.role.findUnique({
-    where: { name: defaultRoleName },
-  });
-
   // Step 1: Create Supabase Auth user
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
@@ -60,14 +55,14 @@ export async function signup(formData: FormData) {
         name,
         supabaseId: supabaseUser?.id ?? undefined,
         isConfirmed: !!supabaseUser?.email_confirmed_at,
-        roleId: defaultRole?.id ?? undefined,
+        role: "Unassigned", // Use enum value directly
       },
       create: {
         email,
         name,
         supabaseId: supabaseUser?.id ?? undefined,
         password: "",
-        roleId: defaultRole?.id ?? undefined,
+        role: "Unassigned", // Use enum value directly
         isConfirmed: !!supabaseUser?.email_confirmed_at,
       },
     });

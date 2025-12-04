@@ -18,7 +18,10 @@ export default function SignupForm({
   const [password, setPassword] = useState("");
 
   const mutation = api.auth.signUp.useMutation({
-    onSuccess: () => router.push("/"),
+    onSuccess: async () => {
+      router.push("/");
+      router.refresh();
+    },
     onError: (err) => {
       console.error("signUp error:", err);
       alert(err?.message ?? "Sign up failed");
@@ -39,6 +42,7 @@ export default function SignupForm({
         <CardContent>
           <form onSubmit={onSubmit}>
             <div className="flex flex-col gap-6">
+              {/* Name removed: we only require email & password */}
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -66,9 +70,9 @@ export default function SignupForm({
               <Button
                 type="submit"
                 className="w-full bg-[#246178]"
-                disabled={mutation.status === "pending"}
+                disabled={mutation.isPending}
               >
-                {mutation.status === "pending" ? "Signing up..." : "Sign Up"}
+                {mutation.isPending ? "Signing up..." : "Sign Up"}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">

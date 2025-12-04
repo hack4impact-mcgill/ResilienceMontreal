@@ -1,11 +1,13 @@
 import { testRouter } from "~/server/api/routers/test";
 import { authRouter } from "~/server/api/routers/auth";
+import { usersRouter } from "~/server/api/routers/users";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 // primary router for your server -- all routers added in /api/routers should be manually added here
 export const appRouter = createTRPCRouter({
   test: testRouter,
   auth: authRouter,
+  users: usersRouter,
 });
 
 // export type definition of API

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { createCaller } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
-import { api } from "~/trpc/react";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

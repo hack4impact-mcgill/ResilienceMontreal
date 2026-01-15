@@ -37,124 +37,23 @@ import {
 import { columns, Expense } from "./columns";
 import { useQuery } from "@tanstack/react-query";
 import { fetchExpenses } from "@/lib/api";
+import { z } from "zod";
 
-// ------------------------------------------------------------
-// ADD EXPENSE MODAL
-// ------------------------------------------------------------
-function AddExpenseModal({
-  open,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (expense: Expense) => void;
-}) {
-  const [client, setClient] = React.useState("");
-  const [spendingCategory, setSpendingCategory] = React.useState("");
-  const [purchaseDate, setPurchaseDate] = React.useState("");
-  const [clientEmail, setClientEmail] = React.useState("");
-  const [phoneNumber, setPhoneNumber] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [amount, setAmount] = React.useState("");
+// Validation schema
+const expenseSchema = z.object({
+  client: z.string().min(1, "Client is required"),
+  spendingCategory: z.string().min(1, "Spending category is required"),
+  purchaseDate: z.string().min(1, "Purchase date is required"),
+  clientEmail: z.string().email("Invalid email address"),
+  phoneNumber: z.string().min(1, "Phone number is required"),
+  notes: z.string().optional().default(""),
+  amount: z.string().refine((val) => {
+    const num = parseFloat(val);
+    return !isNaN(num) && num > 0;
+  }, "Amount must be a positive number"),
+});
 
-  const resetFields = () => {
-    setClient("");
-    setSpendingCategory("");
-    setPurchaseDate("");
-    setClientEmail("");
-    setPhoneNumber("");
-    setNotes("");
-    setAmount("");
-  };
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg p-6 w-[500px] max-h-[90vh] overflow-y-auto shadow-xl">
-        <h2 className="text-xl font-semibold mb-4 text-center">Add Expense</h2>
-
-        <div className="space-y-3">
-          <Input
-            value={client}
-            onChange={(e) => setClient(e.target.value)}
-            placeholder="Client"
-          />
-          <Input
-            value={spendingCategory}
-            onChange={(e) => setSpendingCategory(e.target.value)}
-            placeholder="Spending Category"
-          />
-          <Input
-            type="date"
-            value={purchaseDate}
-            onChange={(e) => setPurchaseDate(e.target.value)}
-            placeholder="Purchase Date"
-          />
-          <Input
-            type="email"
-            value={clientEmail}
-            onChange={(e) => setClientEmail(e.target.value)}
-            placeholder="Client Email"
-          />
-          <Input
-            type="tel"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            placeholder="Phone Number"
-          />
-          <Input
-            type="number"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount"
-          />
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notes"
-            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          />
-        </div>
-
-        <div className="flex justify-end gap-2 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => {
-              resetFields();
-              onClose();
-            }}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            onClick={() => {
-              const newExpense: Expense = {
-                id: Date.now().toString(),
-                client,
-                spendingCategory,
-                purchaseDate: new Date(purchaseDate),
-                clientEmail,
-                phoneNumber,
-                notes,
-                amount: parseFloat(amount) || 0,
-              };
-
-              onSubmit(newExpense);
-              resetFields();
-              onClose();
-            }}
-          >
-            Submit
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+type ExpenseFormData = z.infer<typeof expenseSchema>;
 
 // ------------------------------------------------------------
 // EXPORT EXPENSES TO CSV
@@ -222,7 +121,32 @@ export const ExpensesTable = () => {
   >("client");
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
-  const [addModalOpen, setAddModalOpen] = React.useState(false);
+  const [isAdding, setIsAdding] = React.useState(false);
+  const [formData, setFormData] = React.useState<ExpenseFormData>({
+    client: "",
+    spendingCategory: "",
+    purchaseDate: "",
+    clientEmail: "",
+    phoneNumber: "",
+    notes: "",
+    amount: "",
+  });
+  const [formErrors, setFormErrors] = React.useState<Record<string, string>>({});
+
+  // Spending category options
+  const spendingCategories = [
+    "Office Supplies",
+    "Rent",
+    "Utilities",
+    "Maintenance",
+    "Marketing",
+    "Software",
+    "Services",
+    "Internet",
+    "Insurance",
+    "Professional Services",
+    "Other",
+  ];
 
   // fetch initial server data
   const {
@@ -263,6 +187,73 @@ export const ExpensesTable = () => {
     if (col === "spendingCategory") return "Spending Category";
     if (col === "clientEmail") return "Client Email";
     return col;
+  };
+
+  const resetForm = () => {
+    setFormData({
+      client: "",
+      spendingCategory: "",
+      purchaseDate: "",
+      clientEmail: "",
+      phoneNumber: "",
+      notes: "",
+      amount: "",
+    });
+    setFormErrors({});
+  };
+
+  const validateForm = (): boolean => {
+    const result = expenseSchema.safeParse(formData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((err) => {
+        if (err.path[0]) {
+          errors[err.path[0] as string] = err.message;
+        }
+      });
+      setFormErrors(errors);
+      return false;
+    }
+    setFormErrors({});
+    return true;
+  };
+
+  const handleSave = (saveAndAddMore: boolean) => {
+    if (!validateForm()) return;
+
+    const newExpense: Expense = {
+      id: Date.now().toString(),
+      client: formData.client,
+      spendingCategory: formData.spendingCategory,
+      purchaseDate: new Date(formData.purchaseDate),
+      clientEmail: formData.clientEmail,
+      phoneNumber: formData.phoneNumber,
+      notes: formData.notes || "",
+      amount: parseFloat(formData.amount),
+    };
+
+    setLocalExpenses((prev) => {
+      const updated = [...prev, newExpense];
+      return updated;
+    });
+
+    if (saveAndAddMore) {
+      resetForm();
+      // Keep form open
+    } else {
+      resetForm();
+      setIsAdding(false);
+    }
+
+    // force React Table to recompute with new data
+    setTimeout(() => {
+      table.setPageIndex(table.getPageCount() - 1);
+    }, 10);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setIsAdding(false);
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -334,7 +325,7 @@ export const ExpensesTable = () => {
         <Button
           variant="outline"
           className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-          onClick={() => setAddModalOpen(true)}
+          onClick={() => setIsAdding(true)}
         >
           <CirclePlus /> Add Expense
         </Button>
@@ -359,6 +350,146 @@ export const ExpensesTable = () => {
           </TableHeader>
 
           <TableBody>
+            {/* Inline Add Form Row */}
+            {isAdding && (
+              <TableRow className="bg-blue-50">
+                <TableCell>
+                  <Input
+                    value={formData.client}
+                    onChange={(e) =>
+                      setFormData({ ...formData, client: e.target.value })
+                    }
+                    placeholder="Client"
+                    className={formErrors.client ? "border-red-500" : ""}
+                  />
+                  {formErrors.client && (
+                    <p className="text-xs text-red-500 mt-1">{formErrors.client}</p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <select
+                    value={formData.spendingCategory}
+                    onChange={(e) =>
+                      setFormData({ ...formData, spendingCategory: e.target.value })
+                    }
+                    className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                      formErrors.spendingCategory ? "border-red-500" : ""
+                    }`}
+                  >
+                    <option value="">Select category</option>
+                    {spendingCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.spendingCategory && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.spendingCategory}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
+                    value={formData.purchaseDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, purchaseDate: e.target.value })
+                    }
+                    className={formErrors.purchaseDate ? "border-red-500" : ""}
+                  />
+                  {formErrors.purchaseDate && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.purchaseDate}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="email"
+                    value={formData.clientEmail}
+                    onChange={(e) =>
+                      setFormData({ ...formData, clientEmail: e.target.value })
+                    }
+                    placeholder="Email"
+                    className={formErrors.clientEmail ? "border-red-500" : ""}
+                  />
+                  {formErrors.clientEmail && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.clientEmail}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phoneNumber: e.target.value })
+                    }
+                    placeholder="Phone"
+                    className={formErrors.phoneNumber ? "border-red-500" : ""}
+                  />
+                  {formErrors.phoneNumber && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.phoneNumber}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    value={formData.notes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
+                    placeholder="Notes"
+                    className="max-w-xs"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, amount: e.target.value })
+                    }
+                    placeholder="Amount"
+                    className={formErrors.amount ? "border-red-500" : ""}
+                  />
+                  {formErrors.amount && (
+                    <p className="text-xs text-red-500 mt-1">{formErrors.amount}</p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancel}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSave(false)}
+                      className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSave(true)}
+                      className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                    >
+                      Save & Add More
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
@@ -373,14 +504,16 @@ export const ExpensesTable = () => {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
+              !isAdding && (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )
             )}
           </TableBody>
 
@@ -408,22 +541,6 @@ export const ExpensesTable = () => {
         </Button>
       </div>
 
-      {/* Add Expense Modal */}
-      <AddExpenseModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSubmit={(newExpense) => {
-          setLocalExpenses((prev) => {
-            const updated = [...prev, newExpense];
-            return updated;
-          });
-
-          // force React Table to recompute with new data
-          setTimeout(() => {
-            table.setPageIndex(table.getPageCount() - 1);
-          }, 10);
-        }}
-      />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { Client } from "../app/clients/_components/columns";
+import { Expense } from "../app/expenses/_components/columns";
 
 export async function fetchClients(): Promise<Client[]> {
   // simulate fetching data from an API with a delay
@@ -204,6 +205,116 @@ export async function fetchClients(): Promise<Client[]> {
           email: "ella.wright@example.com",
           leaseStartDate: new Date("2022-07-01"),
           leaseEndDate: new Date("2023-06-30"),
+        },
+      ]);
+    }, 1000);
+  });
+}
+
+export async function fetchExpenses(): Promise<Expense[]> {
+  // simulate fetching data from an API with a delay
+  return new Promise<Expense[]>((resolve) => {
+    setTimeout(() => {
+      resolve([
+        {
+          id: "1",
+          client: "John Doe",
+          spendingCategory: "Office Supplies",
+          purchaseDate: new Date("2024-01-15"),
+          clientEmail: "john.doe@example.com",
+          phoneNumber: "514-555-0101",
+          notes: "Purchased office supplies for Q1",
+          amount: 245.50,
+        },
+        {
+          id: "2",
+          client: "Jane Smith",
+          spendingCategory: "Rent",
+          purchaseDate: new Date("2024-01-01"),
+          clientEmail: "jane.smith@example.com",
+          phoneNumber: "514-555-0102",
+          notes: "Monthly rent payment",
+          amount: 1500.00,
+        },
+        {
+          id: "3",
+          client: "Alice Johnson",
+          spendingCategory: "Utilities",
+          purchaseDate: new Date("2024-01-20"),
+          clientEmail: "alice.johnson@example.com",
+          phoneNumber: "514-555-0103",
+          notes: "Electric and water bill",
+          amount: 320.75,
+        },
+        {
+          id: "4",
+          client: "Bob Lee",
+          spendingCategory: "Maintenance",
+          purchaseDate: new Date("2024-02-05"),
+          clientEmail: "bob.lee@example.com",
+          phoneNumber: "514-555-0104",
+          notes: "Equipment repair and maintenance",
+          amount: 850.00,
+        },
+        {
+          id: "5",
+          client: "Maria Garcia",
+          spendingCategory: "Marketing",
+          purchaseDate: new Date("2024-02-10"),
+          clientEmail: "maria.garcia@example.com",
+          phoneNumber: "514-555-0105",
+          notes: "Marketing materials and brochures",
+          amount: 125.25,
+        },
+        {
+          id: "6",
+          client: "David Kim",
+          spendingCategory: "Software",
+          purchaseDate: new Date("2024-02-15"),
+          clientEmail: "david.kim@example.com",
+          phoneNumber: "514-555-0106",
+          notes: "Annual software license renewal",
+          amount: 299.99,
+        },
+        {
+          id: "7",
+          client: "Emma Brown",
+          spendingCategory: "Services",
+          purchaseDate: new Date("2024-02-20"),
+          clientEmail: "emma.brown@example.com",
+          phoneNumber: "514-555-0107",
+          notes: "Professional cleaning services",
+          amount: 180.00,
+        },
+        {
+          id: "8",
+          client: "Liam Wilson",
+          spendingCategory: "Internet",
+          purchaseDate: new Date("2024-03-01"),
+          clientEmail: "liam.wilson@example.com",
+          phoneNumber: "514-555-0108",
+          notes: "Monthly internet service",
+          amount: 89.99,
+        },
+        {
+          id: "9",
+          client: "Olivia Martinez",
+          spendingCategory: "Insurance",
+          purchaseDate: new Date("2024-03-05"),
+          clientEmail: "olivia.martinez@example.com",
+          phoneNumber: "514-555-0109",
+          notes: "Quarterly insurance premium",
+          amount: 450.00,
+        },
+        {
+          id: "10",
+          client: "Noah Anderson",
+          spendingCategory: "Professional Services",
+          purchaseDate: new Date("2024-03-10"),
+          clientEmail: "noah.anderson@example.com",
+          phoneNumber: "514-555-0110",
+          notes: "Legal consultation fees",
+          amount: 1200.00,
         },
       ]);
     }, 1000);

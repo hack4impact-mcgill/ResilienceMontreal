@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Available roles (enum values):");
   console.log(Object.values(RoleName).join(", "));
-
 }
 
 main()

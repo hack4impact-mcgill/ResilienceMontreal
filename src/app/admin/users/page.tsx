@@ -35,7 +35,7 @@ export default function AdminUsersPage() {
     },
   });
 
-  const [selected, setSelected] = useState<Record<number, RoleName>>({});
+  const [selected, setSelected] = useState<Record<string, RoleName>>({});
 
   if (usersLoading) return <div>Loading users...</div>;
 
@@ -72,17 +72,17 @@ export default function AdminUsersPage() {
         </TableHeader>
         <TableBody>
           {users?.map((u) => (
-            <TableRow key={u.id}>
+            <TableRow key={u.supabaseId}>
               <TableCell>{u.email}</TableCell>
               <TableCell>{u.name}</TableCell>
               <TableCell>{u.role ?? "Unassigned"}</TableCell>
               <TableCell>
                 <select
-                  value={selected[u.id] ?? u.role ?? ""}
+                  value={selected[u.supabaseId] ?? u.role ?? ""}
                   onChange={(e) =>
                     setSelected((s) => ({
                       ...s,
-                      [u.id]: e.target.value as RoleName,
+                      [u.supabaseId]: e.target.value as RoleName,
                     }))
                   }
                 >
@@ -98,12 +98,12 @@ export default function AdminUsersPage() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    const role = selected[u.id] ?? u.role;
+                    const role = selected[u.supabaseId] ?? u.role;
                     if (!role) {
                       alert("Please select a role");
                       return;
                     }
-                    setRole.mutate({ userId: u.id, role });
+                    setRole.mutate({ userId: u.supabaseId, role });
                   }}
                 >
                   Save

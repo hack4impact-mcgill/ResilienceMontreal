@@ -11,7 +11,7 @@ async function main() {
   console.log("Users:");
   console.table(
     users.map((u) => ({
-      id: u.id,
+      supabaseId: u.supabaseId,
       email: u.email,
       name: u.name,
       role: u.role,

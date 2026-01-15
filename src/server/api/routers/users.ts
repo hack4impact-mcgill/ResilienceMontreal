@@ -39,7 +39,7 @@ export const usersRouter = createTRPCRouter({
 
   // set another user's role (admin-only)
   setRole: protectedProcedure
-    .input(z.object({ userId: z.number(), role: z.nativeEnum(RoleName) }))
+    .input(z.object({ userId: z.string(), role: z.nativeEnum(RoleName) }))
     .mutation(async ({ input, ctx }) => {
       const actor = await prisma.user.findUnique({
         where: { email: ctx.user?.email ?? undefined },
@@ -49,7 +49,7 @@ export const usersRouter = createTRPCRouter({
       }
 
       // Prevent changing own role
-      if (actor.id === input.userId) {
+      if (actor.supabaseId === input.userId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Cannot change your own role",
@@ -58,7 +58,7 @@ export const usersRouter = createTRPCRouter({
 
       // Get the target user to check if they're currently an Admin
       const targetUser = await prisma.user.findUnique({
-        where: { id: input.userId },
+        where: { supabaseId: input.userId },
       });
 
       if (!targetUser) {
@@ -84,7 +84,7 @@ export const usersRouter = createTRPCRouter({
       }
 
       const updated = await prisma.user.update({
-        where: { id: input.userId },
+        where: { supabaseId: input.userId },
         data: { role: input.role },
       });
 

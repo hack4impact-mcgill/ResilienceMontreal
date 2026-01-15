@@ -36,8 +36,8 @@ export async function PATCH(
 
     // Validate params
     const paramsObj = (await params) as { id: string };
-    const targetId = Number(paramsObj.id);
-    if (Number.isNaN(targetId) || targetId <= 0) {
+    const targetId = paramsObj.id;
+    if (!targetId || typeof targetId !== "string") {
       return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
     }
 
@@ -53,7 +53,7 @@ export async function PATCH(
     const { role } = parsed.data;
 
     // Prevent changing own role
-    if (requestingUser.id === targetId) {
+    if (requestingUser.supabaseId === targetId) {
       return NextResponse.json(
         { error: "Cannot change your own role" },
         { status: 403 },
@@ -62,7 +62,7 @@ export async function PATCH(
 
     // Get the target user to check if they're currently an Admin
     const targetUser = await prisma.user.findUnique({
-      where: { id: targetId },
+      where: { supabaseId: targetId },
     });
 
     if (!targetUser) {
@@ -88,10 +88,10 @@ export async function PATCH(
 
     // Update user's role
     const updatedUser = await prisma.user.update({
-      where: { id: targetId },
+      where: { supabaseId: targetId },
       data: { role },
       select: {
-        id: true,
+        supabaseId: true,
         name: true,
         email: true,
         role: true,

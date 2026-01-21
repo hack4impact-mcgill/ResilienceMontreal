@@ -22,7 +22,7 @@ async function main() {
     const admin = await prisma.user.findFirst({
       where: { role: "Admin" },
     });
-    console.log(`\n Only 1 admin exists: ${admin?.email}`);
+    console.log(`\n Only 1 admin exists: ${admin?.email || "Unknown"}`);
     console.log(
       "   Attempting to demote this admin would be blocked by the protection logic.",
     );
@@ -31,9 +31,7 @@ async function main() {
   }
 
   // List all users with their roles
-  const users = await prisma.user.findMany({
-    select: { id: true, email: true, name: true, role: true },
-  });
+  const users = await prisma.user.findMany();
 
   console.log("\nAll users:");
   console.table(users);

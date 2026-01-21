@@ -2,8 +2,6 @@ model User {
   supabaseId    String   @id
   name          String
   email         String   @unique
-  password      String?  // Optional - Supabase handles auth
   role          RoleName @default(Unassigned)
   isConfirmed   Boolean  @default(false)
-  refresh_token String?
 }

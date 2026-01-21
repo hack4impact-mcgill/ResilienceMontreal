@@ -53,15 +53,14 @@ export async function signup(formData: FormData) {
       where: { email },
       update: {
         name,
-        supabaseId: supabaseUser?.id ?? undefined,
+        supabaseId: supabaseUser?.id,
         isConfirmed: !!supabaseUser?.email_confirmed_at,
         role: "Unassigned", // Use enum value directly
       },
       create: {
         email,
         name,
-        supabaseId: supabaseUser?.id ?? undefined,
-        password: "",
+        supabaseId: supabaseUser?.id || "", 
         role: "Unassigned", // Use enum value directly
         isConfirmed: !!supabaseUser?.email_confirmed_at,
       },

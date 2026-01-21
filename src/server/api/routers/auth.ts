@@ -58,14 +58,14 @@ export const authRouter = createTRPCRouter({
           where: { email },
           update: {
             name: derivedName,
-            supabaseId: supabaseId ?? undefined,
+            supabaseId: supabaseId || "",
             isConfirmed: !!result.data?.user?.email_confirmed_at,
             role: "Unassigned", // Default role enum value
           },
           create: {
             email,
             name: derivedName,
-            supabaseId: supabaseId ?? undefined,
+            supabaseId: supabaseId || "",
             password: "",
             role: "Unassigned", // Default role enum value
             isConfirmed: !!result.data?.user?.email_confirmed_at,

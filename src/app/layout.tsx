@@ -20,15 +20,16 @@ export default async function RootLayout({
   const session = await getServerAuthSession();
 
   const isLoggedIn = Boolean(session?.user);
-
   return (
     <html lang="en">
       <body>
         <TRPCReactProvider>
           <SidebarProvider>
-            {isLoggedIn ? <AppSidebar /> : null}
+            {/* {isLoggedIn ? <AppSidebar /> : null}  */}
+            {<AppSidebar />}
             <main className="w-full">
-              {isLoggedIn ? <SidebarTrigger /> : null}
+              {/* {isLoggedIn ? <SidebarTrigger /> : null} */}
+              {<SidebarTrigger />}
               {children}
             </main>
           </SidebarProvider>

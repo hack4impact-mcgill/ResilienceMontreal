@@ -246,6 +246,29 @@ export const ClientsTable = () => {
   type FilterColumn = "firstName" | "lastName" | "email";
   return (
     <div className="w-full">
+
+    {/* Top Messages */}
+    <div className="border-t border-border -mx-8 px-8 py-4">
+       <div className="flex flex-row items-start gap-10">
+         <div className="flex flex-col">
+          <span className="text-green-600 font-bold text-2xl">
+            $0000
+          </span>
+          <span className="text-black text-sm -mt-1">
+            available
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-red-600 font-bold text-2xl">
+            X days
+          </span>
+          <span className="text-black text-sm -mt-1">
+            until next grant is due
+          </span>
+        </div>
+    </div>
+  </div>
+
       {/* Filter Row */}
       <div className="border-t border-border -mx-8 px-8 flex items-center py-4">
         {/* Search Input */}

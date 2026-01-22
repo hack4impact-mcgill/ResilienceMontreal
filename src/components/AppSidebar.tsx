@@ -51,6 +51,7 @@ export function AppSidebar() {
     onSuccess: () => {
       // After signing out on the server, navigate to the login page
       router.push("/login");
+      router.refresh();
     },
     onError: (err) => {
       console.error("Sign out failed:", err);

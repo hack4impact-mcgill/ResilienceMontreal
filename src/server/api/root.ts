@@ -2,6 +2,9 @@ import { testRouter } from "~/server/api/routers/test";
 import { authRouter } from "~/server/api/routers/auth";
 import { usersRouter } from "~/server/api/routers/users";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
+import { fundPoolRouter } from "./routers/fundPool";
+import { grantRouter } from "./routers/grant";
+import { grantDistributionRouter } from "./routers/grantDistribution";
 import { expensesRouter } from "~/server/api/routers/expenses";
 
 // primary router for your server -- all routers added in /api/routers should be manually added here
@@ -10,6 +13,9 @@ export const appRouter = createTRPCRouter({
   auth: authRouter,
   expenses: expensesRouter,
   users: usersRouter,
+  fundPool: fundPoolRouter,
+  grant: grantRouter,
+  grantDistribution: grantDistributionRouter,
 });
 
 // export type definition of API

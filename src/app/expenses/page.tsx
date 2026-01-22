@@ -4,15 +4,25 @@ import { useEffect, useState } from "react";
 import { api } from "~/trpc/react";
 import { TRPCClientError } from "@trpc/client";
 
+type ZodErrorShape = {
+  fieldErrors?: Record<string, string[]>;
+};
+
+type TRPCErrorDataShape = {
+  zodError?: ZodErrorShape;
+};
+
 const getFriendlyError = (err: unknown) => {
   if (err instanceof TRPCClientError) {
-    const zodError: any = (err as any)?.data?.zodError;
-    if (zodError?.fieldErrors) {
-      const fields: Record<string, string[]> = zodError.fieldErrors;
+    const data = err.data as TRPCErrorDataShape | undefined;
+    const fieldErrors = data?.zodError?.fieldErrors;
+
+    if (fieldErrors) {
       const messages: string[] = [];
-      for (const key of Object.keys(fields)) {
-        const first = fields[key]?.[0];
+      for (const key of Object.keys(fieldErrors)) {
+        const first = fieldErrors[key]?.[0];
         if (!first) continue;
+
         switch (key) {
           case "description":
             messages.push("Missing required fields: description");
@@ -34,18 +44,15 @@ const getFriendlyError = (err: unknown) => {
     }
     return err.message ?? "Something went wrong";
   }
-  if (err && typeof err === "object" && "message" in err) {
-    return (err as any).message ?? "Something went wrong";
+  if (
+    err &&
+    typeof err === "object" &&
+    "message" in err &&
+    typeof (err as { message: unknown }).message === "string"
+  ) {
+    return (err as { message: string }).message ?? "Something went wrong";
   }
   return "Something went wrong";
-};
-
-type Expense = {
-  id: number;
-  totalAmount: string | number;
-  description: string;
-  date: string;
-  invoiceUrl?: string | null;
 };
 
 export default function ExpensesPage() {
@@ -88,7 +95,7 @@ export default function ExpensesPage() {
       setDate("");
       setInvoiceUrl("");
       await refetchExpenses();
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(getFriendlyError(e));
     } finally {
       setSubmitting(false);
@@ -120,7 +127,7 @@ export default function ExpensesPage() {
       setInvoiceUrl(sampleInvoice);
       setMessage("Expense created");
       await refetchExpenses();
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(getFriendlyError(e));
     } finally {
       setSubmitting(false);

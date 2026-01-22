@@ -1,11 +1,7 @@
 model User {
-  id            Int     @id @default(autoincrement())
-  supabaseId    String? @unique
+  supabaseId    String   @id
   name          String
-  email         String  @unique
-  password      String? // Optional - Supabase handles auth
-  roleId        Int?    // foreign key to Role table
-  role          Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  isConfirmed   Boolean @default(false)
-  refresh_token String?
+  email         String   @unique
+  role          RoleName @default(Unassigned)
+  isConfirmed   Boolean  @default(false)
 }

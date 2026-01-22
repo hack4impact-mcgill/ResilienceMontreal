@@ -65,18 +65,12 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
   return result;
 });
 
-// public (unauthenticated) procedure
-// base piece you use to build new queries and mutations on your tRPC API
-// does not guarantee that a user querying is authorized but you can still access user session data if theyre logged in
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
-// protected (authenticated) procedure
-// if you want a query or mutation to be accessible to logged in users only
-// verifies the session is valid and guarantees 'ctx.session.user' is not null
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    // require an authenticated user (server-side user provided by getServerAuthSession)
+    // require an authenticated user
     if (!ctx.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }

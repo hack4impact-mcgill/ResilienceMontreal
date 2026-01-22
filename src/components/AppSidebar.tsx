@@ -38,7 +38,7 @@ const items = [
   },
   {
     title: "Expenses",
-    url: "#",
+    url: "/expenses",
   },
 ];
 
@@ -51,11 +51,13 @@ export function AppSidebar() {
     onSuccess: () => {
       // After signing out on the server, navigate to the login page
       router.push("/login");
+      router.refresh();
     },
     onError: (err) => {
       console.error("Sign out failed:", err);
       // still navigate to login to clear client state
       router.push("/login");
+      router.refresh();
     },
   });
 
@@ -96,11 +98,10 @@ export function AppSidebar() {
                   <span>{me?.name ?? "Name"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <span>{me?.role?.name ?? "Role"}</span>
+                  <span>{me?.role ?? "Role"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
-                    if (signOut.status === "pending") return;
                     try {
                       signOut.mutate();
                     } catch (e) {
@@ -108,13 +109,8 @@ export function AppSidebar() {
                       router.push("/login");
                     }
                   }}
-                  aria-disabled={signOut.status === "pending"}
                 >
-                  <span>
-                    {signOut.status === "pending"
-                      ? "Signing out..."
-                      : "Sign out"}
-                  </span>
+                  <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

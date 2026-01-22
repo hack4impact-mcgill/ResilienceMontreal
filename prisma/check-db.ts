@@ -3,19 +3,19 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const roles = await prisma.role.findMany();
-  console.log("Roles:");
-  console.table(roles);
+  console.log(
+    "Role enum values: Unassigned, Bookkeeper, InterventionTeam, Admin\n",
+  );
 
-  const users = await prisma.user.findMany({ include: { role: true } });
-  console.log("\nUsers:");
+  const users = await prisma.user.findMany();
+  console.log("Users:");
   console.table(
     users.map((u) => ({
-      id: u.id,
+      supabaseId: u.supabaseId,
       email: u.email,
       name: u.name,
-      roleId: u.roleId,
-      role: u.role?.name,
+      role: u.role,
+      isConfirmed: u.isConfirmed,
     })),
   );
 

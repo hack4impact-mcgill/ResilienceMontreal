@@ -49,11 +49,6 @@ export const authRouter = createTRPCRouter({
           });
         }
 
-        // Find default role (Unassigned)
-        const defaultRole = await prisma.role.findUnique({
-          where: { name: "Unassigned" },
-        });
-
         // Upsert Prisma user to link auth user with application user data
         const supabaseId = result.data?.user?.id ?? null;
         // derive a name from the email prefix if desired, otherwise leave empty
@@ -63,16 +58,15 @@ export const authRouter = createTRPCRouter({
           where: { email },
           update: {
             name: derivedName,
-            supabaseId: supabaseId ?? undefined,
+            supabaseId: supabaseId || "",
             isConfirmed: !!result.data?.user?.email_confirmed_at,
-            roleId: defaultRole?.id ?? undefined,
+            role: "Unassigned", // Default role enum value
           },
           create: {
             email,
             name: derivedName,
-            supabaseId: supabaseId ?? undefined,
-            password: "",
-            roleId: defaultRole?.id ?? undefined,
+            supabaseId: supabaseId || "",
+            role: "Unassigned", // Default role enum value
             isConfirmed: !!result.data?.user?.email_confirmed_at,
           },
         });
@@ -121,18 +115,29 @@ export const authRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       try {
-        console.log("Confirm email was hit!!!");
         const supabase = await createClient();
+        const { token_hash, type } = input;
+
         const result = await supabase.auth.verifyOtp({
-          type: input.type as EmailOtpType,
-          token_hash: input.token_hash,
+          token_hash,
+          type: type as EmailOtpType,
         });
+
         if (result.error) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: result.error.message,
           });
         }
+
+        // Update user's confirmation status in Prisma
+        if (result.data.user?.email) {
+          await prisma.user.update({
+            where: { email: result.data.user.email },
+            data: { isConfirmed: true },
+          });
+        }
+
         return { ok: true };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

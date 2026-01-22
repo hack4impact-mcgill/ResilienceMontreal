@@ -57,6 +57,7 @@ export function AppSidebar() {
       console.error("Sign out failed:", err);
       // still navigate to login to clear client state
       router.push("/login");
+      router.refresh();
     },
   });
 

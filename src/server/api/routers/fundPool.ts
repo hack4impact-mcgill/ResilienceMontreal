@@ -47,7 +47,7 @@ export const fundPoolRouter = createTRPCRouter({
           .number()
           .int()
           .positive("FundPoolID must be a positive integer"),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       const fundPool = await ctx.db.fundPool.findUnique({
@@ -107,7 +107,7 @@ export const fundPoolRouter = createTRPCRouter({
           .number()
           .int()
           .positive("FundPoolID must be a positive integer"),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const deletedFundPool = await ctx.db.fundPool.delete({

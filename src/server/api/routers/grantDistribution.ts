@@ -56,7 +56,7 @@ export const grantDistributionRouter = createTRPCRouter({
           where: { id: grantId },
           data: {
             unassignedAmount: new Prisma.Decimal(grant.unassignedAmount).minus(
-              distributionAmount
+              distributionAmount,
             ),
           },
         });
@@ -66,7 +66,7 @@ export const grantDistributionRouter = createTRPCRouter({
           where: { id: fundPoolId },
           data: {
             amount: new Prisma.Decimal(fundPool.amount).plus(
-              distributionAmount
+              distributionAmount,
             ),
           },
         });

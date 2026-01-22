@@ -47,7 +47,7 @@ export const grantRouter = createTRPCRouter({
           .number()
           .int()
           .positive("GrantID must be a positive integer"),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       const grant = await ctx.db.grant.findUnique({
@@ -105,7 +105,7 @@ export const grantRouter = createTRPCRouter({
           .number()
           .int()
           .positive("GrantID must be a positive integer"),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const deletedGrant = await ctx.db.grant.delete({

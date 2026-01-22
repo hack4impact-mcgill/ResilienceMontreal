@@ -60,7 +60,7 @@ export async function signup(formData: FormData) {
       create: {
         email,
         name,
-        supabaseId: supabaseUser?.id || "", 
+        supabaseId: supabaseUser?.id || "",
         role: "Unassigned", // Use enum value directly
         isConfirmed: !!supabaseUser?.email_confirmed_at,
       },

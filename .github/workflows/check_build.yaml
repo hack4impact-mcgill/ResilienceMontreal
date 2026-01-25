@@ -1,4 +1,4 @@
-name: Frontend Successfully Builds
+name: Successfully Builds
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
 jobs:
   compile:
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       - name: Check Out
@@ -24,6 +25,7 @@ jobs:
 
       - name: Build
         env:
+          DIRECT_URL: $ {{ }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}

@@ -38,7 +38,7 @@ const items = [
   },
   {
     title: "Expenses",
-    url: "#",
+    url: "/expenses",
   },
 ];
 
@@ -51,11 +51,13 @@ export function AppSidebar() {
     onSuccess: () => {
       // After signing out on the server, navigate to the login page
       router.push("/login");
+      router.refresh();
     },
     onError: (err) => {
       console.error("Sign out failed:", err);
       // still navigate to login to clear client state
       router.push("/login");
+      router.refresh();
     },
   });
 

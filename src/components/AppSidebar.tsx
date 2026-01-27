@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 import {
   Sidebar,
@@ -42,15 +43,13 @@ const fundingPools = [
 export function AppSidebar() {
   const router = useRouter();
 
-  const signOutMutation = api.auth.signOut.useMutation({
-    onSuccess: async () => {
-      router.push("/login");
-      router.refresh();
-    },
-    onError: (err) => {
-      console.error("Sign out failed:", err);
-    },
-  });
+  const supabase = createClient();
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <Sidebar>
@@ -100,22 +99,21 @@ export function AppSidebar() {
                 py-0
               "
             >
-              <DropdownMenuItem className="flex items-center gap-2 px-3 py-1">
-                <UserRound size={16} />
-                <span>People &amp; Permissions</span>
+              <DropdownMenuItem asChild className="cursor-pointer flex items-center gap-2 px-3 py-1">
+                <a href="/admin/users">
+                  <UserRound size={16} />
+                  <span>People &amp; Permissions</span>
+                </a>
               </DropdownMenuItem>
 
               <div className="h-px bg-border mx-3 my-1" />
 
               <DropdownMenuItem
-                className="flex items-center gap-2 px-3 py-1"
-                onClick={() => signOutMutation.mutate()}
-                disabled={signOutMutation.isPending}
+                className="cursor-pointer flex items-center gap-2 px-3 py-1"
+                onClick={signOut}
               >
                 <UserRound size={16} />
-                <span>
-                  {signOutMutation.isPending ? "Logging out…" : "Logout"}
-                </span>
+                <span>Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -143,7 +141,7 @@ export function AppSidebar() {
         <div className="mt-10 px-4 text-xs">
           <div className="flex items-center justify-between mb-2 font-medium text-muted-foreground">
             <span className="-ml-2">FUNDING POOLS</span>
-            <span className="tabular-nums px-2">$7,500</span>
+            <span className="tabular-nums px-2">$6,000</span>
           </div>
 
           <div className="space-y-2">

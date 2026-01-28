@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const createExpenseSchema = z.object({
   client: z.string().min(1, "Client is required"),
-  spendingCategory: z.string().min(1, "Spending category is required"),
+  spendingCategory: z.array(z.string()).min(1, "Select at least one category"),
   purchaseDate: z.coerce.date(),
   clientEmail: z.string().email("Invalid email address"),
   phoneNumber: z.string().min(1, "Phone number is required"),
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     // For now, mapping to existing fields where possible
     const expense = await prisma.expense.create({
       data: {
-        description: `${validatedData.client} - ${validatedData.spendingCategory}`,
+        description: `${validatedData.client} - ${validatedData.spendingCategory.join(", ")}`,
         totalAmount: validatedData.amount,
         date: validatedData.purchaseDate,
         invoiceUrl: null, // Store notes in invoiceUrl temporarily if needed, or update schema

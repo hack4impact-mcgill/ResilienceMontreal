@@ -219,7 +219,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "1",
           client: "John Doe",
-          spendingCategory: "Office Supplies",
+          spendingCategory: ["Office Supplies"],
           purchaseDate: new Date("2024-01-15"),
           clientEmail: "john.doe@example.com",
           phoneNumber: "514-555-0101",
@@ -229,7 +229,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "2",
           client: "Jane Smith",
-          spendingCategory: "Rent",
+          spendingCategory: ["Rent"],
           purchaseDate: new Date("2024-01-01"),
           clientEmail: "jane.smith@example.com",
           phoneNumber: "514-555-0102",
@@ -239,7 +239,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "3",
           client: "Alice Johnson",
-          spendingCategory: "Utilities",
+          spendingCategory: ["Utilities"],
           purchaseDate: new Date("2024-01-20"),
           clientEmail: "alice.johnson@example.com",
           phoneNumber: "514-555-0103",
@@ -249,7 +249,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "4",
           client: "Bob Lee",
-          spendingCategory: "Maintenance",
+          spendingCategory: ["Maintenance"],
           purchaseDate: new Date("2024-02-05"),
           clientEmail: "bob.lee@example.com",
           phoneNumber: "514-555-0104",
@@ -259,7 +259,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "5",
           client: "Maria Garcia",
-          spendingCategory: "Marketing",
+          spendingCategory: ["Marketing"],
           purchaseDate: new Date("2024-02-10"),
           clientEmail: "maria.garcia@example.com",
           phoneNumber: "514-555-0105",
@@ -269,7 +269,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "6",
           client: "David Kim",
-          spendingCategory: "Software",
+          spendingCategory: ["Software"],
           purchaseDate: new Date("2024-02-15"),
           clientEmail: "david.kim@example.com",
           phoneNumber: "514-555-0106",
@@ -279,7 +279,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "7",
           client: "Emma Brown",
-          spendingCategory: "Services",
+          spendingCategory: ["Services"],
           purchaseDate: new Date("2024-02-20"),
           clientEmail: "emma.brown@example.com",
           phoneNumber: "514-555-0107",
@@ -289,7 +289,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "8",
           client: "Liam Wilson",
-          spendingCategory: "Internet",
+          spendingCategory: ["Internet"],
           purchaseDate: new Date("2024-03-01"),
           clientEmail: "liam.wilson@example.com",
           phoneNumber: "514-555-0108",
@@ -299,7 +299,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "9",
           client: "Olivia Martinez",
-          spendingCategory: "Insurance",
+          spendingCategory: ["Insurance"],
           purchaseDate: new Date("2024-03-05"),
           clientEmail: "olivia.martinez@example.com",
           phoneNumber: "514-555-0109",
@@ -309,12 +309,42 @@ export async function fetchExpenses(): Promise<Expense[]> {
         {
           id: "10",
           client: "Noah Anderson",
-          spendingCategory: "Professional Services",
+          spendingCategory: ["Professional Services", "Services"],
           purchaseDate: new Date("2024-03-10"),
           clientEmail: "noah.anderson@example.com",
           phoneNumber: "514-555-0110",
           notes: "Legal consultation fees",
           amount: 1200.00,
+        },
+        {
+          id: "11",
+          client: "Sophia Thomas",
+          spendingCategory: ["Utilities", "Internet"],
+          purchaseDate: new Date("2024-03-12"),
+          clientEmail: "sophia.thomas@example.com",
+          phoneNumber: "514-555-0111",
+          notes: "Internet + hydro (combined)",
+          amount: 210.35,
+        },
+        {
+          id: "12",
+          client: "James Taylor",
+          spendingCategory: ["Utilities"],
+          purchaseDate: new Date("2024-03-18"),
+          clientEmail: "james.taylor@example.com",
+          phoneNumber: "514-555-0112",
+          notes: "Gas bill",
+          amount: 95.2,
+        },
+        {
+          id: "13",
+          client: "Isabella Moore",
+          spendingCategory: ["Utilities", "Maintenance"],
+          purchaseDate: new Date("2024-03-22"),
+          clientEmail: "isabella.moore@example.com",
+          phoneNumber: "514-555-0113",
+          notes: "Plumbing repair + water overage",
+          amount: 410.0,
         },
       ]);
     }, 1000);

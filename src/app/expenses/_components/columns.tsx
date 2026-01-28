@@ -14,7 +14,7 @@ import { MoreHorizontal } from "lucide-react";
 export type Expense = {
   id: string;
   client: string;
-  spendingCategory: string;
+  spendingCategory: string[];
   purchaseDate: Date;
   clientEmail: string;
   phoneNumber: string;
@@ -29,8 +29,9 @@ export const columns: ColumnDef<Expense>[] = [
     cell: (info) => info.getValue(),
   },
   {
-    accessorKey: "spendingCategory",
+    id: "spendingCategory",
     header: "SPENDING CATEGORY",
+    accessorFn: (row) => row.spendingCategory.join(", "),
     cell: (info) => info.getValue(),
   },
   {

@@ -42,7 +42,7 @@ import { z } from "zod";
 // Validation schema
 const expenseSchema = z.object({
   client: z.string().min(1, "Client is required"),
-  spendingCategory: z.string().min(1, "Spending category is required"),
+  spendingCategory: z.array(z.string()).min(1, "Select at least one category"),
   purchaseDate: z.string().min(1, "Purchase date is required"),
   clientEmail: z.string().email("Invalid email address"),
   phoneNumber: z.string().min(1, "Phone number is required"),
@@ -75,7 +75,7 @@ const exportToCSV = (expenses: Expense[]) => {
   // CSV rows
   const rows = expenses.map((e) => [
     e.client,
-    e.spendingCategory,
+    e.spendingCategory.join("; "),
     e.purchaseDate.toLocaleDateString(),
     e.clientEmail,
     e.phoneNumber,
@@ -124,7 +124,7 @@ export const ExpensesTable = () => {
   const [isAdding, setIsAdding] = React.useState(false);
   const [formData, setFormData] = React.useState<ExpenseFormData>({
     client: "",
-    spendingCategory: "",
+    spendingCategory: [],
     purchaseDate: "",
     clientEmail: "",
     phoneNumber: "",
@@ -192,7 +192,7 @@ export const ExpensesTable = () => {
   const resetForm = () => {
     setFormData({
       client: "",
-      spendingCategory: "",
+      spendingCategory: [],
       purchaseDate: "",
       clientEmail: "",
       phoneNumber: "",
@@ -273,7 +273,7 @@ export const ExpensesTable = () => {
           onChange={(e) =>
             table.getColumn(filterColumn)?.setFilterValue(e.target.value)
           }
-          className="max-w-sm"
+          className="max-w-sm bg-white border-[#3FA9A9]"
         />
 
         {/* Filter Dropdown */}
@@ -352,7 +352,7 @@ export const ExpensesTable = () => {
           <TableBody>
             {/* Inline Add Form Row */}
             {isAdding && (
-              <TableRow className="bg-blue-50">
+              <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
                 <TableCell>
                   <Input
                     value={formData.client}
@@ -360,7 +360,7 @@ export const ExpensesTable = () => {
                       setFormData({ ...formData, client: e.target.value })
                     }
                     placeholder="Client"
-                    className={formErrors.client ? "border-red-500" : ""}
+                    className={`bg-white border-[#3FA9A9] ${formErrors.client ? "border-red-500" : ""}`}
                   />
                   {formErrors.client && (
                     <p className="text-xs text-red-500 mt-1">{formErrors.client}</p>
@@ -368,15 +368,19 @@ export const ExpensesTable = () => {
                 </TableCell>
                 <TableCell>
                   <select
+                    multiple
+                    size={3}
                     value={formData.spendingCategory}
-                    onChange={(e) =>
-                      setFormData({ ...formData, spendingCategory: e.target.value })
-                    }
-                    className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions).map(
+                        (o) => o.value,
+                      );
+                      setFormData({ ...formData, spendingCategory: selected });
+                    }}
+                    className={`flex h-10 w-full rounded-md border border-[#3FA9A9] bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                       formErrors.spendingCategory ? "border-red-500" : ""
                     }`}
                   >
-                    <option value="">Select category</option>
                     {spendingCategories.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
@@ -396,7 +400,7 @@ export const ExpensesTable = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, purchaseDate: e.target.value })
                     }
-                    className={formErrors.purchaseDate ? "border-red-500" : ""}
+                    className={`bg-white border-[#3FA9A9] ${formErrors.purchaseDate ? "border-red-500" : ""}`}
                   />
                   {formErrors.purchaseDate && (
                     <p className="text-xs text-red-500 mt-1">
@@ -412,7 +416,7 @@ export const ExpensesTable = () => {
                       setFormData({ ...formData, clientEmail: e.target.value })
                     }
                     placeholder="Email"
-                    className={formErrors.clientEmail ? "border-red-500" : ""}
+                    className={`bg-white border-[#3FA9A9] ${formErrors.clientEmail ? "border-red-500" : ""}`}
                   />
                   {formErrors.clientEmail && (
                     <p className="text-xs text-red-500 mt-1">
@@ -428,7 +432,7 @@ export const ExpensesTable = () => {
                       setFormData({ ...formData, phoneNumber: e.target.value })
                     }
                     placeholder="Phone"
-                    className={formErrors.phoneNumber ? "border-red-500" : ""}
+                    className={`bg-white border-[#3FA9A9] ${formErrors.phoneNumber ? "border-red-500" : ""}`}
                   />
                   {formErrors.phoneNumber && (
                     <p className="text-xs text-red-500 mt-1">
@@ -443,7 +447,7 @@ export const ExpensesTable = () => {
                       setFormData({ ...formData, notes: e.target.value })
                     }
                     placeholder="Notes"
-                    className="max-w-xs"
+                    className="max-w-xs bg-white border-[#3FA9A9]"
                   />
                 </TableCell>
                 <TableCell>
@@ -455,14 +459,23 @@ export const ExpensesTable = () => {
                       setFormData({ ...formData, amount: e.target.value })
                     }
                     placeholder="Amount"
-                    className={formErrors.amount ? "border-red-500" : ""}
+                    className={`bg-white border-[#3FA9A9] ${formErrors.amount ? "border-red-500" : ""}`}
                   />
                   {formErrors.amount && (
                     <p className="text-xs text-red-500 mt-1">{formErrors.amount}</p>
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-2">
+                  {/* Actions column - empty in form row */}
+                </TableCell>
+              </TableRow>
+            )}
+            {/* Buttons Row */}
+            {isAdding && (
+              <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
+                <TableCell colSpan={columns.length} className="py-4 px-20
+">
+                  <div className="flex gap-2 justify-end">
                     <Button
                       variant="outline"
                       size="sm"
@@ -492,7 +505,7 @@ export const ExpensesTable = () => {
             )}
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.id} className="">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(

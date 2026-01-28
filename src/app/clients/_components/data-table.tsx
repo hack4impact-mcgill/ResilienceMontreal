@@ -37,103 +37,18 @@ import {
 import { columns, Client } from "./columns";
 import { useQuery } from "@tanstack/react-query";
 import { fetchClients } from "@/lib/api";
+import { z } from "zod";
 
-// ------------------------------------------------------------
-// ADD CLIENT MODAL
-// ------------------------------------------------------------
-function AddClientModal({
-  open,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (client: Client) => void;
-}) {
-  const [firstName, setFirstName] = React.useState("");
-  const [lastName, setLastName] = React.useState("");
-  const [email, setEmail] = React.useState("");
-  const [leaseStart, setLeaseStart] = React.useState("");
-  const [leaseEnd, setLeaseEnd] = React.useState("");
+// Validation schema (inline add row)
+const clientSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email"),
+  leaseStart: z.string().min(1, "Lease start date is required"),
+  leaseEnd: z.string().min(1, "Lease end date is required"),
+});
 
-  const resetFields = () => {
-    setFirstName("");
-    setLastName("");
-    setEmail("");
-    setLeaseStart("");
-    setLeaseEnd("");
-  };
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg p-6 w-[400px] shadow-xl">
-        <h2 className="text-xl font-semibold mb-4 text-center">Add Client</h2>
-
-        <div className="space-y-3">
-          <Input
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="First Name"
-          />
-          <Input
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="Last Name"
-          />
-          <Input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-          />
-
-          <Input
-            type="date"
-            value={leaseStart}
-            onChange={(e) => setLeaseStart(e.target.value)}
-          />
-          <Input
-            type="date"
-            value={leaseEnd}
-            onChange={(e) => setLeaseEnd(e.target.value)}
-          />
-        </div>
-
-        <div className="flex justify-end gap-2 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => {
-              resetFields();
-              onClose();
-            }}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            onClick={() => {
-              const newClient: Client = {
-                id: Date.now().toString(),
-                firstName,
-                lastName,
-                email,
-                leaseStartDate: new Date(leaseStart),
-                leaseEndDate: new Date(leaseEnd),
-              };
-
-              onSubmit(newClient);
-              resetFields();
-              onClose();
-            }}
-          >
-            Submit
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+type ClientFormData = z.infer<typeof clientSchema>;
 
 // ------------------------------------------------------------
 // EXPORT CLIENTS TO CSV
@@ -197,7 +112,17 @@ export const ClientsTable = () => {
   >("email");
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
-  const [addModalOpen, setAddModalOpen] = React.useState(false);
+  const [isAdding, setIsAdding] = React.useState(false);
+  const [formData, setFormData] = React.useState<ClientFormData>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    leaseStart: "",
+    leaseEnd: "",
+  });
+  const [formErrors, setFormErrors] = React.useState<Record<string, string>>(
+    {},
+  );
 
   // fetch initial server data
   const {
@@ -240,6 +165,63 @@ export const ClientsTable = () => {
     return col;
   };
 
+  const resetForm = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      leaseStart: "",
+      leaseEnd: "",
+    });
+    setFormErrors({});
+  };
+
+  const validateForm = (): boolean => {
+    const result = clientSchema.safeParse(formData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((err) => {
+        if (err.path[0]) errors[err.path[0] as string] = err.message;
+      });
+      setFormErrors(errors);
+      return false;
+    }
+    setFormErrors({});
+    return true;
+  };
+
+  const handleSave = (saveAndAddMore: boolean) => {
+    if (!validateForm()) return;
+
+    const newClient: Client = {
+      id: Date.now().toString(),
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      leaseStartDate: new Date(formData.leaseStart),
+      leaseEndDate: new Date(formData.leaseEnd),
+    };
+
+    setLocalClients((prev) => [...prev, newClient]);
+
+    if (saveAndAddMore) {
+      resetForm();
+    } else {
+      resetForm();
+      setIsAdding(false);
+    }
+
+    // force React Table to recompute with new data
+    setTimeout(() => {
+      table.setPageIndex(table.getPageCount() - 1);
+    }, 10);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setIsAdding(false);
+  };
+
   if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>Error loading data.</div>;
 
@@ -257,7 +239,7 @@ export const ClientsTable = () => {
           onChange={(e) =>
             table.getColumn(filterColumn)?.setFilterValue(e.target.value)
           }
-          className="max-w-sm"
+          className="max-w-sm bg-white border-[#3FA9A9]"
         />
 
         {/* Filter Dropdown */}
@@ -309,7 +291,7 @@ export const ClientsTable = () => {
         <Button
           variant="outline"
           className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-          onClick={() => setAddModalOpen(true)}
+          onClick={() => setIsAdding(true)}
         >
           <CirclePlus /> Add Client
         </Button>
@@ -334,9 +316,121 @@ export const ClientsTable = () => {
           </TableHeader>
 
           <TableBody>
+            {/* Inline Add Form Row */}
+            {isAdding && (
+              <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
+                <TableCell>
+                  <Input
+                    value={formData.firstName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, firstName: e.target.value })
+                    }
+                    placeholder="First Name"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.firstName ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.firstName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.firstName}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    value={formData.lastName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lastName: e.target.value })
+                    }
+                    placeholder="Last Name"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.lastName ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.lastName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.lastName}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    placeholder="Email"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.email ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.email && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.email}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
+                    value={formData.leaseStart}
+                    onChange={(e) =>
+                      setFormData({ ...formData, leaseStart: e.target.value })
+                    }
+                    className={`bg-white border-[#3FA9A9] ${formErrors.leaseStart ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.leaseStart && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.leaseStart}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
+                    value={formData.leaseEnd}
+                    onChange={(e) =>
+                      setFormData({ ...formData, leaseEnd: e.target.value })
+                    }
+                    className={`bg-white border-[#3FA9A9] ${formErrors.leaseEnd ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.leaseEnd && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.leaseEnd}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {/* Actions column - empty in form row */}
+                </TableCell>
+              </TableRow>
+            )}
+            {/* Buttons Row */}
+            {isAdding && (
+              <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
+                <TableCell colSpan={columns.length} className="py-4 px-20">
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" size="sm" onClick={handleCancel}>
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSave(false)}
+                      className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSave(true)}
+                      className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                    >
+                      Save & Add More
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.id} className="hover:bg-transparent">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
@@ -348,14 +442,16 @@ export const ClientsTable = () => {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
+              !isAdding && (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )
             )}
           </TableBody>
 
@@ -382,23 +478,6 @@ export const ClientsTable = () => {
           Next
         </Button>
       </div>
-
-      {/* Add Client Modal */}
-      <AddClientModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSubmit={(newClient) => {
-          setLocalClients((prev) => {
-            const updated = [...prev, newClient];
-            return updated;
-          });
-
-          // force React Table to recompute with new data
-          setTimeout(() => {
-            table.setPageIndex(table.getPageCount() - 1);
-          }, 10);
-        }}
-      />
     </div>
   );
 };

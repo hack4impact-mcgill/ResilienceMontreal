@@ -4,7 +4,6 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 export const clientRouter = createTRPCRouter({
-  // Add a new client
   addClient: protectedProcedure
     .input(
       z.object({
@@ -45,7 +44,6 @@ export const clientRouter = createTRPCRouter({
       }
     }),
 
-  // Edit an existing client
   editClient: protectedProcedure
     .input(
       z.object({
@@ -96,7 +94,6 @@ export const clientRouter = createTRPCRouter({
       }
     }),
 
-  // Delete a client
   deleteClient: protectedProcedure
     .input(
       z.object({

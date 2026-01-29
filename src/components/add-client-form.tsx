@@ -50,8 +50,6 @@ export function AddClientForm() {
 
         if (!formData.workerId) {
             newErrors.workerId = "Worker ID is required";
-        } else if (isNaN(Number(formData.workerId)) || Number(formData.workerId) <= 0) {
-            newErrors.workerId = "Worker ID must be a positive number";
         }
 
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -73,7 +71,7 @@ export function AddClientForm() {
             firstName: formData.firstName,
             lastName: formData.lastName,
             dateOfBirth: new Date(formData.dateOfBirth),
-            workerId: Number(formData.workerId),
+            workerId: formData.workerId,
             email: formData.email || null,
             phone: formData.phone || null,
             landlordName: formData.landlordName || null,
@@ -162,7 +160,6 @@ export function AddClientForm() {
                                 </Label>
                                 <Input
                                     id="workerId"
-                                    type="number"
                                     value={formData.workerId}
                                     onChange={(e) => handleChange("workerId", e.target.value)}
                                     placeholder="1"

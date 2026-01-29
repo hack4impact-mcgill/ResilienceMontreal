@@ -224,7 +224,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
           clientEmail: "john.doe@example.com",
           phoneNumber: "514-555-0101",
           notes: "Purchased office supplies for Q1",
-          amount: 245.50,
+          amount: 245.5,
         },
         {
           id: "2",
@@ -234,7 +234,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
           clientEmail: "jane.smith@example.com",
           phoneNumber: "514-555-0102",
           notes: "Monthly rent payment",
-          amount: 1500.00,
+          amount: 1500.0,
         },
         {
           id: "3",
@@ -254,7 +254,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
           clientEmail: "bob.lee@example.com",
           phoneNumber: "514-555-0104",
           notes: "Equipment repair and maintenance",
-          amount: 850.00,
+          amount: 850.0,
         },
         {
           id: "5",
@@ -284,7 +284,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
           clientEmail: "emma.brown@example.com",
           phoneNumber: "514-555-0107",
           notes: "Professional cleaning services",
-          amount: 180.00,
+          amount: 180.0,
         },
         {
           id: "8",
@@ -304,7 +304,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
           clientEmail: "olivia.martinez@example.com",
           phoneNumber: "514-555-0109",
           notes: "Quarterly insurance premium",
-          amount: 450.00,
+          amount: 450.0,
         },
         {
           id: "10",
@@ -314,7 +314,7 @@ export async function fetchExpenses(): Promise<Expense[]> {
           clientEmail: "noah.anderson@example.com",
           phoneNumber: "514-555-0110",
           notes: "Legal consultation fees",
-          amount: 1200.00,
+          amount: 1200.0,
         },
         {
           id: "11",

@@ -39,10 +39,7 @@ export async function POST(request: Request) {
     });
 
     if (!worker) {
-      return NextResponse.json(
-        { error: "Worker not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Worker not found" }, { status: 404 });
     }
 
     // Create the client
@@ -78,4 +75,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

@@ -131,7 +131,9 @@ export const ExpensesTable = () => {
     notes: "",
     amount: "",
   });
-  const [formErrors, setFormErrors] = React.useState<Record<string, string>>({});
+  const [formErrors, setFormErrors] = React.useState<Record<string, string>>(
+    {},
+  );
 
   // Spending category options
   const spendingCategories = [
@@ -363,7 +365,9 @@ export const ExpensesTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.client ? "border-red-500" : ""}`}
                   />
                   {formErrors.client && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.client}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.client}
+                    </p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -462,7 +466,9 @@ export const ExpensesTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.amount ? "border-red-500" : ""}`}
                   />
                   {formErrors.amount && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.amount}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.amount}
+                    </p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -473,14 +479,13 @@ export const ExpensesTable = () => {
             {/* Buttons Row */}
             {isAdding && (
               <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                <TableCell colSpan={columns.length} className="py-4 px-20
-">
+                <TableCell
+                  colSpan={columns.length}
+                  className="py-4 px-20
+"
+                >
                   <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCancel}
-                    >
+                    <Button variant="outline" size="sm" onClick={handleCancel}>
                       Cancel
                     </Button>
                     <Button
@@ -503,31 +508,29 @@ export const ExpensesTable = () => {
                 </TableCell>
               </TableRow>
             )}
-            {table.getRowModel().rows.length > 0 ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="">
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
+            {table.getRowModel().rows.length > 0
+              ? table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} className="">
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : !isAdding && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      No results.
                     </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              !isAdding && (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )
-            )}
+                  </TableRow>
+                )}
           </TableBody>
 
           <TableFooter />
@@ -553,7 +556,6 @@ export const ExpensesTable = () => {
           Next
         </Button>
       </div>
-
     </div>
   );
 };

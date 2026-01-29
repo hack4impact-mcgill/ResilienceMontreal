@@ -57,7 +57,11 @@ export const columns: ColumnDef<Expense>[] = [
     header: "NOTES",
     cell: (info) => {
       const notes = info.getValue() as string;
-      return <div className="max-w-xs truncate" title={notes}>{notes || "—"}</div>;
+      return (
+        <div className="max-w-xs truncate" title={notes}>
+          {notes || "—"}
+        </div>
+      );
     },
   },
   {
@@ -83,9 +87,7 @@ export const columns: ColumnDef<Expense>[] = [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              Actions for {expense.client}
-            </DropdownMenuLabel>
+            <DropdownMenuLabel>Actions for {expense.client}</DropdownMenuLabel>
             <DropdownMenuItem>View expense details</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

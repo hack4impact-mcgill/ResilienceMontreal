@@ -50,13 +50,12 @@ export function AppSidebar() {
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
-  }
+  };
 
   return (
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-
           {/* USER PROFILE + DROPDOWN */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -100,7 +99,10 @@ export function AppSidebar() {
                 py-0
               "
             >
-              <DropdownMenuItem asChild className="cursor-pointer flex items-center gap-2 px-3 py-1">
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer flex items-center gap-2 px-3 py-1"
+              >
                 <a href="/admin/users">
                   <UserRound size={16} />
                   <span>People &amp; Permissions</span>
@@ -159,7 +161,6 @@ export function AppSidebar() {
             ))}
           </div>
         </div>
-
       </SidebarContent>
 
       {/* FOOTER */}

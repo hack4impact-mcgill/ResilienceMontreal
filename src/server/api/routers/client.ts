@@ -16,7 +16,7 @@ export const clientRouter = createTRPCRouter({
         landlordName: z.string().optional().nullable(),
         leaseStart: z.date().optional().nullable(),
         leaseEnd: z.date().optional().nullable(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       try {
@@ -57,7 +57,7 @@ export const clientRouter = createTRPCRouter({
         landlordName: z.string().optional().nullable(),
         leaseStart: z.date().optional().nullable(),
         leaseEnd: z.date().optional().nullable(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       try {
@@ -98,7 +98,7 @@ export const clientRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.number().int().positive(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       try {

@@ -6,6 +6,8 @@ import { getServerAuthSession } from "~/server/auth";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Resilience Montreal",
   description: "TBA",

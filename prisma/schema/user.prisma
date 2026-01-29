@@ -1,14 +1,7 @@
 model User {
-    id    Int     @id @default(autoincrement())
-    name  String
-    email String  @unique
-    password String
-    role  Role   
-    refresh_token String?
-}
-
-enum Role {
-    RESPONDER
-    BOOKKEEPER
-    ADMIN
+  supabaseId    String   @id
+  name          String
+  email         String   @unique
+  role          RoleName @default(Unassigned)
+  isConfirmed   Boolean  @default(false)
 }

@@ -5,8 +5,8 @@ model Client {
   dateOfBirth DateTime
 
   // Worker (staff) responsible for the client - relation to User model
-  worker   User @relation(fields: [workerId], references: [id])
-  workerId Int
+  worker   User @relation(fields: [workerId], references: [supabaseId])
+  workerId String
 
   email String? @unique
   phone String?

@@ -4,4 +4,5 @@ model User {
   email         String   @unique
   role          RoleName @default(Unassigned)
   isConfirmed   Boolean  @default(false)
+  clients       Client[]
 }

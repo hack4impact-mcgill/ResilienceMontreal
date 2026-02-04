@@ -12,64 +12,51 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 
 export type Expense = {
-  id: string;
-  client: string;
-  spendingCategory: string[];
-  purchaseDate: Date;
-  clientEmail: string;
-  phoneNumber: string;
-  notes: string;
-  amount: number;
+  id: number;
+  description: string;
+  date: Date;
+  totalAmount: number;
+  invoiceUrl: string | null;
 };
 
 export const columns: ColumnDef<Expense>[] = [
   {
-    accessorKey: "client",
-    header: "CLIENT",
+    accessorKey: "description",
+    header: "DESCRIPTION",
     cell: (info) => info.getValue(),
   },
   {
-    id: "spendingCategory",
-    header: "SPENDING CATEGORY",
-    accessorFn: (row) => row.spendingCategory.join(", "),
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: "purchaseDate",
-    header: "PURCHASE DATE",
+    accessorKey: "date",
+    header: "DATE",
     cell: ({ row }) => {
-      const date: Date = row.original.purchaseDate;
+      const date: Date = row.original.date;
       return <div>{date.toLocaleDateString()}</div>;
     },
   },
   {
-    accessorKey: "clientEmail",
-    header: "CLIENT EMAIL",
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: "phoneNumber",
-    header: "PHONE NUMBER",
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: "notes",
-    header: "NOTES",
-    cell: (info) => {
-      const notes = info.getValue() as string;
-      return (
-        <div className="max-w-xs truncate" title={notes}>
-          {notes || "—"}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "amount",
+    accessorKey: "totalAmount",
     header: "AMOUNT",
     cell: (info) => {
       const amount = info.getValue() as number;
-      return <div>${amount.toFixed(2)}</div>;
+      return <div>${Number(amount).toFixed(2)}</div>;
+    },
+  },
+  {
+    accessorKey: "invoiceUrl",
+    header: "INVOICE",
+    cell: ({ row }) => {
+      const url = row.original.invoiceUrl;
+      if (!url) return <div>—</div>;
+      return (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs underline text-blue-600"
+        >
+          Link
+        </a>
+      );
     },
   },
   {
@@ -87,7 +74,7 @@ export const columns: ColumnDef<Expense>[] = [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions for {expense.client}</DropdownMenuLabel>
+            <DropdownMenuLabel>Actions for expense</DropdownMenuLabel>
             <DropdownMenuItem>View expense details</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

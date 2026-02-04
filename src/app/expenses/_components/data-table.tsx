@@ -35,25 +35,93 @@ import {
 } from "@/components/ui/table";
 
 import { columns, Expense } from "./columns";
-import { useQuery } from "@tanstack/react-query";
-import { fetchExpenses } from "@/lib/api";
+import { api } from "~/trpc/react";
+import { TRPCClientError } from "@trpc/client";
 import { z } from "zod";
 
-// Validation schema
+// Friendly error messages for tRPC/zod (same as original expenses page)
+type TRPCErrorDataShape = {
+  zodError?: { fieldErrors?: Record<string, string[]> };
+};
+const getFriendlyError = (err: unknown): string => {
+  if (err instanceof TRPCClientError) {
+    const data = err.data as TRPCErrorDataShape | undefined;
+    const fieldErrors = data?.zodError?.fieldErrors;
+    if (fieldErrors) {
+      const messages: string[] = [];
+      for (const key of Object.keys(fieldErrors)) {
+        const first = fieldErrors[key]?.[0];
+        if (!first) continue;
+        switch (key) {
+          case "description":
+            messages.push("Missing required fields: description");
+            break;
+          case "date":
+            messages.push("Invalid input: date must be a valid date");
+            break;
+          case "totalAmount":
+            messages.push("Invalid input: totalAmount must be a number");
+            break;
+          case "invoiceUrl":
+            messages.push("Invalid input: invoiceUrl must be a valid URL");
+            break;
+          default:
+            messages.push(first);
+        }
+      }
+      if (messages.length > 0) return messages.join(". ");
+    }
+    return err.message ?? "Something went wrong";
+  }
+  if (
+    err &&
+    typeof err === "object" &&
+    "message" in err &&
+    typeof (err as { message: unknown }).message === "string"
+  ) {
+    return (err as { message: string }).message ?? "Something went wrong";
+  }
+  return "Something went wrong";
+};
+
+// Validation schema (matches tRPC/Prisma: description, date, totalAmount, invoiceUrl)
 const expenseSchema = z.object({
-  client: z.string().min(1, "Client is required"),
-  spendingCategory: z.array(z.string()).min(1, "Select at least one category"),
-  purchaseDate: z.string().min(1, "Purchase date is required"),
-  clientEmail: z.string().email("Invalid email address"),
-  phoneNumber: z.string().min(1, "Phone number is required"),
-  notes: z.string().optional().default(""),
-  amount: z.string().refine((val) => {
+  description: z.string().min(1, "Description is required"),
+  date: z.string().min(1, "Date is required"),
+  totalAmount: z.string().refine((val) => {
     const num = parseFloat(val);
     return !isNaN(num) && num > 0;
   }, "Amount must be a positive number"),
+  invoiceUrl: z
+    .string()
+    .optional()
+    .refine((val) => !val || z.string().url().safeParse(val).success, {
+      message: "Invoice URL must be a valid URL",
+    }),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
+
+// Map tRPC/Prisma list item to table row (Decimal may come as number or string)
+function mapExpenseRow(e: {
+  id: number;
+  description: string;
+  date: Date;
+  totalAmount: unknown;
+  invoiceUrl: string | null;
+}): Expense {
+  const amount =
+    typeof e.totalAmount === "number"
+      ? e.totalAmount
+      : Number(e.totalAmount ?? 0);
+  return {
+    id: e.id,
+    description: e.description,
+    date: new Date(e.date),
+    totalAmount: amount,
+    invoiceUrl: e.invoiceUrl,
+  };
+}
 
 // ------------------------------------------------------------
 // EXPORT EXPENSES TO CSV
@@ -61,37 +129,17 @@ type ExpenseFormData = z.infer<typeof expenseSchema>;
 const exportToCSV = (expenses: Expense[]) => {
   if (!expenses.length) return;
 
-  // CSV header
-  const header = [
-    "Client",
-    "Spending Category",
-    "Purchase Date",
-    "Client Email",
-    "Phone Number",
-    "Notes",
-    "Amount",
-  ];
-
-  // CSV rows
+  const header = ["Description", "Date", "Amount", "Invoice URL"];
   const rows = expenses.map((e) => [
-    e.client,
-    e.spendingCategory.join("; "),
-    e.purchaseDate.toLocaleDateString(),
-    e.clientEmail,
-    e.phoneNumber,
-    e.notes,
-    e.amount.toFixed(2),
+    e.description,
+    e.date.toLocaleDateString(),
+    e.totalAmount.toFixed(2),
+    e.invoiceUrl ?? "",
   ]);
-
-  // combine header + rows
   const csvContent = [header, ...rows].map((row) => row.join(",")).join("\n");
-
-  // create filename with current date
   const now = new Date();
-  const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`; // MM-DD-YY
+  const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`;
   const fileName = `expense_list_${dateStr}.csv`;
-
-  // create a blob and trigger download
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -100,14 +148,13 @@ const exportToCSV = (expenses: Expense[]) => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 // ------------------------------------------------------------
 // MAIN TABLE COMPONENT
 // ------------------------------------------------------------
 export const ExpensesTable = () => {
-  const [localExpenses, setLocalExpenses] = React.useState<Expense[]>([]);
-
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -117,53 +164,43 @@ export const ExpensesTable = () => {
   const [rowSelection, setRowSelection] = React.useState({});
 
   const [filterColumn, setFilterColumn] = React.useState<
-    "client" | "spendingCategory" | "clientEmail"
-  >("client");
+    "description" | "totalAmount"
+  >("description");
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
   const [isAdding, setIsAdding] = React.useState(false);
   const [formData, setFormData] = React.useState<ExpenseFormData>({
-    client: "",
-    spendingCategory: [],
-    purchaseDate: "",
-    clientEmail: "",
-    phoneNumber: "",
-    notes: "",
-    amount: "",
+    description: "",
+    date: "",
+    totalAmount: "",
+    invoiceUrl: "",
   });
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>(
     {},
   );
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(
+    null,
+  );
 
-  // Spending category options
-  const spendingCategories = [
-    "Office Supplies",
-    "Rent",
-    "Utilities",
-    "Maintenance",
-    "Marketing",
-    "Software",
-    "Services",
-    "Internet",
-    "Insurance",
-    "Professional Services",
-    "Other",
-  ];
-
-  // fetch initial server data
   const {
-    data: fetchedExpenses,
+    data: listData,
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ["expenses"],
-    queryFn: fetchExpenses,
+    refetch,
+    isRefetching,
+  } = api.expenses.list.useQuery({ page: 1, limit: 100 });
+  const createExpense = api.expenses.create.useMutation({
+    onSuccess: () => {
+      refetch();
+      setSuccessMessage("Expense created");
+      setTimeout(() => setSuccessMessage(null), 4000);
+    },
   });
 
-  // merge server-loaded + local-added
-  React.useEffect(() => {
-    if (fetchedExpenses) setLocalExpenses(fetchedExpenses);
-  }, [fetchedExpenses]);
+  const localExpenses: Expense[] = React.useMemo(
+    () => (listData?.expenses ?? []).map(mapExpenseRow),
+    [listData?.expenses],
+  );
 
   const table = useReactTable<Expense>({
     data: localExpenses,
@@ -185,27 +222,26 @@ export const ExpensesTable = () => {
   });
 
   const prettyLabel = (col: string) => {
-    if (col === "client") return "Client";
-    if (col === "spendingCategory") return "Spending Category";
-    if (col === "clientEmail") return "Client Email";
+    if (col === "description") return "Description";
+    if (col === "totalAmount") return "Amount";
     return col;
   };
 
   const resetForm = () => {
     setFormData({
-      client: "",
-      spendingCategory: [],
-      purchaseDate: "",
-      clientEmail: "",
-      phoneNumber: "",
-      notes: "",
-      amount: "",
+      description: "",
+      date: "",
+      totalAmount: "",
+      invoiceUrl: "",
     });
     setFormErrors({});
   };
 
   const validateForm = (): boolean => {
-    const result = expenseSchema.safeParse(formData);
+    const result = expenseSchema.safeParse({
+      ...formData,
+      invoiceUrl: formData.invoiceUrl || undefined,
+    });
     if (!result.success) {
       const errors: Record<string, string> = {};
       result.error.issues.forEach((err) => {
@@ -223,34 +259,27 @@ export const ExpensesTable = () => {
   const handleSave = (saveAndAddMore: boolean) => {
     if (!validateForm()) return;
 
-    const newExpense: Expense = {
-      id: Date.now().toString(),
-      client: formData.client,
-      spendingCategory: formData.spendingCategory,
-      purchaseDate: new Date(formData.purchaseDate),
-      clientEmail: formData.clientEmail,
-      phoneNumber: formData.phoneNumber,
-      notes: formData.notes || "",
-      amount: parseFloat(formData.amount),
-    };
-
-    setLocalExpenses((prev) => {
-      const updated = [...prev, newExpense];
-      return updated;
-    });
-
-    if (saveAndAddMore) {
-      resetForm();
-      // Keep form open
-    } else {
-      resetForm();
-      setIsAdding(false);
-    }
-
-    // force React Table to recompute with new data
-    setTimeout(() => {
-      table.setPageIndex(table.getPageCount() - 1);
-    }, 10);
+    createExpense.mutate(
+      {
+        description: formData.description,
+        date: formData.date,
+        totalAmount: parseFloat(formData.totalAmount),
+        invoiceUrl: formData.invoiceUrl?.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          if (saveAndAddMore) {
+            resetForm();
+          } else {
+            resetForm();
+            setIsAdding(false);
+          }
+          setTimeout(() => {
+            table.setPageIndex(Math.max(0, table.getPageCount() - 1));
+          }, 10);
+        },
+      },
+    );
   };
 
   const handleCancel = () => {
@@ -258,15 +287,26 @@ export const ExpensesTable = () => {
     setIsAdding(false);
   };
 
+  const createSample = () => {
+    const sampleAmount = "12.34";
+    const sampleDescription = "Sample expense";
+    const sampleDateStr = new Date().toISOString().slice(0, 10);
+    createExpense.mutate({
+      totalAmount: parseFloat(sampleAmount),
+      description: sampleDescription,
+      date: sampleDateStr,
+      invoiceUrl: undefined,
+    });
+  };
+
   if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>Error loading data.</div>;
 
-  type FilterColumn = "client" | "spendingCategory" | "clientEmail";
+  type FilterColumn = "description" | "totalAmount";
   return (
     <div className="w-full">
       {/* Filter Row */}
       <div className="border-t border-border -mx-8 px-8 flex items-center py-4">
-        {/* Search Input */}
         <Input
           placeholder={`Search by ${prettyLabel(filterColumn)}...`}
           value={
@@ -278,7 +318,6 @@ export const ExpensesTable = () => {
           className="max-w-sm bg-white border-[#3FA9A9]"
         />
 
-        {/* Filter Dropdown */}
         <DropdownMenu open={filterMenuOpen} onOpenChange={setFilterMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
@@ -291,9 +330,8 @@ export const ExpensesTable = () => {
               <span>Filter</span>
             </Button>
           </DropdownMenuTrigger>
-
           <DropdownMenuContent align="start">
-            {["client", "spendingCategory", "clientEmail"].map((col) => (
+            {["description", "totalAmount"].map((col) => (
               <DropdownMenuItem
                 key={col}
                 onClick={() => {
@@ -314,16 +352,33 @@ export const ExpensesTable = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Export Button */}
         <Button
           variant="ghost"
           className="ml-auto text-black hover:bg-transparent"
+          onClick={() => refetch()}
+          disabled={isRefetching}
+        >
+          {isRefetching ? "Refreshing..." : "Refresh"}
+        </Button>
+
+        <Button
+          variant="ghost"
+          className="text-black hover:bg-transparent"
           onClick={() => exportToCSV(localExpenses)}
         >
           Export
         </Button>
 
-        {/* Add Expense Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={createSample}
+          disabled={createExpense.isPending}
+          className="border px-4 py-2"
+        >
+          Quick sample
+        </Button>
+
         <Button
           variant="outline"
           className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
@@ -332,6 +387,15 @@ export const ExpensesTable = () => {
           <CirclePlus /> Add Expense
         </Button>
       </div>
+
+      {successMessage && (
+        <p className="text-sm text-green-600 py-2 px-8">{successMessage}</p>
+      )}
+      {createExpense.error && !isAdding && (
+        <p className="text-sm text-red-600 py-2 px-8">
+          {getFriendlyError(createExpense.error)}
+        </p>
+      )}
 
       {/* Table */}
       <div className="-mx-8">
@@ -352,138 +416,87 @@ export const ExpensesTable = () => {
           </TableHeader>
 
           <TableBody>
-            {/* Inline Add Form Row */}
             {isAdding && (
               <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
                 <TableCell>
                   <Input
-                    value={formData.client}
+                    value={formData.description}
                     onChange={(e) =>
-                      setFormData({ ...formData, client: e.target.value })
+                      setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="Client"
-                    className={`bg-white border-[#3FA9A9] ${formErrors.client ? "border-red-500" : ""}`}
+                    placeholder="Description"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.description ? "border-red-500" : ""}`}
                   />
-                  {formErrors.client && (
+                  {formErrors.description && (
                     <p className="text-xs text-red-500 mt-1">
-                      {formErrors.client}
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <select
-                    multiple
-                    size={3}
-                    value={formData.spendingCategory}
-                    onChange={(e) => {
-                      const selected = Array.from(e.target.selectedOptions).map(
-                        (o) => o.value,
-                      );
-                      setFormData({ ...formData, spendingCategory: selected });
-                    }}
-                    className={`flex h-10 w-full rounded-md border border-[#3FA9A9] bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                      formErrors.spendingCategory ? "border-red-500" : ""
-                    }`}
-                  >
-                    {spendingCategories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.spendingCategory && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.spendingCategory}
+                      {formErrors.description}
                     </p>
                   )}
                 </TableCell>
                 <TableCell>
                   <Input
                     type="date"
-                    value={formData.purchaseDate}
+                    value={formData.date}
                     onChange={(e) =>
-                      setFormData({ ...formData, purchaseDate: e.target.value })
+                      setFormData({ ...formData, date: e.target.value })
                     }
-                    className={`bg-white border-[#3FA9A9] ${formErrors.purchaseDate ? "border-red-500" : ""}`}
+                    className={`bg-white border-[#3FA9A9] ${formErrors.date ? "border-red-500" : ""}`}
                   />
-                  {formErrors.purchaseDate && (
+                  {formErrors.date && (
                     <p className="text-xs text-red-500 mt-1">
-                      {formErrors.purchaseDate}
+                      {formErrors.date}
                     </p>
                   )}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="email"
-                    value={formData.clientEmail}
-                    onChange={(e) =>
-                      setFormData({ ...formData, clientEmail: e.target.value })
-                    }
-                    placeholder="Email"
-                    className={`bg-white border-[#3FA9A9] ${formErrors.clientEmail ? "border-red-500" : ""}`}
-                  />
-                  {formErrors.clientEmail && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.clientEmail}
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phoneNumber: e.target.value })
-                    }
-                    placeholder="Phone"
-                    className={`bg-white border-[#3FA9A9] ${formErrors.phoneNumber ? "border-red-500" : ""}`}
-                  />
-                  {formErrors.phoneNumber && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.phoneNumber}
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    placeholder="Notes"
-                    className="max-w-xs bg-white border-[#3FA9A9]"
-                  />
                 </TableCell>
                 <TableCell>
                   <Input
                     type="number"
                     step="0.01"
-                    value={formData.amount}
+                    min="0"
+                    value={formData.totalAmount}
                     onChange={(e) =>
-                      setFormData({ ...formData, amount: e.target.value })
+                      setFormData({ ...formData, totalAmount: e.target.value })
                     }
                     placeholder="Amount"
-                    className={`bg-white border-[#3FA9A9] ${formErrors.amount ? "border-red-500" : ""}`}
+                    className={`bg-white border-[#3FA9A9] ${formErrors.totalAmount ? "border-red-500" : ""}`}
                   />
-                  {formErrors.amount && (
+                  {formErrors.totalAmount && (
                     <p className="text-xs text-red-500 mt-1">
-                      {formErrors.amount}
+                      {formErrors.totalAmount}
                     </p>
                   )}
                 </TableCell>
                 <TableCell>
-                  {/* Actions column - empty in form row */}
+                  <Input
+                    type="url"
+                    value={formData.invoiceUrl ?? ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, invoiceUrl: e.target.value })
+                    }
+                    placeholder="Invoice URL (optional)"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.invoiceUrl ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.invoiceUrl && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.invoiceUrl}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            )}
+            {isAdding && createExpense.error && (
+              <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
+                <TableCell colSpan={columns.length} className="py-2 px-20">
+                  <p className="text-sm text-red-600">
+                    {getFriendlyError(createExpense.error)}
+                  </p>
                 </TableCell>
               </TableRow>
             )}
-            {/* Buttons Row */}
             {isAdding && (
               <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                <TableCell
-                  colSpan={columns.length}
-                  className="py-4 px-20
-"
-                >
+                <TableCell colSpan={columns.length} className="py-4 px-20">
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" size="sm" onClick={handleCancel}>
                       Cancel
@@ -492,6 +505,7 @@ export const ExpensesTable = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleSave(false)}
+                      disabled={createExpense.isPending}
                       className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
                     >
                       Save
@@ -500,6 +514,7 @@ export const ExpensesTable = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleSave(true)}
+                      disabled={createExpense.isPending}
                       className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
                     >
                       Save & Add More
@@ -510,7 +525,7 @@ export const ExpensesTable = () => {
             )}
             {table.getRowModel().rows.length > 0
               ? table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="">
+                  <TableRow key={row.id} className="hover:bg-transparent">
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(
@@ -537,7 +552,6 @@ export const ExpensesTable = () => {
         </Table>
       </div>
 
-      {/* Pagination */}
       <div className="flex items-center justify-end space-x-2 py-4 px-8">
         <Button
           variant="outline"

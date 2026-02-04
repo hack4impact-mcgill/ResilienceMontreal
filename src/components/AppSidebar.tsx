@@ -30,7 +30,7 @@ const items = [
   },
   {
     title: "Client data",
-    url: "clients",
+    url: "/clients",
   },
   {
     title: "Grants",

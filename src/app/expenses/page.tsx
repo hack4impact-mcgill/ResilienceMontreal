@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client";
 
 import { useEffect, useState } from "react";
@@ -250,30 +249,5 @@ export default function ExpensesPage() {
         </div>
       </div>
     </div>
-=======
-import { ExpensesTable } from "./_components/data-table";
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from "@tanstack/react-query";
-import { fetchExpenses } from "@/lib/api";
-
-export default async function ExpensesPage() {
-  const queryClient = new QueryClient();
-
-  await queryClient.prefetchQuery({
-    queryKey: ["expenses"],
-    queryFn: fetchExpenses,
-  });
-
-  return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="p-8">
-        <h1 className="text-4xl mb-4">Expenses</h1>
-        <ExpensesTable />
-      </div>
-    </HydrationBoundary>
->>>>>>> 1ac260f (Some init stuff for the ticket)
   );
 }

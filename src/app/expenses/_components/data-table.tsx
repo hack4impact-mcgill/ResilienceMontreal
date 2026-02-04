@@ -34,55 +34,112 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { columns, Client } from "./columns";
-import { useQuery } from "@tanstack/react-query";
-import { fetchClients } from "@/lib/api";
+import { columns, Expense } from "./columns";
+import { api } from "~/trpc/react";
+import { TRPCClientError } from "@trpc/client";
 import { z } from "zod";
 
-// Validation schema (inline add row)
-const clientSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email"),
-  leaseStart: z.string().min(1, "Lease start date is required"),
-  leaseEnd: z.string().min(1, "Lease end date is required"),
+// Friendly error messages for tRPC/zod (same as original expenses page)
+type TRPCErrorDataShape = {
+  zodError?: { fieldErrors?: Record<string, string[]> };
+};
+const getFriendlyError = (err: unknown): string => {
+  if (err instanceof TRPCClientError) {
+    const data = err.data as TRPCErrorDataShape | undefined;
+    const fieldErrors = data?.zodError?.fieldErrors;
+    if (fieldErrors) {
+      const messages: string[] = [];
+      for (const key of Object.keys(fieldErrors)) {
+        const first = fieldErrors[key]?.[0];
+        if (!first) continue;
+        switch (key) {
+          case "description":
+            messages.push("Missing required fields: description");
+            break;
+          case "date":
+            messages.push("Invalid input: date must be a valid date");
+            break;
+          case "totalAmount":
+            messages.push("Invalid input: totalAmount must be a number");
+            break;
+          case "invoiceUrl":
+            messages.push("Invalid input: invoiceUrl must be a valid URL");
+            break;
+          default:
+            messages.push(first);
+        }
+      }
+      if (messages.length > 0) return messages.join(". ");
+    }
+    return err.message ?? "Something went wrong";
+  }
+  if (
+    err &&
+    typeof err === "object" &&
+    "message" in err &&
+    typeof (err as { message: unknown }).message === "string"
+  ) {
+    return (err as { message: string }).message ?? "Something went wrong";
+  }
+  return "Something went wrong";
+};
+
+// Validation schema (matches tRPC/Prisma: description, date, totalAmount, invoiceUrl)
+const expenseSchema = z.object({
+  description: z.string().min(1, "Description is required"),
+  date: z.string().min(1, "Date is required"),
+  totalAmount: z.string().refine((val) => {
+    const num = parseFloat(val);
+    return !isNaN(num) && num > 0;
+  }, "Amount must be a positive number"),
+  invoiceUrl: z
+    .string()
+    .optional()
+    .refine((val) => !val || z.string().url().safeParse(val).success, {
+      message: "Invoice URL must be a valid URL",
+    }),
 });
 
-type ClientFormData = z.infer<typeof clientSchema>;
+type ExpenseFormData = z.infer<typeof expenseSchema>;
+
+// Map tRPC/Prisma list item to table row (Decimal may come as number or string)
+function mapExpenseRow(e: {
+  id: number;
+  description: string;
+  date: Date;
+  totalAmount: unknown;
+  invoiceUrl: string | null;
+}): Expense {
+  const amount =
+    typeof e.totalAmount === "number"
+      ? e.totalAmount
+      : Number(e.totalAmount ?? 0);
+  return {
+    id: e.id,
+    description: e.description,
+    date: new Date(e.date),
+    totalAmount: amount,
+    invoiceUrl: e.invoiceUrl,
+  };
+}
 
 // ------------------------------------------------------------
-// EXPORT CLIENTS TO CSV
+// EXPORT EXPENSES TO CSV
 // ------------------------------------------------------------
-const exportToCSV = (clients: Client[]) => {
-  if (!clients.length) return;
+const exportToCSV = (expenses: Expense[]) => {
+  if (!expenses.length) return;
 
-  // CSV header
-  const header = [
-    "First Name",
-    "Last Name",
-    "Email",
-    "Lease Start Date",
-    "Lease End Date",
-  ];
-
-  // CSV rows
-  const rows = clients.map((c) => [
-    c.firstName,
-    c.lastName,
-    c.email,
-    c.leaseStartDate.toLocaleDateString(),
-    c.leaseEndDate.toLocaleDateString(),
+  const header = ["Description", "Date", "Amount", "Invoice URL"];
+  const rows = expenses.map((e) => [
+    e.description,
+    e.date.toLocaleDateString(),
+    e.totalAmount.toFixed(2),
+    e.invoiceUrl ?? "",
   ]);
-
-  // combine header + rows
   const csvContent = [header, ...rows].map((row) => row.join(",")).join("\n");
-
-  // create filename with current date
   const now = new Date();
-  const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`; // MM-DD-YY
-  const fileName = `client_list_${dateStr}.csv`;
-
-  // create a blob and trigger download
+  const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`;
+  const fileName = `expense_list_${dateStr}.csv`;
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -91,14 +148,13 @@ const exportToCSV = (clients: Client[]) => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 // ------------------------------------------------------------
 // MAIN TABLE COMPONENT
 // ------------------------------------------------------------
-export const ClientsTable = () => {
-  const [localClients, setLocalClients] = React.useState<Client[]>([]);
-
+export const ExpensesTable = () => {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -108,39 +164,46 @@ export const ClientsTable = () => {
   const [rowSelection, setRowSelection] = React.useState({});
 
   const [filterColumn, setFilterColumn] = React.useState<
-    "firstName" | "lastName" | "email"
-  >("email");
+    "description" | "totalAmount"
+  >("description");
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
   const [isAdding, setIsAdding] = React.useState(false);
-  const [formData, setFormData] = React.useState<ClientFormData>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    leaseStart: "",
-    leaseEnd: "",
+  const [formData, setFormData] = React.useState<ExpenseFormData>({
+    description: "",
+    date: "",
+    totalAmount: "",
+    invoiceUrl: "",
   });
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>(
     {},
   );
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(
+    null,
+  );
 
-  // fetch initial server data
   const {
-    data: fetchedClients,
+    data: listData,
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ["clients"],
-    queryFn: fetchClients,
+    refetch,
+    isRefetching,
+  } = api.expenses.list.useQuery({ page: 1, limit: 100 });
+  const createExpense = api.expenses.create.useMutation({
+    onSuccess: () => {
+      refetch();
+      setSuccessMessage("Expense created");
+      setTimeout(() => setSuccessMessage(null), 4000);
+    },
   });
 
-  // merge server-loaded + local-added
-  React.useEffect(() => {
-    if (fetchedClients) setLocalClients(fetchedClients);
-  }, [fetchedClients]);
+  const localExpenses: Expense[] = React.useMemo(
+    () => (listData?.expenses ?? []).map(mapExpenseRow),
+    [listData?.expenses],
+  );
 
-  const table = useReactTable<Client>({
-    data: localClients,
+  const table = useReactTable<Expense>({
+    data: localExpenses,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -159,29 +222,32 @@ export const ClientsTable = () => {
   });
 
   const prettyLabel = (col: string) => {
-    if (col === "firstName") return "First Name";
-    if (col === "lastName") return "Last Name";
-    if (col === "email") return "Email";
+    if (col === "description") return "Description";
+    if (col === "totalAmount") return "Amount";
     return col;
   };
 
   const resetForm = () => {
     setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      leaseStart: "",
-      leaseEnd: "",
+      description: "",
+      date: "",
+      totalAmount: "",
+      invoiceUrl: "",
     });
     setFormErrors({});
   };
 
   const validateForm = (): boolean => {
-    const result = clientSchema.safeParse(formData);
+    const result = expenseSchema.safeParse({
+      ...formData,
+      invoiceUrl: formData.invoiceUrl || undefined,
+    });
     if (!result.success) {
       const errors: Record<string, string> = {};
       result.error.issues.forEach((err) => {
-        if (err.path[0]) errors[err.path[0] as string] = err.message;
+        if (err.path[0]) {
+          errors[err.path[0] as string] = err.message;
+        }
       });
       setFormErrors(errors);
       return false;
@@ -193,28 +259,27 @@ export const ClientsTable = () => {
   const handleSave = (saveAndAddMore: boolean) => {
     if (!validateForm()) return;
 
-    const newClient: Client = {
-      id: Date.now().toString(),
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      leaseStartDate: new Date(formData.leaseStart),
-      leaseEndDate: new Date(formData.leaseEnd),
-    };
-
-    setLocalClients((prev) => [...prev, newClient]);
-
-    if (saveAndAddMore) {
-      resetForm();
-    } else {
-      resetForm();
-      setIsAdding(false);
-    }
-
-    // force React Table to recompute with new data
-    setTimeout(() => {
-      table.setPageIndex(table.getPageCount() - 1);
-    }, 10);
+    createExpense.mutate(
+      {
+        description: formData.description,
+        date: formData.date,
+        totalAmount: parseFloat(formData.totalAmount),
+        invoiceUrl: formData.invoiceUrl?.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          if (saveAndAddMore) {
+            resetForm();
+          } else {
+            resetForm();
+            setIsAdding(false);
+          }
+          setTimeout(() => {
+            table.setPageIndex(Math.max(0, table.getPageCount() - 1));
+          }, 10);
+        },
+      },
+    );
   };
 
   const handleCancel = () => {
@@ -222,31 +287,26 @@ export const ClientsTable = () => {
     setIsAdding(false);
   };
 
+  const createSample = () => {
+    const sampleAmount = "12.34";
+    const sampleDescription = "Sample expense";
+    const sampleDateStr = new Date().toISOString().slice(0, 10);
+    createExpense.mutate({
+      totalAmount: parseFloat(sampleAmount),
+      description: sampleDescription,
+      date: sampleDateStr,
+      invoiceUrl: undefined,
+    });
+  };
+
   if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>Error loading data.</div>;
 
-  type FilterColumn = "firstName" | "lastName" | "email";
+  type FilterColumn = "description" | "totalAmount";
   return (
     <div className="w-full">
-      {/* Top Messages */}
-      <div className="border-t border-border -mx-8 px-8 py-4">
-        <div className="flex flex-row items-start gap-10">
-          <div className="flex flex-col">
-            <span className="text-green-600 font-bold text-2xl">$0000</span>
-            <span className="text-black text-sm -mt-1">available</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-red-600 font-bold text-2xl">X days</span>
-            <span className="text-black text-sm -mt-1">
-              until next grant is due
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Filter Row */}
       <div className="border-t border-border -mx-8 px-8 flex items-center py-4">
-        {/* Search Input */}
         <Input
           placeholder={`Search by ${prettyLabel(filterColumn)}...`}
           value={
@@ -258,7 +318,6 @@ export const ClientsTable = () => {
           className="max-w-sm bg-white border-[#3FA9A9]"
         />
 
-        {/* Filter Dropdown */}
         <DropdownMenu open={filterMenuOpen} onOpenChange={setFilterMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
@@ -271,9 +330,8 @@ export const ClientsTable = () => {
               <span>Filter</span>
             </Button>
           </DropdownMenuTrigger>
-
           <DropdownMenuContent align="start">
-            {["firstName", "lastName", "email"].map((col) => (
+            {["description", "totalAmount"].map((col) => (
               <DropdownMenuItem
                 key={col}
                 onClick={() => {
@@ -294,24 +352,50 @@ export const ClientsTable = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Export Button */}
         <Button
           variant="ghost"
           className="ml-auto text-black hover:bg-transparent"
-          onClick={() => exportToCSV(localClients)}
+          onClick={() => refetch()}
+          disabled={isRefetching}
+        >
+          {isRefetching ? "Refreshing..." : "Refresh"}
+        </Button>
+
+        <Button
+          variant="ghost"
+          className="text-black hover:bg-transparent"
+          onClick={() => exportToCSV(localExpenses)}
         >
           Export
         </Button>
 
-        {/* Add Client Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={createSample}
+          disabled={createExpense.isPending}
+          className="border px-4 py-2"
+        >
+          Quick sample
+        </Button>
+
         <Button
           variant="outline"
           className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
           onClick={() => setIsAdding(true)}
         >
-          <CirclePlus /> Add Client
+          <CirclePlus /> Add Expense
         </Button>
       </div>
+
+      {successMessage && (
+        <p className="text-sm text-green-600 py-2 px-8">{successMessage}</p>
+      )}
+      {createExpense.error && !isAdding && (
+        <p className="text-sm text-red-600 py-2 px-8">
+          {getFriendlyError(createExpense.error)}
+        </p>
+      )}
 
       {/* Table */}
       <div className="-mx-8">
@@ -332,91 +416,84 @@ export const ClientsTable = () => {
           </TableHeader>
 
           <TableBody>
-            {/* Inline Add Form Row */}
             {isAdding && (
               <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
                 <TableCell>
                   <Input
-                    value={formData.firstName}
+                    value={formData.description}
                     onChange={(e) =>
-                      setFormData({ ...formData, firstName: e.target.value })
+                      setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="First Name"
-                    className={`bg-white border-[#3FA9A9] ${formErrors.firstName ? "border-red-500" : ""}`}
+                    placeholder="Description"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.description ? "border-red-500" : ""}`}
                   />
-                  {formErrors.firstName && (
+                  {formErrors.description && (
                     <p className="text-xs text-red-500 mt-1">
-                      {formErrors.firstName}
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    value={formData.lastName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, lastName: e.target.value })
-                    }
-                    placeholder="Last Name"
-                    className={`bg-white border-[#3FA9A9] ${formErrors.lastName ? "border-red-500" : ""}`}
-                  />
-                  {formErrors.lastName && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.lastName}
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    placeholder="Email"
-                    className={`bg-white border-[#3FA9A9] ${formErrors.email ? "border-red-500" : ""}`}
-                  />
-                  {formErrors.email && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.email}
+                      {formErrors.description}
                     </p>
                   )}
                 </TableCell>
                 <TableCell>
                   <Input
                     type="date"
-                    value={formData.leaseStart}
+                    value={formData.date}
                     onChange={(e) =>
-                      setFormData({ ...formData, leaseStart: e.target.value })
+                      setFormData({ ...formData, date: e.target.value })
                     }
-                    className={`bg-white border-[#3FA9A9] ${formErrors.leaseStart ? "border-red-500" : ""}`}
+                    className={`bg-white border-[#3FA9A9] ${formErrors.date ? "border-red-500" : ""}`}
                   />
-                  {formErrors.leaseStart && (
+                  {formErrors.date && (
                     <p className="text-xs text-red-500 mt-1">
-                      {formErrors.leaseStart}
+                      {formErrors.date}
                     </p>
                   )}
                 </TableCell>
                 <TableCell>
                   <Input
-                    type="date"
-                    value={formData.leaseEnd}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.totalAmount}
                     onChange={(e) =>
-                      setFormData({ ...formData, leaseEnd: e.target.value })
+                      setFormData({ ...formData, totalAmount: e.target.value })
                     }
-                    className={`bg-white border-[#3FA9A9] ${formErrors.leaseEnd ? "border-red-500" : ""}`}
+                    placeholder="Amount"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.totalAmount ? "border-red-500" : ""}`}
                   />
-                  {formErrors.leaseEnd && (
+                  {formErrors.totalAmount && (
                     <p className="text-xs text-red-500 mt-1">
-                      {formErrors.leaseEnd}
+                      {formErrors.totalAmount}
                     </p>
                   )}
                 </TableCell>
                 <TableCell>
-                  {/* Actions column - empty in form row */}
+                  <Input
+                    type="url"
+                    value={formData.invoiceUrl ?? ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, invoiceUrl: e.target.value })
+                    }
+                    placeholder="Invoice URL (optional)"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.invoiceUrl ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.invoiceUrl && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.invoiceUrl}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            )}
+            {isAdding && createExpense.error && (
+              <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
+                <TableCell colSpan={columns.length} className="py-2 px-20">
+                  <p className="text-sm text-red-600">
+                    {getFriendlyError(createExpense.error)}
+                  </p>
                 </TableCell>
               </TableRow>
             )}
-            {/* Buttons Row */}
             {isAdding && (
               <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
                 <TableCell colSpan={columns.length} className="py-4 px-20">
@@ -428,6 +505,7 @@ export const ClientsTable = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleSave(false)}
+                      disabled={createExpense.isPending}
                       className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
                     >
                       Save
@@ -436,6 +514,7 @@ export const ClientsTable = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleSave(true)}
+                      disabled={createExpense.isPending}
                       className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
                     >
                       Save & Add More
@@ -473,7 +552,6 @@ export const ClientsTable = () => {
         </Table>
       </div>
 
-      {/* Pagination */}
       <div className="flex items-center justify-end space-x-2 py-4 px-8">
         <Button
           variant="outline"

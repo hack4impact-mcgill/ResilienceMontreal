@@ -31,7 +31,7 @@ import Image from "next/image";
 const items = [
   { title: "Dashboard", url: "/" },
   { title: "Grants", url: "#" },
-  { title: "Expenses", url: "#" },
+  { title: "Expenses", url: "/expenses" },
   { title: "Clients", url: "clients" },
 ];
 

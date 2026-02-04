@@ -16,15 +16,6 @@ jobs:
           # make sure the actual branch is checked out when running on pull requests
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Check secret presence
-        run: |
-          for v in DATABASE_URL NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; do
-            if [ -z "${!v}" ]; then
-              echo "$v: MISSING"
-            else
-              echo "$v: SET"
-            fi
-          done
 
       - name: Install Dependencies
         run: npm ci

@@ -11,6 +11,7 @@ This document records (1) all changes made to the expenses flow and related file
 ### 1. Expenses page (`src/app/expenses/page.tsx`)
 
 **Before:** Client component with:
+
 - `"use client"`
 - tRPC: `api.expenses.list.useQuery({ page: 1, limit: 10 })`, `api.expenses.create.useMutation()`
 - Local state: totalAmount, description, date, invoiceUrl, submitting, error, message
@@ -20,6 +21,7 @@ This document records (1) all changes made to the expenses flow and related file
 - "Recent expenses" list with refetch button; each row: description, date, invoice link, $totalAmount
 
 **After:** Server component with:
+
 - No `"use client"`
 - Renders only: `<div className="p-8"><h1 className="text-4xl mb-4">Expenses</h1><ExpensesTable /></div>`
 - All behavior moved into `ExpensesTable` (data-table.tsx)
@@ -29,10 +31,12 @@ This document records (1) all changes made to the expenses flow and related file
 ### 2. Expenses columns (`src/app/expenses/_components/columns.tsx`)
 
 **Before:** Table row type and columns for a Figma-style schema:
+
 - `Expense`: id (string), client, spendingCategory (string[]), purchaseDate, clientEmail, phoneNumber, notes, amount
 - Columns: CLIENT, SPENDING CATEGORY, PURCHASE DATE, CLIENT EMAIL, PHONE NUMBER, NOTES, AMOUNT, actions
 
 **After:** Table row type and columns aligned with Prisma Expense:
+
 - `Expense`: id (number), description, date, totalAmount, invoiceUrl (string | null)
 - Columns: DESCRIPTION, DATE, AMOUNT, INVOICE (link or —), actions
 
@@ -41,6 +45,7 @@ This document records (1) all changes made to the expenses flow and related file
 ### 3. Expenses data-table (`src/app/expenses/_components/data-table.tsx`)
 
 **Before:**
+
 - Fetched via `useQuery({ queryKey: ["expenses"], queryFn: fetchExpenses })` (mock from `@/lib/api`)
 - Form schema (Zod): client, spendingCategory (array), purchaseDate, clientEmail, phoneNumber, notes, amount
 - Inline add row with: Client, multi-select Spending Category, Purchase Date, Client Email, Phone, Notes, Amount
@@ -49,6 +54,7 @@ This document records (1) all changes made to the expenses flow and related file
 - No tRPC; no “Quick sample”; no “Expense created” message; no Refresh; no getFriendlyError
 
 **After:**
+
 - Fetches via tRPC: `api.expenses.list.useQuery({ page: 1, limit: 100 })`, `api.expenses.create.useMutation()` with `refetch()` on success
 - Form schema (Zod): description, date, totalAmount, invoiceUrl (optional URL)
 - Inline add row: Description, Date, Amount, Invoice URL (optional)
@@ -69,9 +75,11 @@ This document records (1) all changes made to the expenses flow and related file
 ### 4. API mock (`src/lib/api.ts`)
 
 **Before:** `fetchExpenses()` returned mock array of ~13 items with Figma shape:
+
 - id (string), client, spendingCategory[], purchaseDate, clientEmail, phoneNumber, notes, amount
 
 **After:** `fetchExpenses()` return type updated to Prisma-shaped `Expense[]`; mock data reduced to 3 items with:
+
 - id (number), description, date, totalAmount, invoiceUrl (null)
 - Comment added that real data is loaded via tRPC in ExpensesTable
 

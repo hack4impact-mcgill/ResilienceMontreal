@@ -6,7 +6,7 @@ const createClientSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   dateOfBirth: z.coerce.date(),
-  workerId: z.number().int().positive("Worker ID must be a positive integer"),
+  workerId: z.string().min(1, "Worker ID (supabaseId) is required"),
   email: z.string().email("Invalid email address"),
   phoneNumber: z.string().min(1, "Phone number is required"),
   landlordName: z.string().min(1, "Landlord name is required"),
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     // Verify that the worker (User) exists
     const worker = await prisma.user.findUnique({
-      where: { id: validatedData.workerId },
+      where: { supabaseId: validatedData.workerId },
     });
 
     if (!worker) {
@@ -50,15 +50,15 @@ export async function POST(request: Request) {
         dateOfBirth: validatedData.dateOfBirth,
         workerId: validatedData.workerId,
         email: validatedData.email,
-        phoneNumber: validatedData.phoneNumber,
+        phone: validatedData.phoneNumber,
         landlordName: validatedData.landlordName,
-        leaseStartDate: validatedData.leaseStartDate,
-        leaseEndDate: validatedData.leaseEndDate ?? null,
+        leaseStart: validatedData.leaseStartDate,
+        leaseEnd: validatedData.leaseEndDate ?? null,
       },
       include: {
         worker: {
           select: {
-            id: true,
+            supabaseId: true,
             name: true,
             email: true,
           },

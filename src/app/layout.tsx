@@ -27,7 +27,7 @@ export default async function RootLayout({
       <body>
         <TRPCReactProvider>
           <SidebarProvider>
-            {isLoggedIn ? <AppSidebar /> : null} 
+            {isLoggedIn ? <AppSidebar /> : null}
             {/* {<AppSidebar />} */}
             <main className="w-full">
               {isLoggedIn ? <SidebarTrigger /> : null}

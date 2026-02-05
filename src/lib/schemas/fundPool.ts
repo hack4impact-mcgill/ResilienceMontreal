@@ -2,7 +2,7 @@ import * as z from "zod";
 
 export const createFundPoolSchema = z.object({
   category: z.string().trim().min(1, "Category is required"),
-  amount: z.coerce.number().nonnegative("Amount cannot be less than zero"),
+  amount: z.coerce.number().nonnegative("Amount cannot be less than zero").optional(),
 });
 
 export const updateFundPoolSchema = z

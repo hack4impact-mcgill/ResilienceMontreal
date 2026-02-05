@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 
@@ -22,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SidebarFundPools } from "./sidebar-fund-pools";
 
 const items = [
   {
@@ -80,6 +79,8 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarFundPools />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

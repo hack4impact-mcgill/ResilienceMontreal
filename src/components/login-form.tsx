@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import { toast } from "sonner";
 
 export function LoginForm({
   className,
@@ -19,18 +20,30 @@ export function LoginForm({
 
   const mutation = api.auth.signIn.useMutation({
     onSuccess: async () => {
+      toast.success("Successfully logged in!");
       router.push("/");
       router.refresh();
     },
     onError: (err) => {
       console.error("signIn error:", err);
-      // optionally show UI feedback
-      alert(err?.message ?? "Sign in failed");
+      toast.error(err?.message ?? "Failed to log in. Please try again.");
     },
   });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Client-side validation to provide friendly error messages
+    if (!email || !password) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters long.");
+      return;
+    }
+    
     mutation.mutate({ email, password });
   };
 

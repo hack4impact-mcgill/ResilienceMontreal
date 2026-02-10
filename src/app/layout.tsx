@@ -5,6 +5,7 @@ import { getServerAuthSession } from "~/server/auth";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Toaster } from "sonner";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,18 @@ export default async function RootLayout({
               {children}
             </main>
           </SidebarProvider>
+          <Toaster 
+            position="top-center" 
+            toastOptions={{
+              style: {
+                marginTop: '20px',
+              },
+              classNames: {
+                error: 'bg-red-50 text-red-900 border-red-200',
+                success: 'bg-green-50 text-green-900 border-green-200',
+              },
+            }}
+          />
         </TRPCReactProvider>
       </body>
     </html>

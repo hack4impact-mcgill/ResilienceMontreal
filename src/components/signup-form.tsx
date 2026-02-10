@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import { toast } from "sonner";
 
 export default function SignupForm({
   className,
@@ -19,17 +20,35 @@ export default function SignupForm({
 
   const mutation = api.auth.signUp.useMutation({
     onSuccess: async () => {
-      router.push("/");
+      toast.success("Account created successfully! You can now log in.");
+      router.push("/login");
       router.refresh();
     },
     onError: (err) => {
       console.error("signUp error:", err);
-      alert(err?.message ?? "Sign up failed");
+      toast.error(err?.message ?? "Failed to create account. Please try again.");
     },
   });
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Client-side validation for password strength
+    if (!email || !password) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters long.");
+      return;
+    }
+    
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      toast.error("Password must contain both letters and numbers.");
+      return;
+    }
+    
     mutation.mutate({ email, password });
   };
 

@@ -32,18 +32,18 @@ export function LoginForm({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Client-side validation to provide friendly error messages
     if (!email || !password) {
       toast.error("Please fill in all fields.");
       return;
     }
-    
+
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters long.");
       return;
     }
-    
+
     mutation.mutate({ email, password });
   };
 

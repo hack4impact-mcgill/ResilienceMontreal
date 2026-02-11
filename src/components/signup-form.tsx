@@ -26,29 +26,31 @@ export default function SignupForm({
     },
     onError: (err) => {
       console.error("signUp error:", err);
-      toast.error(err?.message ?? "Failed to create account. Please try again.");
+      toast.error(
+        err?.message ?? "Failed to create account. Please try again.",
+      );
     },
   });
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Client-side validation for password strength
     if (!email || !password) {
       toast.error("Please fill in all fields.");
       return;
     }
-    
+
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters long.");
       return;
     }
-    
+
     if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
       toast.error("Password must contain both letters and numbers.");
       return;
     }
-    
+
     mutation.mutate({ email, password });
   };
 

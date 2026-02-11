@@ -34,25 +34,25 @@ export default function SignupForm({
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Minimal client-side validation - let server handle detailed checks
     if (!email) {
       toast.error("Please enter your email address.");
       return;
     }
-    
+
     // Basic email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast.error("Please enter a valid email address.");
       return;
     }
-    
+
     if (!password) {
       toast.error("Please enter your password.");
       return;
     }
-    
+
     // Let server validate password requirements to prioritize email existence check
     mutation.mutate({ email, password });
   };

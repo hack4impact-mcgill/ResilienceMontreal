@@ -109,6 +109,16 @@ export function AppSidebar() {
                 </a>
               </DropdownMenuItem>
 
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer flex items-center gap-2 px-3 py-1"
+              >
+                <a href="/update-password">
+                  <UserRound size={16} />
+                  <span>Change password</span>
+                </a>
+              </DropdownMenuItem>
+
               <div className="h-px bg-border mx-3 my-1" />
 
               <DropdownMenuItem

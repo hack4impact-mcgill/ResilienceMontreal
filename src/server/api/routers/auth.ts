@@ -7,6 +7,8 @@ import { createClient } from "~/utils/supabase/server";
 import { getServerAuthSession } from "~/server/auth";
 import { prisma } from "@/lib/prisma";
 
+const APP_URL = "http://localhost:3000";  // update later when deployed
+
 export const authRouter = createTRPCRouter({
   signIn: publicProcedure
     .input(z.object({ email: z.email(), password: z.string().min(6) }))
@@ -144,6 +146,89 @@ export const authRouter = createTRPCRouter({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: message ?? "Failed to confirm email",
+        });
+      }
+    }),
+
+  forgotPassword: publicProcedure
+    .input(z.object({ email: z.email() }))
+    .mutation(async ({ input }) => {
+      try {
+        const supabase = await createClient();
+
+        const redirectTo = `${APP_URL}/update-password`;
+
+        const { error } = await supabase.auth.resetPasswordForEmail(
+          input.email,
+          { redirectTo },
+        );
+
+        if (error) {
+          console.error("resetPasswordForEmail error (tRPC):", error);
+        }
+
+        return {
+          ok: true,
+          message:
+            "If an account exists for this email, we’ve sent a password reset link.",
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: message ?? "Failed to start password reset",
+        });
+      }
+    }),
+
+  updatePassword: publicProcedure
+    .input(z.object({ password: z.string().min(6) }))
+    .mutation(async ({ input }) => {
+      try {
+        const supabase = await createClient();
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("getUser error in tRPC updatePassword:", userError);
+        }
+
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message:
+              "This link is invalid or has expired. Please request a new one.",
+          });
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: input.password,
+        });
+
+        if (updateError) {
+          console.error("updateUser error in tRPC updatePassword:", updateError);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              updateError.message ?? "Failed to update password. Please try again.",
+          });
+        }
+
+        return {
+          ok: true,
+          message: "Your password has been updated successfully.",
+        };
+      } catch (err: unknown) {
+        if (err instanceof TRPCError) {
+          throw err;
+        }
+        const message = err instanceof Error ? err.message : String(err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: message ?? "Failed to update password",
         });
       }
     }),

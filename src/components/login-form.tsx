@@ -33,9 +33,21 @@ export function LoginForm({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Client-side validation to provide friendly error messages
-    if (!email || !password) {
-      toast.error("Please fill in all fields.");
+    // Client-side validation - check in form field order (email first, then password)
+    if (!email) {
+      toast.error("Please enter your email address.");
+      return;
+    }
+    
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    
+    if (!password) {
+      toast.error("Please enter your password.");
       return;
     }
     

@@ -47,14 +47,24 @@ export const authRouter = createTRPCRouter({
     }),
 
   signUp: publicProcedure
-    .input(z.object({ email: z.email(), password: z.string().min(6) }))
+    .input(z.object({ email: z.string(), password: z.string() }))
     .mutation(async ({ input }) => {
       try {
         const { email, password } = input;
         const supabase = await createClient();
         console.log("Signing up user:", email);
 
-        // Check if user already exists in Prisma
+        // Validate email format first
+        const emailSchema = z.string().email();
+        const emailValidation = emailSchema.safeParse(email);
+        if (!emailValidation.success) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Please provide a valid email address.",
+          });
+        }
+
+        // Check if user already exists in Prisma BEFORE validating password
         const existingUser = await prisma.user.findUnique({
           where: { email },
         });
@@ -63,6 +73,14 @@ export const authRouter = createTRPCRouter({
           throw new TRPCError({
             code: "CONFLICT",
             message: "An account with this email already exists. Please log in instead.",
+          });
+        }
+
+        // Now validate password
+        if (password.length < 6) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Password must be at least 6 characters long.",
           });
         }
 

@@ -26,7 +26,9 @@ export default function SignupForm({
     },
     onError: (err) => {
       console.error("signUp error:", err);
-      toast.error(err?.message ?? "Failed to create account. Please try again.");
+      toast.error(
+        err?.message ?? "Failed to create account. Please try again.",
+      );
     },
   });
 

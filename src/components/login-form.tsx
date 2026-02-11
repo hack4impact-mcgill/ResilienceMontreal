@@ -50,12 +50,12 @@ export function LoginForm({
       toast.error("Please enter your password.");
       return;
     }
-    
+
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters long.");
       return;
     }
-    
+
     mutation.mutate({ email, password });
   };
 

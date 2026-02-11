@@ -17,15 +17,20 @@ export const authRouter = createTRPCRouter({
         if (result.error) {
           // Provide more specific error messages
           let errorMessage = result.error.message;
-          
-          if (errorMessage.toLowerCase().includes("invalid login credentials")) {
-            errorMessage = "Invalid email or password. Please check your credentials and try again.";
-          } else if (errorMessage.toLowerCase().includes("email not confirmed")) {
+
+          if (
+            errorMessage.toLowerCase().includes("invalid login credentials")
+          ) {
+            errorMessage =
+              "Invalid email or password. Please check your credentials and try again.";
+          } else if (
+            errorMessage.toLowerCase().includes("email not confirmed")
+          ) {
             errorMessage = "Please confirm your email before logging in.";
           } else if (errorMessage.toLowerCase().includes("user not found")) {
             errorMessage = "No account found with this email address.";
           }
-          
+
           throw new TRPCError({
             code: "UNAUTHORIZED",
             message: errorMessage,
@@ -72,7 +77,8 @@ export const authRouter = createTRPCRouter({
         if (existingUser) {
           throw new TRPCError({
             code: "CONFLICT",
-            message: "An account with this email already exists. Please log in instead.",
+            message:
+              "An account with this email already exists. Please log in instead.",
           });
         }
 
@@ -89,17 +95,19 @@ export const authRouter = createTRPCRouter({
         if (result.error) {
           // Provide more specific error messages
           let errorMessage = result.error.message;
-          
+
           if (errorMessage.toLowerCase().includes("password")) {
-            errorMessage = "Password must be at least 6 characters long and contain a mix of letters and numbers.";
+            errorMessage =
+              "Password must be at least 6 characters long and contain a mix of letters and numbers.";
           } else if (errorMessage.toLowerCase().includes("email")) {
             if (errorMessage.toLowerCase().includes("already registered")) {
-              errorMessage = "This email is already registered. Please log in instead.";
+              errorMessage =
+                "This email is already registered. Please log in instead.";
             } else {
               errorMessage = "Please provide a valid email address.";
             }
           }
-          
+
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: errorMessage,

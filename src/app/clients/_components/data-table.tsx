@@ -37,6 +37,7 @@ import {
 import { columns, Client } from "./columns";
 import { useQuery } from "@tanstack/react-query";
 import { fetchClients } from "@/lib/api";
+import Link from "next/link";
 
 // ------------------------------------------------------------
 // ADD CLIENT MODAL
@@ -241,7 +242,21 @@ export const ClientsTable = () => {
   };
 
   if (isLoading) return <div>Loading...</div>;
-  if (isError) return <div>Error loading data.</div>;
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <h2 className="text-2xl mb-4">Access denied</h2>
+        <p className="mb-4">
+          You do not have permission to view client data. This area is for
+          Intervention Team members only.
+        </p>
+        <Link href="/" className="underline">
+          Return to home
+        </Link>
+      </div>
+    );
+  }
 
   type FilterColumn = "firstName" | "lastName" | "email";
   return (

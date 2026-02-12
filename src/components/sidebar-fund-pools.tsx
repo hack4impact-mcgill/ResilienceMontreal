@@ -22,9 +22,9 @@ export function SidebarFundPools() {
   const { data: totalFunding } = api.fundPool.getTotalFunding.useQuery();
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD',
+    return new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: "CAD",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -44,14 +44,14 @@ export function SidebarFundPools() {
             <Settings className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <SidebarGroupContent>
           {totalFunding && (
             <div className="px-2 py-1 text-sm font-medium text-gray-900 border-b border-gray-200 mb-2">
               Total: {formatCurrency(totalFunding.total)}
             </div>
           )}
-          
+
           <SidebarMenu>
             {fundPools.map((pool) => (
               <SidebarMenuItem key={pool.id}>
@@ -65,7 +65,7 @@ export function SidebarFundPools() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
-            
+
             {uncategorized && uncategorized.count > 0 && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>

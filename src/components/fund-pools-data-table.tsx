@@ -136,20 +136,30 @@ interface FundPoolsDataTableProps {
   inModal?: boolean;
 }
 
-export const FundPoolsDataTable = ({ inModal = false }: FundPoolsDataTableProps) => {
+export const FundPoolsDataTable = ({
+  inModal = false,
+}: FundPoolsDataTableProps) => {
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
   const [addModalOpen, setAddModalOpen] = React.useState(false);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
-  const [selectedFundPool, setSelectedFundPool] = React.useState<FundPoolWithAmount | null>(null);
+  const [selectedFundPool, setSelectedFundPool] =
+    React.useState<FundPoolWithAmount | null>(null);
 
   const utils = api.useContext();
 
   // Queries
-  const { data: fundPools = [], isLoading, isError } = api.fundPool.getAll.useQuery();
+  const {
+    data: fundPools = [],
+    isLoading,
+    isError,
+  } = api.fundPool.getAll.useQuery();
 
   // Mutations
   const createMutation = api.fundPool.create.useMutation({
@@ -219,7 +229,7 @@ export const FundPoolsDataTable = ({ inModal = false }: FundPoolsDataTableProps)
   const handleDelete = async (fundPool: FundPoolWithAmount) => {
     if (
       confirm(
-        `Are you sure you want to delete "${fundPool.category}"? Any grants linked to this fund pool will be converted to uncategorized grants. This action cannot be undone.`
+        `Are you sure you want to delete "${fundPool.category}"? Any grants linked to this fund pool will be converted to uncategorized grants. This action cannot be undone.`,
       )
     ) {
       await deleteMutation.mutateAsync({
@@ -231,7 +241,10 @@ export const FundPoolsDataTable = ({ inModal = false }: FundPoolsDataTableProps)
   const moveUp = (index: number) => {
     if (index > 0) {
       const newOrder = [...fundPools];
-      [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
+      [newOrder[index], newOrder[index - 1]] = [
+        newOrder[index - 1],
+        newOrder[index],
+      ];
       reorderMutation.mutate({
         orderedIds: newOrder.map((item) => item.id),
       });
@@ -241,7 +254,10 @@ export const FundPoolsDataTable = ({ inModal = false }: FundPoolsDataTableProps)
   const moveDown = (index: number) => {
     if (index < fundPools.length - 1) {
       const newOrder = [...fundPools];
-      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+      [newOrder[index], newOrder[index + 1]] = [
+        newOrder[index + 1],
+        newOrder[index],
+      ];
       reorderMutation.mutate({
         orderedIds: newOrder.map((item) => item.id),
       });
@@ -343,12 +359,12 @@ export const FundPoolsDataTable = ({ inModal = false }: FundPoolsDataTableProps)
   if (isError) return <div>Error loading data.</div>;
 
   const containerClass = inModal ? "w-full" : "w-full";
-  const filterRowClass = inModal 
-    ? "border-t border-border flex items-center py-4" 
+  const filterRowClass = inModal
+    ? "border-t border-border flex items-center py-4"
     : "border-t border-border -mx-8 px-8 flex items-center py-4";
   const tableContainerClass = inModal ? "" : "-mx-8";
-  const paginationClass = inModal 
-    ? "flex items-center justify-end space-x-2 py-4" 
+  const paginationClass = inModal
+    ? "flex items-center justify-end space-x-2 py-4"
     : "flex items-center justify-end space-x-2 py-4 px-8";
 
   return (
@@ -358,8 +374,12 @@ export const FundPoolsDataTable = ({ inModal = false }: FundPoolsDataTableProps)
         {/* Search Input */}
         <Input
           placeholder="Search by category..."
-          value={(table.getColumn("category")?.getFilterValue() as string) ?? ""}
-          onChange={(e) => table.getColumn("category")?.setFilterValue(e.target.value)}
+          value={
+            (table.getColumn("category")?.getFilterValue() as string) ?? ""
+          }
+          onChange={(e) =>
+            table.getColumn("category")?.setFilterValue(e.target.value)
+          }
           className="max-w-sm"
         />
 
@@ -381,7 +401,10 @@ export const FundPoolsDataTable = ({ inModal = false }: FundPoolsDataTableProps)
               <TableRow key={group.id}>
                 {group.headers.map((header) => (
                   <TableHead key={header.id}>
-                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -394,14 +417,20 @@ export const FundPoolsDataTable = ({ inModal = false }: FundPoolsDataTableProps)
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   No results.
                 </TableCell>
               </TableRow>

@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, interventionTeamProcedure } from "~/server/api/trpc";
 
 export const clientRouter = createTRPCRouter({
-  addClient: protectedProcedure
+  addClient: interventionTeamProcedure
     .input(
       z.object({
         firstName: z.string().min(1, "First name is required"),
@@ -44,7 +44,7 @@ export const clientRouter = createTRPCRouter({
       }
     }),
 
-  editClient: protectedProcedure
+  editClient: interventionTeamProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -94,7 +94,7 @@ export const clientRouter = createTRPCRouter({
       }
     }),
 
-  deleteClient: protectedProcedure
+  deleteClient: interventionTeamProcedure
     .input(
       z.object({
         id: z.number().int().positive(),

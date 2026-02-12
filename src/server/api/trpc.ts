@@ -81,3 +81,27 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+// interventionTeamProcedure requires the user to be an InterventionTeam member or Admin
+// used for protecting client-related operations
+export const interventionTeamProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { email: ctx.user.email ?? undefined },
+    });
+
+    if (!user || (user.role !== "InterventionTeam" && user.role !== "Admin")) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only Intervention Team members can access client data",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        userRole: user.role,
+      },
+    });
+  },
+);

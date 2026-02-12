@@ -12,20 +12,19 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Settings } from "lucide-react";
-import { FundPoolModal } from "./fund-pool-modal";
+import { FundPoolsModal } from "./fund-pools-modal";
 
 export function SidebarFundPools() {
   const [modalOpen, setModalOpen] = useState(false);
 
-  // for queries
   const { data: fundPools = [] } = api.fundPool.getAll.useQuery();
   const { data: uncategorized } = api.fundPool.getUncategorized.useQuery();
   const { data: totalFunding } = api.fundPool.getTotalFunding.useQuery();
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-CA', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'CAD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -83,7 +82,7 @@ export function SidebarFundPools() {
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <FundPoolModal open={modalOpen} onOpenChange={setModalOpen} />
+      <FundPoolsModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
 }

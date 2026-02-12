@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
+import { RoleName } from "@prisma/client";
 
 export type Client = {
   id: string;
@@ -18,7 +19,17 @@ export type Client = {
   email: string;
   leaseStartDate: Date;
   leaseEndDate: Date;
+  workerName?: string;
 };
+
+export type Worker = {
+  supabaseId: string,
+  name: string,
+  email: string,
+  role: RoleName,
+  isConfirmed: boolean,
+  clients: Client[],
+}
 
 export const columns: ColumnDef<Client>[] = [
   {
@@ -53,11 +64,15 @@ export const columns: ColumnDef<Client>[] = [
     },
   },
   {
+    accessorKey: "workerName",
+    header: "INTERVENTION WORKER",
+    cell: (info) => info.getValue() || "-",
+  },
+  {
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
       const client = row.original;
-
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

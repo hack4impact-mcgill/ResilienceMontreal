@@ -4,6 +4,22 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 export const clientRouter = createTRPCRouter({
+  listClients: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      const clients = await ctx.db.client.findMany({
+        include: {
+          worker: true,
+        },
+      });
+      return clients;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: message ?? "Failed to fetch clients",
+      });
+    }
+  }),
   addClient: protectedProcedure
     .input(
       z.object({

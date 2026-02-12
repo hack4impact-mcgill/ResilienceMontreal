@@ -12,6 +12,8 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
+import { api } from "~/trpc/react";
+
 
 import { ListFilter, Check, CirclePlus } from "lucide-react";
 
@@ -34,8 +36,41 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { columns, Client } from "./columns";
-import { useQuery } from "@tanstack/react-query";
+import { columns, Worker } from "./columns";
+
+type PrismaClient = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+  landlordName?: string | null;
+  leaseStart?: Date | null;
+  leaseEnd?: Date | null;
+  dateOfBirth: Date;
+  workerId: string;
+  worker?: {
+    name: string;
+    email: string;
+    supabaseId: string;
+    role: string;
+    isConfirmed: boolean;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type Client = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  leaseStartDate: Date;
+  leaseEndDate: Date;
+  workerName?: string;
+};
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { fetchClients } from "@/lib/api";
 import { z } from "zod";
 
@@ -63,6 +98,7 @@ const exportToCSV = (clients: Client[]) => {
     "Email",
     "Lease Start Date",
     "Lease End Date",
+    "Intervention Worker",
   ];
 
   // CSV rows
@@ -72,6 +108,7 @@ const exportToCSV = (clients: Client[]) => {
     c.email,
     c.leaseStartDate.toLocaleDateString(),
     c.leaseEndDate.toLocaleDateString(),
+    c.workerName || "-",
   ]);
 
   // combine header + rows
@@ -97,7 +134,12 @@ const exportToCSV = (clients: Client[]) => {
 // MAIN TABLE COMPONENT
 // ------------------------------------------------------------
 export const ClientsTable = () => {
-  const [localClients, setLocalClients] = React.useState<Client[]>([]);
+  // Inline editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<ClientFormData | null>(null);
+  const [editWorker, setEditWorker] = useState<{ id: string; name: string } | null>(null);
+  const [editWorkerMenuOpen, setEditWorkerMenuOpen] = useState(false);
+  const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -124,23 +166,56 @@ export const ClientsTable = () => {
     {},
   );
 
-  // fetch initial server data
-  const {
-    data: fetchedClients,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["clients"],
-    queryFn: fetchClients,
+  const [workerSearch, setWorkerSearch] = useState("");
+  const [selectedWorker, setSelectedWorker] = useState<{ id: string; name: string } | null>(null);
+  const [workerMenuOpen, setWorkerMenuOpen] = useState(false);
+
+  // Query client for refetching
+  const queryClient = useQueryClient();
+
+  // Mutation for editing client
+  const editClientMutation = api.client.editClient.useMutation({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
   });
 
-  // merge server-loaded + local-added
-  React.useEffect(() => {
-    if (fetchedClients) setLocalClients(fetchedClients);
-  }, [fetchedClients]);
+  // Fetch users with InterventionWorker role
+  const {
+    data: workers = [],
+    isLoading: workersLoading,
+  } = api.users.list.useQuery(undefined, {
+    select: (users) =>
+      users
+        ? users
+            .filter((u) => u.role === "InterventionTeam" || u.role === "Admin" )
+            .map((u) => ({ id: u.supabaseId, name: u.name }))
+        : [],
+  });
+
+
+  // fetch initial server data
+  const {
+    data: rawClients = [],
+    isLoading,
+    isError,
+  } = api.client.listClients.useQuery();
+
+  // Map Prisma clients to frontend Client type
+  const fetchedClients: Client[] = React.useMemo(() => {
+    return (rawClients || []).map((c: PrismaClient) => ({
+      id: String(c.id),
+      firstName: c.firstName,
+      lastName: c.lastName,
+      email: c.email || "",
+      leaseStartDate: c.leaseStart ? new Date(c.leaseStart) : new Date(),
+      leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(),
+      workerName: c.worker?.name || "",
+    }));
+  }, [rawClients]);
 
   const table = useReactTable<Client>({
-    data: localClients,
+    data: fetchedClients,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -176,45 +251,67 @@ export const ClientsTable = () => {
     setFormErrors({});
   };
 
-  const validateForm = (): boolean => {
-    const result = clientSchema.safeParse(formData);
+  // You may want to implement handleSave to call a mutation to add a client to the backend
+  const handleSave = (saveAndAddMore: boolean) => {
+    // TODO: Call backend mutation to add client
+    // For now, just reset form
+    resetForm();
+    setIsAdding(false);
+  };
+
+  // Inline edit handlers
+  const startEdit = (client: Client) => {
+    setEditingId(client.id);
+    setEditFormData({
+      firstName: client.firstName,
+      lastName: client.lastName,
+      email: client.email,
+      leaseStart: client.leaseStartDate instanceof Date ? client.leaseStartDate.toISOString().slice(0, 10) : "",
+      leaseEnd: client.leaseEndDate instanceof Date ? client.leaseEndDate.toISOString().slice(0, 10) : "",
+    });
+    setEditWorker(client.workerName ? workers.find(w => w.name === client.workerName) || null : null);
+    setEditFormErrors({});
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditFormData(null);
+    setEditWorker(null);
+    setEditFormErrors({});
+  };
+
+  const validateEditForm = (): boolean => {
+    if (!editFormData) return false;
+    const result = clientSchema.safeParse(editFormData);
     if (!result.success) {
       const errors: Record<string, string> = {};
       result.error.issues.forEach((err) => {
         if (err.path[0]) errors[err.path[0] as string] = err.message;
       });
-      setFormErrors(errors);
+      setEditFormErrors(errors);
       return false;
     }
-    setFormErrors({});
+    setEditFormErrors({});
     return true;
   };
 
-  const handleSave = (saveAndAddMore: boolean) => {
-    if (!validateForm()) return;
+  // Implement saveEdit to call mutation
+  const saveEdit = () => {
+    if (!validateEditForm() || !editingId) return;
+    const client = fetchedClients.find(c => c.id === editingId);
+    if (!client) return;
 
-    const newClient: Client = {
-      id: Date.now().toString(),
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      leaseStartDate: new Date(formData.leaseStart),
-      leaseEndDate: new Date(formData.leaseEnd),
-    };
-
-    setLocalClients((prev) => [...prev, newClient]);
-
-    if (saveAndAddMore) {
-      resetForm();
-    } else {
-      resetForm();
-      setIsAdding(false);
-    }
-
-    // force React Table to recompute with new data
-    setTimeout(() => {
-      table.setPageIndex(table.getPageCount() - 1);
-    }, 10);
+    editClientMutation.mutate({
+      id: Number(client.id),
+      firstName: editFormData!.firstName,
+      lastName: editFormData!.lastName,
+      email: editFormData!.email,
+      leaseStart: editFormData!.leaseStart ? new Date(editFormData!.leaseStart) : undefined,
+      leaseEnd: editFormData!.leaseEnd ? new Date(editFormData!.leaseEnd) : undefined,
+      workerId: editWorker ? editWorker.id : undefined,
+      // Add other fields as needed
+    });
+    cancelEdit();
   };
 
   const handleCancel = () => {
@@ -298,7 +395,7 @@ export const ClientsTable = () => {
         <Button
           variant="ghost"
           className="ml-auto text-black hover:bg-transparent"
-          onClick={() => exportToCSV(localClients)}
+          onClick={() => exportToCSV(fetchedClients)}
         >
           Export
         </Button>
@@ -411,6 +508,48 @@ export const ClientsTable = () => {
                     </p>
                   )}
                 </TableCell>
+                {/* Search an Intervention Team worker - default to self */}
+                <TableCell>
+                  <DropdownMenu open={workerMenuOpen} onOpenChange={setWorkerMenuOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start bg-white border-[#3FA9A9] text-black"
+                        type="button"
+                      >
+                        {selectedWorker ? selectedWorker.name : "Select Intervention Worker"}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[220px]">
+                      <div className="p-2">
+                        <Input
+                          placeholder="Search worker..."
+                          value={workerSearch}
+                          onChange={e => setWorkerSearch(e.target.value)}
+                          className="mb-2 bg-white border-[#3FA9A9]"
+                          autoFocus
+                        />
+                      </div>
+                      {workersLoading ? (
+                        <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                      ) : workers.length === 0 ? (
+                        <DropdownMenuItem disabled>No workers found</DropdownMenuItem>
+                      ) : (
+                        workers.map((worker: { id: string; name: string }) => (
+                          <DropdownMenuItem
+                            key={worker.id}
+                            onClick={() => {
+                              setSelectedWorker(worker);
+                              setWorkerMenuOpen(false);
+                            }}
+                          >
+                            {worker.name}
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
                 <TableCell>
                   {/* Actions column - empty in form row */}
                 </TableCell>
@@ -445,18 +584,165 @@ export const ClientsTable = () => {
               </TableRow>
             )}
             {table.getRowModel().rows.length > 0
-              ? table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="hover:bg-transparent">
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+              ? table.getRowModel().rows.map((row) => {
+                  const client = row.original;
+                  const isEditing = editingId === client.id;
+                  if (isEditing) {
+                    return (
+                      <TableRow key={row.id} className="bg-[#FFFBEA] hover:bg-[#FFFBEA]">
+                        {/* First Name */}
+                        <TableCell>
+                          <Input
+                            value={editFormData?.firstName || ""}
+                            onChange={e => setEditFormData(f => ({ ...f!, firstName: e.target.value }))}
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.firstName ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.firstName && (
+                            <p className="text-xs text-red-500 mt-1">{editFormErrors.firstName}</p>
+                          )}
+                        </TableCell>
+                        {/* Last Name */}
+                        <TableCell>
+                          <Input
+                            value={editFormData?.lastName || ""}
+                            onChange={e => setEditFormData(f => ({ ...f!, lastName: e.target.value }))}
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.lastName ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.lastName && (
+                            <p className="text-xs text-red-500 mt-1">{editFormErrors.lastName}</p>
+                          )}
+                        </TableCell>
+                        {/* Email */}
+                        <TableCell>
+                          <Input
+                            type="email"
+                            value={editFormData?.email || ""}
+                            onChange={e => setEditFormData(f => ({ ...f!, email: e.target.value }))}
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.email ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.email && (
+                            <p className="text-xs text-red-500 mt-1">{editFormErrors.email}</p>
+                          )}
+                        </TableCell>
+                        {/* Lease Start */}
+                        <TableCell>
+                          <Input
+                            type="date"
+                            value={editFormData?.leaseStart || ""}
+                            onChange={e => setEditFormData(f => ({ ...f!, leaseStart: e.target.value }))}
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.leaseStart && (
+                            <p className="text-xs text-red-500 mt-1">{editFormErrors.leaseStart}</p>
+                          )}
+                        </TableCell>
+                        {/* Lease End */}
+                        <TableCell>
+                          <Input
+                            type="date"
+                            value={editFormData?.leaseEnd || ""}
+                            onChange={e => setEditFormData(f => ({ ...f!, leaseEnd: e.target.value }))}
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseEnd ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.leaseEnd && (
+                            <p className="text-xs text-red-500 mt-1">{editFormErrors.leaseEnd}</p>
+                          )}
+                        </TableCell>
+                        {/* Worker */}
+                        <TableCell>
+                          <DropdownMenu open={editWorkerMenuOpen} onOpenChange={setEditWorkerMenuOpen}>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start bg-white border-[#3FA9A9] text-black"
+                                type="button"
+                              >
+                                {editWorker ? editWorker.name : "Select Intervention Worker"}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="min-w-[220px]">
+                              <div className="p-2">
+                                <Input
+                                  placeholder="Search worker..."
+                                  value={workerSearch}
+                                  onChange={e => setWorkerSearch(e.target.value)}
+                                  className="mb-2 bg-white border-[#3FA9A9]"
+                                  autoFocus
+                                />
+                              </div>
+                              {workersLoading ? (
+                                <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                              ) : workers.length === 0 ? (
+                                <DropdownMenuItem disabled>No workers found</DropdownMenuItem>
+                              ) : (
+                                workers
+                                  .filter((worker: { id: string; name: string }) =>
+                                    worker.name.toLowerCase().includes(workerSearch.toLowerCase())
+                                  )
+                                  .map((worker: { id: string; name: string }) => (
+                                    <DropdownMenuItem
+                                      key={worker.id}
+                                      onClick={() => {
+                                        setEditWorker(worker);
+                                        setEditWorkerMenuOpen(false);
+                                      }}
+                                    >
+                                      {worker.name}
+                                    </DropdownMenuItem>
+                                  ))
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                        {/* Actions */}
+                        <TableCell>
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={cancelEdit}>
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={saveEdit}
+                              className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                  // Default (not editing)
+                  return (
+                    <TableRow key={row.id} className="hover:bg-transparent">
+                      {row.getVisibleCells().map((cell, idx) => {
+                        // Render edit button in the actions column
+                        if (cell.column.id === "actions") {
+                          return (
+                            <TableCell key={cell.id}>
+                              <div className="flex gap-2 items-center">
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => startEdit(client)}
+                                >
+                                  Edit
+                                </Button>
+                              </div>
+                            </TableCell>
+                          );
+                        }
+                        return (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })
               : !isAdding && (
                   <TableRow>
                     <TableCell

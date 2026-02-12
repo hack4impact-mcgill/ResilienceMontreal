@@ -1,4 +1,5 @@
 import { Client } from "../app/clients/_components/columns";
+import { Expense } from "../app/expenses/_components/columns";
 
 export async function fetchClients(): Promise<Client[]> {
   // simulate fetching data from an API with a delay
@@ -204,6 +205,38 @@ export async function fetchClients(): Promise<Client[]> {
           email: "ella.wright@example.com",
           leaseStartDate: new Date("2022-07-01"),
           leaseEndDate: new Date("2023-06-30"),
+        },
+      ]);
+    }, 1000);
+  });
+}
+
+export async function fetchExpenses(): Promise<Expense[]> {
+  // Mock data matching Prisma Expense shape (description, date, totalAmount, invoiceUrl).
+  // Real data is loaded via tRPC in ExpensesTable; this is for any prefetch or other consumers.
+  return new Promise<Expense[]>((resolve) => {
+    setTimeout(() => {
+      resolve([
+        {
+          id: 1,
+          description: "Office supplies for Q1",
+          date: new Date("2024-01-15"),
+          totalAmount: 245.5,
+          invoiceUrl: null,
+        },
+        {
+          id: 2,
+          description: "Monthly rent payment",
+          date: new Date("2024-01-01"),
+          totalAmount: 1500.0,
+          invoiceUrl: null,
+        },
+        {
+          id: 3,
+          description: "Electric and water bill",
+          date: new Date("2024-01-20"),
+          totalAmount: 320.75,
+          invoiceUrl: null,
         },
       ]);
     }, 1000);

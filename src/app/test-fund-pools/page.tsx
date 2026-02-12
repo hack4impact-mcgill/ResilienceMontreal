@@ -13,10 +13,8 @@ export default function TestFundPoolsPage() {
       <p className="mb-4">
         This page is for testing the fund pools CRUD functionality.
       </p>
-      
-      <Button onClick={() => setModalOpen(true)}>
-        Open Fund Pools Modal
-      </Button>
+
+      <Button onClick={() => setModalOpen(true)}>Open Fund Pools Modal</Button>
 
       <FundPoolModal open={modalOpen} onOpenChange={setModalOpen} />
     </div>

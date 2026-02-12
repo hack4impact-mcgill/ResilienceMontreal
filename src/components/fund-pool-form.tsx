@@ -15,14 +15,19 @@ interface FundPoolFormProps {
   isLoading?: boolean;
 }
 
-export function FundPoolForm({ fundPool, onSubmit, onCancel, isLoading }: FundPoolFormProps) {
+export function FundPoolForm({
+  fundPool,
+  onSubmit,
+  onCancel,
+  isLoading,
+}: FundPoolFormProps) {
   const [category, setCategory] = useState(fundPool?.category ?? "");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const trimmedCategory = category.trim();
     if (!trimmedCategory) {
       setError("Category name is required");
@@ -31,7 +36,7 @@ export function FundPoolForm({ fundPool, onSubmit, onCancel, isLoading }: FundPo
 
     setError("");
     setIsSubmitting(true);
-    
+
     try {
       await onSubmit({ category: trimmedCategory });
     } catch (err) {
@@ -52,9 +57,7 @@ export function FundPoolForm({ fundPool, onSubmit, onCancel, isLoading }: FundPo
           placeholder="Enter category name"
           disabled={isSubmitting || isLoading}
         />
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
       <div className="flex justify-end space-x-2">

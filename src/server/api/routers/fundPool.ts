@@ -16,14 +16,14 @@ export const fundPoolRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const fundPools = await ctx.db.fundPool.findMany({
       include: { ...fundPoolInclude },
-      orderBy: { order: 'asc' },
+      orderBy: { order: "asc" },
     });
-    
-    return fundPools.map(pool => ({
+
+    return fundPools.map((pool) => ({
       ...pool,
       calculatedAmount: pool.fundAllocations.reduce(
         (sum, allocation) => sum + allocation.amount.toNumber(),
-        0
+        0,
       ),
     }));
   }),
@@ -130,24 +130,26 @@ export const fundPoolRouter = createTRPCRouter({
           where: { id: input.id },
         }),
       ]);
-      
+
       return { success: true };
     }),
 
   reorder: protectedProcedure
-    .input(z.object({
-      orderedIds: z.array(z.number().int().positive()),
-    }))
+    .input(
+      z.object({
+        orderedIds: z.array(z.number().int().positive()),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await ctx.db.$transaction(
         input.orderedIds.map((id, index) =>
           ctx.db.fundPool.update({
             where: { id },
             data: { order: index },
-          })
-        )
+          }),
+        ),
       );
-      
+
       return { success: true };
     }),
 
@@ -155,25 +157,25 @@ export const fundPoolRouter = createTRPCRouter({
     const fundPools = await ctx.db.fundPool.findMany({
       include: { fundAllocations: true },
     });
-    
+
     const categorizedTotal = fundPools.reduce((sum, pool) => {
       const poolAmount = pool.fundAllocations.reduce(
         (poolSum, allocation) => poolSum + allocation.amount.toNumber(),
-        0
+        0,
       );
       return sum + poolAmount;
     }, 0);
-    
+
     // uncatted grants total
     const uncategorizedDistributions = await ctx.db.grantDistribution.findMany({
       where: { fundPoolId: null },
     });
-    
+
     const uncategorizedTotal = uncategorizedDistributions.reduce(
       (sum, dist) => sum + dist.amount.toNumber(),
-      0
+      0,
     );
-    
+
     return { total: categorizedTotal + uncategorizedTotal };
   }),
 
@@ -182,12 +184,12 @@ export const fundPoolRouter = createTRPCRouter({
       where: { fundPoolId: null },
       include: { grant: true },
     });
-    
+
     const totalAmount = distributions.reduce(
       (sum, dist) => sum + dist.amount.toNumber(),
-      0
+      0,
     );
-    
+
     return {
       count: distributions.length,
       totalAmount,

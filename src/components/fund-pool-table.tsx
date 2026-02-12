@@ -37,29 +37,35 @@ export function FundPoolTable({
   onSearchChange,
 }: FundPoolTableProps) {
   const filteredItems = fundPools.filter((item) =>
-    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+    item.category.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
     }).format(amount);
   };
 
   const moveUp = (index: number) => {
     if (index > 0) {
       const newOrder = [...fundPools];
-      [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
-      onReorder(newOrder.map(item => item.id));
+      [newOrder[index], newOrder[index - 1]] = [
+        newOrder[index - 1],
+        newOrder[index],
+      ];
+      onReorder(newOrder.map((item) => item.id));
     }
   };
 
   const moveDown = (index: number) => {
     if (index < fundPools.length - 1) {
       const newOrder = [...fundPools];
-      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-      onReorder(newOrder.map(item => item.id));
+      [newOrder[index], newOrder[index + 1]] = [
+        newOrder[index + 1],
+        newOrder[index],
+      ];
+      onReorder(newOrder.map((item) => item.id));
     }
   };
 
@@ -133,7 +139,9 @@ export function FundPoolTable({
 
       {filteredItems.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          {searchQuery ? "No fund pools match your search." : "No fund pools found."}
+          {searchQuery
+            ? "No fund pools match your search."
+            : "No fund pools found."}
         </div>
       )}
     </div>

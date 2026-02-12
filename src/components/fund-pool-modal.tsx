@@ -18,7 +18,7 @@ interface FundPoolModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type ModalMode = 'view' | 'create' | 'edit';
+type ModalMode = "view" | "create" | "edit";
 
 interface FundPoolWithAmount {
   id: number;
@@ -28,39 +28,43 @@ interface FundPoolWithAmount {
 }
 
 export function FundPoolModal({ open, onOpenChange }: FundPoolModalProps) {
-  const [mode, setMode] = useState<ModalMode>('view');
-  const [selectedFundPool, setSelectedFundPool] = useState<FundPoolWithAmount | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [mode, setMode] = useState<ModalMode>("view");
+  const [selectedFundPool, setSelectedFundPool] =
+    useState<FundPoolWithAmount | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const utils = api.useContext();
 
   // Queries
-  const { data: fundPools = [], isLoading } = api.fundPool.getAll.useQuery(undefined, {
-    enabled: open,
-  });
+  const { data: fundPools = [], isLoading } = api.fundPool.getAll.useQuery(
+    undefined,
+    {
+      enabled: open,
+    },
+  );
 
   // Mutations
   const createMutation = api.fundPool.create.useMutation({
     onSuccess: () => {
       utils.fundPool.getAll.invalidate();
       utils.fundPool.getTotalFunding.invalidate();
-      setMode('view');
-      alert('Fund pool created successfully');
+      setMode("view");
+      alert("Fund pool created successfully");
     },
     onError: (error) => {
-      alert(error.message || 'Failed to create fund pool');
+      alert(error.message || "Failed to create fund pool");
     },
   });
 
   const updateMutation = api.fundPool.update.useMutation({
     onSuccess: () => {
       utils.fundPool.getAll.invalidate();
-      setMode('view');
+      setMode("view");
       setSelectedFundPool(null);
-      alert('Fund pool updated successfully');
+      alert("Fund pool updated successfully");
     },
     onError: (error) => {
-      alert(error.message || 'Failed to update fund pool');
+      alert(error.message || "Failed to update fund pool");
     },
   });
 
@@ -69,20 +73,20 @@ export function FundPoolModal({ open, onOpenChange }: FundPoolModalProps) {
       utils.fundPool.getAll.invalidate();
       utils.fundPool.getUncategorized.invalidate();
       utils.fundPool.getTotalFunding.invalidate();
-      alert('Fund pool deleted successfully');
+      alert("Fund pool deleted successfully");
     },
     onError: (error) => {
-      alert(error.message || 'Failed to delete fund pool');
+      alert(error.message || "Failed to delete fund pool");
     },
   });
 
   const reorderMutation = api.fundPool.reorder.useMutation({
     onSuccess: () => {
       utils.fundPool.getAll.invalidate();
-      alert('Fund pools reordered successfully');
+      alert("Fund pools reordered successfully");
     },
     onError: (error) => {
-      alert(error.message || 'Failed to reorder fund pools');
+      alert(error.message || "Failed to reorder fund pools");
     },
   });
 
@@ -94,7 +98,7 @@ export function FundPoolModal({ open, onOpenChange }: FundPoolModalProps) {
 
   const handleUpdate = async (data: { category: string }) => {
     if (!selectedFundPool) return;
-    
+
     await updateMutation.mutateAsync({
       id: selectedFundPool.id,
       category: data.category,
@@ -103,11 +107,15 @@ export function FundPoolModal({ open, onOpenChange }: FundPoolModalProps) {
 
   const handleEdit = (fundPool: FundPoolWithAmount) => {
     setSelectedFundPool(fundPool);
-    setMode('edit');
+    setMode("edit");
   };
 
   const handleDelete = async (fundPool: FundPoolWithAmount) => {
-    if (confirm(`Are you sure you want to delete "${fundPool.category}"? Any grants linked to this fund pool will be converted to uncategorized grants. This action cannot be undone.`)) {
+    if (
+      confirm(
+        `Are you sure you want to delete "${fundPool.category}"? Any grants linked to this fund pool will be converted to uncategorized grants. This action cannot be undone.`,
+      )
+    ) {
       await deleteMutation.mutateAsync({
         id: fundPool.id,
       });
@@ -121,15 +129,15 @@ export function FundPoolModal({ open, onOpenChange }: FundPoolModalProps) {
   };
 
   const handleCancel = () => {
-    setMode('view');
+    setMode("view");
     setSelectedFundPool(null);
   };
 
   const handleModalClose = (open: boolean) => {
     if (!open) {
-      setMode('view');
+      setMode("view");
       setSelectedFundPool(null);
-      setSearchQuery('');
+      setSearchQuery("");
     }
     onOpenChange(open);
   };
@@ -139,20 +147,21 @@ export function FundPoolModal({ open, onOpenChange }: FundPoolModalProps) {
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {mode === 'view' && 'Manage Fund Pools'}
-            {mode === 'create' && 'Create Fund Pool'}
-            {mode === 'edit' && 'Edit Fund Pool'}
+            {mode === "view" && "Manage Fund Pools"}
+            {mode === "create" && "Create Fund Pool"}
+            {mode === "edit" && "Edit Fund Pool"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {mode === 'view' && (
+          {mode === "view" && (
             <>
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-600">
-                  {fundPools.length} fund pool{fundPools.length !== 1 ? 's' : ''}
+                  {fundPools.length} fund pool
+                  {fundPools.length !== 1 ? "s" : ""}
                 </div>
-                <Button onClick={() => setMode('create')}>
+                <Button onClick={() => setMode("create")}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Fund Pool
                 </Button>
@@ -169,7 +178,7 @@ export function FundPoolModal({ open, onOpenChange }: FundPoolModalProps) {
             </>
           )}
 
-          {mode === 'create' && (
+          {mode === "create" && (
             <FundPoolForm
               onSubmit={handleCreate}
               onCancel={handleCancel}
@@ -177,7 +186,7 @@ export function FundPoolModal({ open, onOpenChange }: FundPoolModalProps) {
             />
           )}
 
-          {mode === 'edit' && selectedFundPool && (
+          {mode === "edit" && selectedFundPool && (
             <FundPoolForm
               fundPool={selectedFundPool}
               onSubmit={handleUpdate}

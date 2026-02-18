@@ -27,9 +27,9 @@ export default async function ClientsPage() {
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
-      queryKey: ["clients"],
-      queryFn: () => api.client.list.usePrefetchQuery()
-    });
+    queryKey: ["clients"],
+    queryFn: () => api.client.list.usePrefetchQuery(),
+  });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

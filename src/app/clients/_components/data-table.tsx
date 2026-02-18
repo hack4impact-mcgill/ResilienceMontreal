@@ -34,17 +34,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { columns, Client } from "./columns";
-import { useQuery } from "@tanstack/react-query";
-import { fetchClients } from "@/lib/api";
-import Link from "next/link";
+import { columns, Client, mapClient } from "./columns";
+import { api } from "~/trpc/react";
 import { z } from "zod";
 
 // Validation schema (inline add row)
 const clientSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email"),
+  email: z.email("Invalid email"),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
   leaseStart: z.string().min(1, "Lease start date is required"),
   leaseEnd: z.string().min(1, "Lease end date is required"),
 });
@@ -56,33 +55,32 @@ type ClientFormData = z.infer<typeof clientSchema>;
 // ------------------------------------------------------------
 const exportToCSV = (clients: Client[]) => {
   if (!clients.length) return;
-
   // CSV header
   const header = [
     "First Name",
     "Last Name",
     "Email",
+    "Date of Birth",
+    "Intervention Worker",
     "Lease Start Date",
     "Lease End Date",
   ];
-
   // CSV rows
   const rows = clients.map((c) => [
     c.firstName,
     c.lastName,
     c.email,
+    c.dateOfBirth ? c.dateOfBirth.toLocaleDateString() : "",
+    c.workerName,
     c.leaseStartDate.toLocaleDateString(),
     c.leaseEndDate.toLocaleDateString(),
   ]);
-
   // combine header + rows
   const csvContent = [header, ...rows].map((row) => row.join(",")).join("\n");
-
   // create filename with current date
   const now = new Date();
   const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`; // MM-DD-YY
   const fileName = `client_list_${dateStr}.csv`;
-
   // create a blob and trigger download
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -98,8 +96,6 @@ const exportToCSV = (clients: Client[]) => {
 // MAIN TABLE COMPONENT
 // ------------------------------------------------------------
 export const ClientsTable = () => {
-  const [localClients, setLocalClients] = React.useState<Client[]>([]);
-
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -114,34 +110,37 @@ export const ClientsTable = () => {
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
   const [isAdding, setIsAdding] = React.useState(false);
-  const [formData, setFormData] = React.useState<ClientFormData>({
+  const [formData, setFormData] = React.useState({
     firstName: "",
     lastName: "",
     email: "",
+    dateOfBirth: "",
     leaseStart: "",
     leaseEnd: "",
+    workerId: "",
   });
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>(
     {},
   );
 
-  // fetch initial server data
+
   const {
-    data: fetchedClients,
+    data: clientList,
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ["clients"],
-    queryFn: fetchClients,
-  });
+    refetch,
+    isRefetching,
+  } = api.client.list?.useQuery 
+    ? api.client.list.useQuery() 
+    : { data: [], isLoading: false, isError: true, refetch: undefined };
 
-  // merge server-loaded + local-added
-  React.useEffect(() => {
-    if (fetchedClients) setLocalClients(fetchedClients);
-  }, [fetchedClients]);
+  const mappedClients = React.useMemo(
+    () => (clientList ?? []).map(mapClient),
+    [clientList]
+  );
 
   const table = useReactTable<Client>({
-    data: localClients,
+    data: mappedClients,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -171,8 +170,10 @@ export const ClientsTable = () => {
       firstName: "",
       lastName: "",
       email: "",
+      dateOfBirth: "",
       leaseStart: "",
       leaseEnd: "",
+      workerId: "",
     });
     setFormErrors({});
   };
@@ -191,31 +192,36 @@ export const ClientsTable = () => {
     return true;
   };
 
+  const { data: users, isLoading: isLoadingUsers } = api.users.list.useQuery();
+  const workers = React.useMemo(
+    () => (users ?? []).filter((u: any) => u.role === "InterventionTeam" || u.role === "Admin" ),
+    [users]
+  );
+
+  const addClient = api.client.addClient.useMutation();
+
   const handleSave = (saveAndAddMore: boolean) => {
     if (!validateForm()) return;
-
-    const newClient: Client = {
-      id: Date.now().toString(),
+    addClient.mutate({
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email,
-      leaseStartDate: new Date(formData.leaseStart),
-      leaseEndDate: new Date(formData.leaseEnd),
-    };
-
-    setLocalClients((prev) => [...prev, newClient]);
-
-    if (saveAndAddMore) {
-      resetForm();
-    } else {
-      resetForm();
-      setIsAdding(false);
-    }
-
-    // force React Table to recompute with new data
-    setTimeout(() => {
-      table.setPageIndex(table.getPageCount() - 1);
-    }, 10);
+      dateOfBirth: new Date(formData.dateOfBirth),
+      leaseStart: new Date(formData.leaseStart),
+      leaseEnd: new Date(formData.leaseEnd),
+      workerId: formData.workerId,
+    }, {
+      onSuccess: () => {
+        refetch?.();
+        resetForm();
+        if (!saveAndAddMore) {
+          setIsAdding(false);
+        }
+        setTimeout(() => {
+          table.setPageIndex(table.getPageCount() - 1);
+        }, 10);
+      },
+    });
   };
 
   const handleCancel = () => {
@@ -224,21 +230,7 @@ export const ClientsTable = () => {
   };
 
   if (isLoading) return <div>Loading...</div>;
-
-  if (isError) {
-    return (
-      <div className="p-6">
-        <h2 className="text-2xl mb-4">Access denied</h2>
-        <p className="mb-4">
-          You do not have permission to view client data. This area is for
-          Intervention Team members only.
-        </p>
-        <Link href="/" className="underline">
-          Return to home
-        </Link>
-      </div>
-    );
-  }
+  if (isError) return <div className="p-6 text-red-600">Error loading clients.</div>;
 
   type FilterColumn = "firstName" | "lastName" | "email";
   return (
@@ -313,7 +305,7 @@ export const ClientsTable = () => {
         <Button
           variant="ghost"
           className="ml-auto text-black hover:bg-transparent"
-          onClick={() => exportToCSV(localClients)}
+          onClick={() => exportToCSV(mappedClients)}
         >
           Export
         </Button>
@@ -360,9 +352,7 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.firstName ? "border-red-500" : ""}`}
                   />
                   {formErrors.firstName && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.firstName}
-                    </p>
+                    <p className="text-xs text-red-500 mt-1">{formErrors.firstName}</p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -375,9 +365,7 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.lastName ? "border-red-500" : ""}`}
                   />
                   {formErrors.lastName && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.lastName}
-                    </p>
+                    <p className="text-xs text-red-500 mt-1">{formErrors.lastName}</p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -391,9 +379,21 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.email ? "border-red-500" : ""}`}
                   />
                   {formErrors.email && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.email}
-                    </p>
+                    <p className="text-xs text-red-500 mt-1">{formErrors.email}</p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dateOfBirth: e.target.value })
+                    }
+                    placeholder="Date of Birth"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.dateOfBirth ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.dateOfBirth && (
+                    <p className="text-xs text-red-500 mt-1">{formErrors.dateOfBirth}</p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -406,9 +406,7 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.leaseStart ? "border-red-500" : ""}`}
                   />
                   {formErrors.leaseStart && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.leaseStart}
-                    </p>
+                    <p className="text-xs text-red-500 mt-1">{formErrors.leaseStart}</p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -421,13 +419,27 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.leaseEnd ? "border-red-500" : ""}`}
                   />
                   {formErrors.leaseEnd && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {formErrors.leaseEnd}
-                    </p>
+                    <p className="text-xs text-red-500 mt-1">{formErrors.leaseEnd}</p>
                   )}
                 </TableCell>
                 <TableCell>
-                  {/* Actions column - empty in form row */}
+                  {/* Intervention Worker Dropdown */}
+                  <select
+                    value={formData.workerId}
+                    onChange={e => setFormData({ ...formData, workerId: e.target.value })}
+                    className="bg-white border-[#3FA9A9] px-2 py-1 rounded"
+                    disabled={isLoadingUsers}
+                  >
+                    <option value="">Select Worker</option>
+                    {workers.map((w: any) => (
+                      <option key={w.supabaseId} value={w.supabaseId}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </TableCell>
+                <TableCell>
+                  {/* Empty cell for actions column */}
                 </TableCell>
               </TableRow>
             )}
@@ -444,16 +456,18 @@ export const ClientsTable = () => {
                       size="sm"
                       onClick={() => handleSave(false)}
                       className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                      disabled={addClient.isPending}
                     >
-                      Save
+                      {addClient.isPending ? "Saving..." : "Save"}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleSave(true)}
                       className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                      disabled={addClient.isPending}
                     >
-                      Save & Add More
+                      {addClient.isPending ? "Saving..." : "Save & Add More"}
                     </Button>
                   </div>
                 </TableCell>

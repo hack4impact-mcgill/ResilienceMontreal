@@ -34,19 +34,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { columns, Client } from "./columns";
-import { useQuery } from "@tanstack/react-query";
-import { fetchClients } from "@/lib/api";
-import Link from "next/link";
+import { Client, mapClient, createColumns } from "./columns";
+import { api } from "~/trpc/react";
 import { z } from "zod";
+import { toast } from "sonner";
 
 // Validation schema (inline add row)
 const clientSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email"),
+  email: z.email("Invalid email"),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
   leaseStart: z.string().min(1, "Lease start date is required"),
   leaseEnd: z.string().min(1, "Lease end date is required"),
+  workerId: z.string().min(1, "Intervention worker is required"),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -56,33 +57,32 @@ type ClientFormData = z.infer<typeof clientSchema>;
 // ------------------------------------------------------------
 const exportToCSV = (clients: Client[]) => {
   if (!clients.length) return;
-
   // CSV header
   const header = [
     "First Name",
     "Last Name",
     "Email",
+    "Date of Birth",
+    "Intervention Worker",
     "Lease Start Date",
     "Lease End Date",
   ];
-
   // CSV rows
   const rows = clients.map((c) => [
     c.firstName,
     c.lastName,
     c.email,
+    c.dateOfBirth ? c.dateOfBirth.toLocaleDateString() : "",
+    c.workerName,
     c.leaseStartDate.toLocaleDateString(),
     c.leaseEndDate.toLocaleDateString(),
   ]);
-
   // combine header + rows
   const csvContent = [header, ...rows].map((row) => row.join(",")).join("\n");
-
   // create filename with current date
   const now = new Date();
   const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`; // MM-DD-YY
   const fileName = `client_list_${dateStr}.csv`;
-
   // create a blob and trigger download
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -98,8 +98,6 @@ const exportToCSV = (clients: Client[]) => {
 // MAIN TABLE COMPONENT
 // ------------------------------------------------------------
 export const ClientsTable = () => {
-  const [localClients, setLocalClients] = React.useState<Client[]>([]);
-
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -114,50 +112,48 @@ export const ClientsTable = () => {
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
   const [isAdding, setIsAdding] = React.useState(false);
-  const [formData, setFormData] = React.useState<ClientFormData>({
+  const [formData, setFormData] = React.useState({
     firstName: "",
     lastName: "",
     email: "",
+    dateOfBirth: "",
     leaseStart: "",
     leaseEnd: "",
+    workerId: "",
   });
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>(
     {},
   );
 
-  // fetch initial server data
+  // Edit state
+  const [editingRowId, setEditingRowId] = React.useState<number | null>(null);
+  const [editFormData, setEditFormData] = React.useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    dateOfBirth: "",
+    leaseStart: "",
+    leaseEnd: "",
+    workerId: "",
+  });
+  const [editFormErrors, setEditFormErrors] = React.useState<
+    Record<string, string>
+  >({});
+
   const {
-    data: fetchedClients,
+    data: clientList,
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ["clients"],
-    queryFn: fetchClients,
-  });
+    refetch,
+    isRefetching,
+  } = api.client.list?.useQuery
+    ? api.client.list.useQuery()
+    : { data: [], isLoading: false, isError: true, refetch: undefined };
 
-  // merge server-loaded + local-added
-  React.useEffect(() => {
-    if (fetchedClients) setLocalClients(fetchedClients);
-  }, [fetchedClients]);
-
-  const table = useReactTable<Client>({
-    data: localClients,
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  });
+  const mappedClients = React.useMemo(
+    () => (clientList ?? []).map(mapClient),
+    [clientList],
+  );
 
   const prettyLabel = (col: string) => {
     if (col === "firstName") return "First Name";
@@ -171,8 +167,10 @@ export const ClientsTable = () => {
       firstName: "",
       lastName: "",
       email: "",
+      dateOfBirth: "",
       leaseStart: "",
       leaseEnd: "",
+      workerId: "",
     });
     setFormErrors({});
   };
@@ -191,31 +189,51 @@ export const ClientsTable = () => {
     return true;
   };
 
+  const { data: users, isLoading: isLoadingUsers } = api.users.list.useQuery();
+  const workers = React.useMemo(
+    () =>
+      (users ?? []).filter(
+        (u: any) => u.role === "InterventionTeam" || u.role === "Admin",
+      ),
+    [users],
+  );
+
+  const addClient = api.client.addClient.useMutation();
+  const editClient = api.client.editClient.useMutation();
+  const deleteClient = api.client.deleteClient.useMutation();
+
   const handleSave = (saveAndAddMore: boolean) => {
     if (!validateForm()) return;
-
-    const newClient: Client = {
-      id: Date.now().toString(),
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      leaseStartDate: new Date(formData.leaseStart),
-      leaseEndDate: new Date(formData.leaseEnd),
-    };
-
-    setLocalClients((prev) => [...prev, newClient]);
-
-    if (saveAndAddMore) {
-      resetForm();
-    } else {
-      resetForm();
-      setIsAdding(false);
-    }
-
-    // force React Table to recompute with new data
-    setTimeout(() => {
-      table.setPageIndex(table.getPageCount() - 1);
-    }, 10);
+    addClient.mutate(
+      {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        dateOfBirth: new Date(formData.dateOfBirth),
+        leaseStart: new Date(formData.leaseStart),
+        leaseEnd: new Date(formData.leaseEnd),
+        workerId: formData.workerId,
+      },
+      {
+        onSuccess: () => {
+          refetch?.();
+          resetForm();
+          if (!saveAndAddMore) {
+            setIsAdding(false);
+          }
+          toast.success("Client added successfully!");
+          setTimeout(() => {
+            table.setPageIndex(table.getPageCount() - 1);
+          }, 10);
+        },
+        onError: (error) => {
+          console.error("Error adding client:", error);
+          toast.error(
+            error.message || "Failed to add client. Please try again.",
+          );
+        },
+      },
+    );
   };
 
   const handleCancel = () => {
@@ -223,44 +241,141 @@ export const ClientsTable = () => {
     setIsAdding(false);
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  const startEdit = (client: Client) => {
+    if (isAdding) return;
+    setEditingRowId(client.id);
+    setEditFormData({
+      firstName: client.firstName,
+      lastName: client.lastName,
+      email: client.email,
+      dateOfBirth: client.dateOfBirth
+        ? new Date(client.dateOfBirth).toISOString().split("T")[0]
+        : "",
+      leaseStart: client.leaseStartDate
+        ? new Date(client.leaseStartDate).toISOString().split("T")[0]
+        : "",
+      leaseEnd: client.leaseEndDate
+        ? new Date(client.leaseEndDate).toISOString().split("T")[0]
+        : "",
+      workerId: client.workerId,
+    });
+    setEditFormErrors({});
+  };
 
-  if (isError) {
-    return (
-      <div className="p-6">
-        <h2 className="text-2xl mb-4">Access denied</h2>
-        <p className="mb-4">
-          You do not have permission to view client data. This area is for
-          Intervention Team members only.
-        </p>
-        <Link href="/" className="underline">
-          Return to home
-        </Link>
-      </div>
+  const cancelEdit = () => {
+    setEditingRowId(null);
+    setEditFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      dateOfBirth: "",
+      leaseStart: "",
+      leaseEnd: "",
+      workerId: "",
+    });
+    setEditFormErrors({});
+  };
+
+  const validateEditForm = (): boolean => {
+    const result = clientSchema.safeParse(editFormData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((err) => {
+        if (err.path[0]) errors[err.path[0] as string] = err.message;
+      });
+      setEditFormErrors(errors);
+      return false;
+    }
+    setEditFormErrors({});
+    return true;
+  };
+
+  const handleEditSave = () => {
+    if (!validateEditForm() || editingRowId === null) return;
+    editClient.mutate(
+      {
+        id: editingRowId,
+        firstName: editFormData.firstName,
+        lastName: editFormData.lastName,
+        email: editFormData.email,
+        dateOfBirth: new Date(editFormData.dateOfBirth),
+        leaseStart: new Date(editFormData.leaseStart),
+        leaseEnd: new Date(editFormData.leaseEnd),
+        workerId: editFormData.workerId,
+      },
+      {
+        onSuccess: () => {
+          refetch?.();
+          cancelEdit();
+          toast.success("Client updated successfully!");
+        },
+        onError: (error) => {
+          console.error("Error updating client:", error);
+          toast.error(
+            error.message || "Failed to update client. Please try again.",
+          );
+        },
+      },
     );
-  }
+  };
+
+  const handleDelete = (clientId: number) => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this client? This action cannot be undone.",
+      )
+    ) {
+      deleteClient.mutate(
+        { id: clientId },
+        {
+          onSuccess: () => {
+            refetch?.();
+            toast.success("Client deleted successfully!");
+          },
+          onError: (error) => {
+            console.error("Error deleting client:", error);
+            toast.error(
+              error.message || "Failed to delete client. Please try again.",
+            );
+          },
+        },
+      );
+    }
+  };
+
+  const columns = React.useMemo(
+    () => createColumns(startEdit, handleDelete),
+    [],
+  );
+
+  const table = useReactTable<Client>({
+    data: mappedClients,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+  });
+
+  if (isLoading) return <div>Loading...</div>;
+  if (isError)
+    return <div className="p-6 text-red-600">Error loading clients.</div>;
 
   type FilterColumn = "firstName" | "lastName" | "email";
   return (
     <div className="w-full">
-      {/* Top Messages */}
-      <div className="border-t border-border -mx-8 px-8 py-4">
-        <div className="flex flex-row items-start gap-10">
-          <div className="flex flex-col">
-            <span className="text-green-600 font-bold text-2xl">$0000</span>
-            <span className="text-black text-sm -mt-1">available</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-red-600 font-bold text-2xl">X days</span>
-            <span className="text-black text-sm -mt-1">
-              until next grant is due
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Filter Row */}
-      <div className="border-t border-border -mx-8 px-8 flex items-center py-4">
+      <div className="border-border -mx-8 px-8 flex items-center py-4">
         {/* Search Input */}
         <Input
           placeholder={`Search by ${prettyLabel(filterColumn)}...`}
@@ -313,7 +428,7 @@ export const ClientsTable = () => {
         <Button
           variant="ghost"
           className="ml-auto text-black hover:bg-transparent"
-          onClick={() => exportToCSV(localClients)}
+          onClick={() => exportToCSV(mappedClients)}
         >
           Export
         </Button>
@@ -323,6 +438,7 @@ export const ClientsTable = () => {
           variant="outline"
           className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
           onClick={() => setIsAdding(true)}
+          disabled={editingRowId !== null}
         >
           <CirclePlus /> Add Client
         </Button>
@@ -399,6 +515,22 @@ export const ClientsTable = () => {
                 <TableCell>
                   <Input
                     type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dateOfBirth: e.target.value })
+                    }
+                    placeholder="Date of Birth"
+                    className={`bg-white border-[#3FA9A9] ${formErrors.dateOfBirth ? "border-red-500" : ""}`}
+                  />
+                  {formErrors.dateOfBirth && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.dateOfBirth}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
                     value={formData.leaseStart}
                     onChange={(e) =>
                       setFormData({ ...formData, leaseStart: e.target.value })
@@ -427,8 +559,29 @@ export const ClientsTable = () => {
                   )}
                 </TableCell>
                 <TableCell>
-                  {/* Actions column - empty in form row */}
+                  {/* Intervention Worker Dropdown */}
+                  <select
+                    value={formData.workerId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, workerId: e.target.value })
+                    }
+                    className={`bg-white border-[#3FA9A9] px-2 py-1 rounded ${formErrors.workerId ? "border-red-500" : ""}`}
+                    disabled={isLoadingUsers}
+                  >
+                    <option value="">Select Worker</option>
+                    {workers.map((w: any) => (
+                      <option key={w.supabaseId} value={w.supabaseId}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.workerId && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.workerId}
+                    </p>
+                  )}
                 </TableCell>
+                <TableCell>{/* Empty cell for actions column */}</TableCell>
               </TableRow>
             )}
             {/* Buttons Row */}
@@ -444,16 +597,18 @@ export const ClientsTable = () => {
                       size="sm"
                       onClick={() => handleSave(false)}
                       className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                      disabled={addClient.isPending}
                     >
-                      Save
+                      {addClient.isPending ? "Saving..." : "Save"}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleSave(true)}
                       className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                      disabled={addClient.isPending}
                     >
-                      Save & Add More
+                      {addClient.isPending ? "Saving..." : "Save & Add More"}
                     </Button>
                   </div>
                 </TableCell>
@@ -461,16 +616,191 @@ export const ClientsTable = () => {
             )}
             {table.getRowModel().rows.length > 0
               ? table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="hover:bg-transparent">
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                  <React.Fragment key={row.id}>
+                    {editingRowId === row.original.id ? (
+                      <>
+                        {/* Edit Form Row */}
+                        <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
+                          <TableCell>
+                            <Input
+                              value={editFormData.firstName}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  firstName: e.target.value,
+                                })
+                              }
+                              placeholder="First Name"
+                              className={`bg-white border-[#3FA9A9] ${editFormErrors.firstName ? "border-red-500" : ""}`}
+                            />
+                            {editFormErrors.firstName && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.firstName}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={editFormData.lastName}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  lastName: e.target.value,
+                                })
+                              }
+                              placeholder="Last Name"
+                              className={`bg-white border-[#3FA9A9] ${editFormErrors.lastName ? "border-red-500" : ""}`}
+                            />
+                            {editFormErrors.lastName && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.lastName}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="email"
+                              value={editFormData.email}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  email: e.target.value,
+                                })
+                              }
+                              placeholder="Email"
+                              className={`bg-white border-[#3FA9A9] ${editFormErrors.email ? "border-red-500" : ""}`}
+                            />
+                            {editFormErrors.email && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.email}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={editFormData.dateOfBirth}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  dateOfBirth: e.target.value,
+                                })
+                              }
+                              placeholder="Date of Birth"
+                              className={`bg-white border-[#3FA9A9] ${editFormErrors.dateOfBirth ? "border-red-500" : ""}`}
+                            />
+                            {editFormErrors.dateOfBirth && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.dateOfBirth}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={editFormData.leaseStart}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  leaseStart: e.target.value,
+                                })
+                              }
+                              className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
+                            />
+                            {editFormErrors.leaseStart && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.leaseStart}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={editFormData.leaseEnd}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  leaseEnd: e.target.value,
+                                })
+                              }
+                              className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseEnd ? "border-red-500" : ""}`}
+                            />
+                            {editFormErrors.leaseEnd && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.leaseEnd}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {/* Intervention Worker Dropdown */}
+                            <select
+                              value={editFormData.workerId}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  workerId: e.target.value,
+                                })
+                              }
+                              className={`bg-white border-[#3FA9A9] px-2 py-1 rounded ${editFormErrors.workerId ? "border-red-500" : ""}`}
+                              disabled={isLoadingUsers}
+                            >
+                              <option value="">Select Worker</option>
+                              {workers.map((w: any) => (
+                                <option key={w.supabaseId} value={w.supabaseId}>
+                                  {w.name}
+                                </option>
+                              ))}
+                            </select>
+                            {editFormErrors.workerId && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.workerId}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {/* Empty cell for actions column */}
+                          </TableCell>
+                        </TableRow>
+                        {/* Edit Buttons Row */}
+                        <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
+                          <TableCell
+                            colSpan={columns.length}
+                            className="py-4 px-20"
+                          >
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={cancelEdit}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleEditSave}
+                                className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                                disabled={editClient.isPending}
+                              >
+                                {editClient.isPending ? "Saving..." : "Save"}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </>
+                    ) : (
+                      <TableRow className="hover:bg-transparent">
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))
               : !isAdding && (
                   <TableRow>
@@ -494,7 +824,9 @@ export const ClientsTable = () => {
           variant="outline"
           size="sm"
           onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
+          disabled={
+            !table.getCanPreviousPage() || editingRowId !== null || isAdding
+          }
         >
           Previous
         </Button>
@@ -502,7 +834,9 @@ export const ClientsTable = () => {
           variant="outline"
           size="sm"
           onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
+          disabled={
+            !table.getCanNextPage() || editingRowId !== null || isAdding
+          }
         >
           Next
         </Button>

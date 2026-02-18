@@ -136,9 +136,9 @@ export const ClientsTable = () => {
     leaseEnd: "",
     workerId: "",
   });
-  const [editFormErrors, setEditFormErrors] = React.useState<Record<string, string>>(
-    {},
-  );
+  const [editFormErrors, setEditFormErrors] = React.useState<
+    Record<string, string>
+  >({});
 
   const {
     data: clientList,
@@ -146,13 +146,13 @@ export const ClientsTable = () => {
     isError,
     refetch,
     isRefetching,
-  } = api.client.list?.useQuery 
-    ? api.client.list.useQuery() 
+  } = api.client.list?.useQuery
+    ? api.client.list.useQuery()
     : { data: [], isLoading: false, isError: true, refetch: undefined };
 
   const mappedClients = React.useMemo(
     () => (clientList ?? []).map(mapClient),
-    [clientList]
+    [clientList],
   );
 
   const prettyLabel = (col: string) => {
@@ -191,8 +191,11 @@ export const ClientsTable = () => {
 
   const { data: users, isLoading: isLoadingUsers } = api.users.list.useQuery();
   const workers = React.useMemo(
-    () => (users ?? []).filter((u: any) => u.role === "InterventionTeam" || u.role === "Admin" ),
-    [users]
+    () =>
+      (users ?? []).filter(
+        (u: any) => u.role === "InterventionTeam" || u.role === "Admin",
+      ),
+    [users],
   );
 
   const addClient = api.client.addClient.useMutation();
@@ -201,31 +204,36 @@ export const ClientsTable = () => {
 
   const handleSave = (saveAndAddMore: boolean) => {
     if (!validateForm()) return;
-    addClient.mutate({
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      dateOfBirth: new Date(formData.dateOfBirth),
-      leaseStart: new Date(formData.leaseStart),
-      leaseEnd: new Date(formData.leaseEnd),
-      workerId: formData.workerId,
-    }, {
-      onSuccess: () => {
-        refetch?.();
-        resetForm();
-        if (!saveAndAddMore) {
-          setIsAdding(false);
-        }
-        toast.success("Client added successfully!");
-        setTimeout(() => {
-          table.setPageIndex(table.getPageCount() - 1);
-        }, 10);
+    addClient.mutate(
+      {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        dateOfBirth: new Date(formData.dateOfBirth),
+        leaseStart: new Date(formData.leaseStart),
+        leaseEnd: new Date(formData.leaseEnd),
+        workerId: formData.workerId,
       },
-      onError: (error) => {
-        console.error("Error adding client:", error);
-        toast.error(error.message || "Failed to add client. Please try again.");
+      {
+        onSuccess: () => {
+          refetch?.();
+          resetForm();
+          if (!saveAndAddMore) {
+            setIsAdding(false);
+          }
+          toast.success("Client added successfully!");
+          setTimeout(() => {
+            table.setPageIndex(table.getPageCount() - 1);
+          }, 10);
+        },
+        onError: (error) => {
+          console.error("Error adding client:", error);
+          toast.error(
+            error.message || "Failed to add client. Please try again.",
+          );
+        },
       },
-    });
+    );
   };
 
   const handleCancel = () => {
@@ -234,16 +242,22 @@ export const ClientsTable = () => {
   };
 
   const startEdit = (client: Client) => {
-    if (isAdding) return; 
+    if (isAdding) return;
     setEditingRowId(client.id);
     setEditFormData({
       firstName: client.firstName,
       lastName: client.lastName,
       email: client.email,
-      dateOfBirth: client.dateOfBirth ? new Date(client.dateOfBirth).toISOString().split('T')[0] : "",
-      leaseStart: client.leaseStartDate ? new Date(client.leaseStartDate).toISOString().split('T')[0] : "",
-      leaseEnd: client.leaseEndDate ? new Date(client.leaseEndDate).toISOString().split('T')[0] : "",
-      workerId: client.workerId, 
+      dateOfBirth: client.dateOfBirth
+        ? new Date(client.dateOfBirth).toISOString().split("T")[0]
+        : "",
+      leaseStart: client.leaseStartDate
+        ? new Date(client.leaseStartDate).toISOString().split("T")[0]
+        : "",
+      leaseEnd: client.leaseEndDate
+        ? new Date(client.leaseEndDate).toISOString().split("T")[0]
+        : "",
+      workerId: client.workerId,
     });
     setEditFormErrors({});
   };
@@ -278,46 +292,60 @@ export const ClientsTable = () => {
 
   const handleEditSave = () => {
     if (!validateEditForm() || editingRowId === null) return;
-    editClient.mutate({
-      id: editingRowId,
-      firstName: editFormData.firstName,
-      lastName: editFormData.lastName,
-      email: editFormData.email,
-      dateOfBirth: new Date(editFormData.dateOfBirth),
-      leaseStart: new Date(editFormData.leaseStart),
-      leaseEnd: new Date(editFormData.leaseEnd),
-      workerId: editFormData.workerId,
-    }, {
-      onSuccess: () => {
-        refetch?.();
-        cancelEdit();
-        toast.success("Client updated successfully!");
+    editClient.mutate(
+      {
+        id: editingRowId,
+        firstName: editFormData.firstName,
+        lastName: editFormData.lastName,
+        email: editFormData.email,
+        dateOfBirth: new Date(editFormData.dateOfBirth),
+        leaseStart: new Date(editFormData.leaseStart),
+        leaseEnd: new Date(editFormData.leaseEnd),
+        workerId: editFormData.workerId,
       },
-      onError: (error) => {
-        console.error("Error updating client:", error);
-        toast.error(error.message || "Failed to update client. Please try again.");
+      {
+        onSuccess: () => {
+          refetch?.();
+          cancelEdit();
+          toast.success("Client updated successfully!");
+        },
+        onError: (error) => {
+          console.error("Error updating client:", error);
+          toast.error(
+            error.message || "Failed to update client. Please try again.",
+          );
+        },
       },
-    });
+    );
   };
 
   const handleDelete = (clientId: number) => {
-    if (window.confirm("Are you sure you want to delete this client? This action cannot be undone.")) {
-      deleteClient.mutate({ id: clientId }, {
-        onSuccess: () => {
-          refetch?.();
-          toast.success("Client deleted successfully!");
+    if (
+      window.confirm(
+        "Are you sure you want to delete this client? This action cannot be undone.",
+      )
+    ) {
+      deleteClient.mutate(
+        { id: clientId },
+        {
+          onSuccess: () => {
+            refetch?.();
+            toast.success("Client deleted successfully!");
+          },
+          onError: (error) => {
+            console.error("Error deleting client:", error);
+            toast.error(
+              error.message || "Failed to delete client. Please try again.",
+            );
+          },
         },
-        onError: (error) => {
-          console.error("Error deleting client:", error);
-          toast.error(error.message || "Failed to delete client. Please try again.");
-        },
-      });
+      );
     }
   };
 
   const columns = React.useMemo(
     () => createColumns(startEdit, handleDelete),
-    []
+    [],
   );
 
   const table = useReactTable<Client>({
@@ -340,7 +368,8 @@ export const ClientsTable = () => {
   });
 
   if (isLoading) return <div>Loading...</div>;
-  if (isError) return <div className="p-6 text-red-600">Error loading clients.</div>;
+  if (isError)
+    return <div className="p-6 text-red-600">Error loading clients.</div>;
 
   type FilterColumn = "firstName" | "lastName" | "email";
   return (
@@ -447,7 +476,9 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.firstName ? "border-red-500" : ""}`}
                   />
                   {formErrors.firstName && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.firstName}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.firstName}
+                    </p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -460,7 +491,9 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.lastName ? "border-red-500" : ""}`}
                   />
                   {formErrors.lastName && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.lastName}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.lastName}
+                    </p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -474,7 +507,9 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.email ? "border-red-500" : ""}`}
                   />
                   {formErrors.email && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.email}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.email}
+                    </p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -488,7 +523,9 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.dateOfBirth ? "border-red-500" : ""}`}
                   />
                   {formErrors.dateOfBirth && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.dateOfBirth}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.dateOfBirth}
+                    </p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -501,7 +538,9 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.leaseStart ? "border-red-500" : ""}`}
                   />
                   {formErrors.leaseStart && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.leaseStart}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.leaseStart}
+                    </p>
                   )}
                 </TableCell>
                 <TableCell>
@@ -514,14 +553,18 @@ export const ClientsTable = () => {
                     className={`bg-white border-[#3FA9A9] ${formErrors.leaseEnd ? "border-red-500" : ""}`}
                   />
                   {formErrors.leaseEnd && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.leaseEnd}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.leaseEnd}
+                    </p>
                   )}
                 </TableCell>
                 <TableCell>
                   {/* Intervention Worker Dropdown */}
                   <select
                     value={formData.workerId}
-                    onChange={e => setFormData({ ...formData, workerId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, workerId: e.target.value })
+                    }
                     className={`bg-white border-[#3FA9A9] px-2 py-1 rounded ${formErrors.workerId ? "border-red-500" : ""}`}
                     disabled={isLoadingUsers}
                   >
@@ -533,12 +576,12 @@ export const ClientsTable = () => {
                     ))}
                   </select>
                   {formErrors.workerId && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.workerId}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {formErrors.workerId}
+                    </p>
                   )}
                 </TableCell>
-                <TableCell>
-                  {/* Empty cell for actions column */}
-                </TableCell>
+                <TableCell>{/* Empty cell for actions column */}</TableCell>
               </TableRow>
             )}
             {/* Buttons Row */}
@@ -582,26 +625,36 @@ export const ClientsTable = () => {
                             <Input
                               value={editFormData.firstName}
                               onChange={(e) =>
-                                setEditFormData({ ...editFormData, firstName: e.target.value })
+                                setEditFormData({
+                                  ...editFormData,
+                                  firstName: e.target.value,
+                                })
                               }
                               placeholder="First Name"
                               className={`bg-white border-[#3FA9A9] ${editFormErrors.firstName ? "border-red-500" : ""}`}
                             />
                             {editFormErrors.firstName && (
-                              <p className="text-xs text-red-500 mt-1">{editFormErrors.firstName}</p>
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.firstName}
+                              </p>
                             )}
                           </TableCell>
                           <TableCell>
                             <Input
                               value={editFormData.lastName}
                               onChange={(e) =>
-                                setEditFormData({ ...editFormData, lastName: e.target.value })
+                                setEditFormData({
+                                  ...editFormData,
+                                  lastName: e.target.value,
+                                })
                               }
                               placeholder="Last Name"
                               className={`bg-white border-[#3FA9A9] ${editFormErrors.lastName ? "border-red-500" : ""}`}
                             />
                             {editFormErrors.lastName && (
-                              <p className="text-xs text-red-500 mt-1">{editFormErrors.lastName}</p>
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.lastName}
+                              </p>
                             )}
                           </TableCell>
                           <TableCell>
@@ -609,13 +662,18 @@ export const ClientsTable = () => {
                               type="email"
                               value={editFormData.email}
                               onChange={(e) =>
-                                setEditFormData({ ...editFormData, email: e.target.value })
+                                setEditFormData({
+                                  ...editFormData,
+                                  email: e.target.value,
+                                })
                               }
                               placeholder="Email"
                               className={`bg-white border-[#3FA9A9] ${editFormErrors.email ? "border-red-500" : ""}`}
                             />
                             {editFormErrors.email && (
-                              <p className="text-xs text-red-500 mt-1">{editFormErrors.email}</p>
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.email}
+                              </p>
                             )}
                           </TableCell>
                           <TableCell>
@@ -623,13 +681,18 @@ export const ClientsTable = () => {
                               type="date"
                               value={editFormData.dateOfBirth}
                               onChange={(e) =>
-                                setEditFormData({ ...editFormData, dateOfBirth: e.target.value })
+                                setEditFormData({
+                                  ...editFormData,
+                                  dateOfBirth: e.target.value,
+                                })
                               }
                               placeholder="Date of Birth"
                               className={`bg-white border-[#3FA9A9] ${editFormErrors.dateOfBirth ? "border-red-500" : ""}`}
                             />
                             {editFormErrors.dateOfBirth && (
-                              <p className="text-xs text-red-500 mt-1">{editFormErrors.dateOfBirth}</p>
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.dateOfBirth}
+                              </p>
                             )}
                           </TableCell>
                           <TableCell>
@@ -637,12 +700,17 @@ export const ClientsTable = () => {
                               type="date"
                               value={editFormData.leaseStart}
                               onChange={(e) =>
-                                setEditFormData({ ...editFormData, leaseStart: e.target.value })
+                                setEditFormData({
+                                  ...editFormData,
+                                  leaseStart: e.target.value,
+                                })
                               }
                               className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
                             />
                             {editFormErrors.leaseStart && (
-                              <p className="text-xs text-red-500 mt-1">{editFormErrors.leaseStart}</p>
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.leaseStart}
+                              </p>
                             )}
                           </TableCell>
                           <TableCell>
@@ -650,19 +718,29 @@ export const ClientsTable = () => {
                               type="date"
                               value={editFormData.leaseEnd}
                               onChange={(e) =>
-                                setEditFormData({ ...editFormData, leaseEnd: e.target.value })
+                                setEditFormData({
+                                  ...editFormData,
+                                  leaseEnd: e.target.value,
+                                })
                               }
                               className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseEnd ? "border-red-500" : ""}`}
                             />
                             {editFormErrors.leaseEnd && (
-                              <p className="text-xs text-red-500 mt-1">{editFormErrors.leaseEnd}</p>
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.leaseEnd}
+                              </p>
                             )}
                           </TableCell>
                           <TableCell>
                             {/* Intervention Worker Dropdown */}
                             <select
                               value={editFormData.workerId}
-                              onChange={e => setEditFormData({ ...editFormData, workerId: e.target.value })}
+                              onChange={(e) =>
+                                setEditFormData({
+                                  ...editFormData,
+                                  workerId: e.target.value,
+                                })
+                              }
                               className={`bg-white border-[#3FA9A9] px-2 py-1 rounded ${editFormErrors.workerId ? "border-red-500" : ""}`}
                               disabled={isLoadingUsers}
                             >
@@ -674,7 +752,9 @@ export const ClientsTable = () => {
                               ))}
                             </select>
                             {editFormErrors.workerId && (
-                              <p className="text-xs text-red-500 mt-1">{editFormErrors.workerId}</p>
+                              <p className="text-xs text-red-500 mt-1">
+                                {editFormErrors.workerId}
+                              </p>
                             )}
                           </TableCell>
                           <TableCell>
@@ -683,9 +763,16 @@ export const ClientsTable = () => {
                         </TableRow>
                         {/* Edit Buttons Row */}
                         <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                          <TableCell colSpan={columns.length} className="py-4 px-20">
+                          <TableCell
+                            colSpan={columns.length}
+                            className="py-4 px-20"
+                          >
                             <div className="flex gap-2 justify-end">
-                              <Button variant="outline" size="sm" onClick={cancelEdit}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={cancelEdit}
+                              >
                                 Cancel
                               </Button>
                               <Button
@@ -737,7 +824,9 @@ export const ClientsTable = () => {
           variant="outline"
           size="sm"
           onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage() || editingRowId !== null || isAdding}
+          disabled={
+            !table.getCanPreviousPage() || editingRowId !== null || isAdding
+          }
         >
           Previous
         </Button>
@@ -745,7 +834,9 @@ export const ClientsTable = () => {
           variant="outline"
           size="sm"
           onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage() || editingRowId !== null || isAdding}
+          disabled={
+            !table.getCanNextPage() || editingRowId !== null || isAdding
+          }
         >
           Next
         </Button>

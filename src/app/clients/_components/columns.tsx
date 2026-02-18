@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 
-
 export type BackendClient = {
   id: number;
   firstName: string;
@@ -57,7 +56,7 @@ export function mapClient(c: BackendClient): Client {
 
 export const createColumns = (
   onEdit: (client: Client) => void,
-  onDelete: (clientId: number) => void
+  onDelete: (clientId: number) => void,
 ): ColumnDef<Client>[] => [
   {
     accessorKey: "firstName",

@@ -1,19 +1,22 @@
 import { NextRequest } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import { routing } from "./i18n/routing";
 import { updateSession } from "@/utils/supabase/middleware";
 
+const intlMiddleware = createIntlMiddleware(routing);
+
 export async function proxy(request: NextRequest) {
-  return await updateSession(request);
+  const supabaseResponse = await updateSession(request);
+  if (supabaseResponse.status >= 300 && supabaseResponse.status < 400) {
+    return supabaseResponse;
+  }
+  const intlResponse = intlMiddleware(request);
+  supabaseResponse.cookies.getAll().forEach((cookie) => {
+    intlResponse.cookies.set(cookie.name, cookie.value, cookie);
+  });
+  return intlResponse;
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/((?!api|auth|_next|_vercel|.*\\..*).*)"],
 };

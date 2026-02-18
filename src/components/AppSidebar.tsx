@@ -1,6 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { createClient } from "@/utils/supabase/client";
 
 import {
@@ -27,11 +29,11 @@ import { SidebarFundPools } from "./sidebar-fund-pools";
 import { api } from "@/trpc/react";
 import Image from "next/image";
 
-const items = [
-  { title: "Dashboard", url: "/" },
-  { title: "Grants", url: "#" },
-  { title: "Expenses", url: "/expenses" },
-  { title: "Clients", url: "clients" },
+const navItems: { titleKey: "dashboard" | "grants" | "clients" | "expenses"; url: string }[] = [
+  { titleKey: "dashboard", url: "/" },
+  { titleKey: "grants", url: "#" },
+  { titleKey: "expenses", url: "/expenses" },
+  { titleKey: "clients", url: "/clients" },
 ];
 
 const fundingPools = [
@@ -41,8 +43,8 @@ const fundingPools = [
 ];
 
 export function AppSidebar() {
+  const t = useTranslations("Navigation");
   const router = useRouter();
-
   const supabase = createClient();
 
   const signOut = async () => {
@@ -102,10 +104,10 @@ export function AppSidebar() {
                 asChild
                 className="cursor-pointer flex items-center gap-2 px-3 py-1"
               >
-                <a href="/admin/users">
+                <Link href="/admin/users">
                   <UserRound size={16} />
                   <span>People &amp; Permissions</span>
-                </a>
+                </Link>
               </DropdownMenuItem>
 
               <div className="h-px bg-border mx-3 my-1" />
@@ -126,12 +128,12 @@ export function AppSidebar() {
           {/* NAVIGATION */}
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.titleKey}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <span>{item.title}</span>
-                    </a>
+                    <Link href={item.url === "#" ? "#" : item.url}>
+                      <span>{t(item.titleKey)}</span>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

@@ -21,6 +21,7 @@ export const fundPoolRouter = createTRPCRouter({
 
     return fundPools.map((pool) => ({
       ...pool,
+      order: pool.order,
       calculatedAmount: pool.fundAllocations.reduce(
         (sum, allocation) => sum + allocation.amount.toNumber(),
         0,

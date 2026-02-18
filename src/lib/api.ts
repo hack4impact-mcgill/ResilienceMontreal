@@ -1,5 +1,5 @@
-import { Client } from "../app/clients/_components/columns";
-import { Expense } from "../app/expenses/_components/columns";
+import { Client } from "@/app/[locale]/clients/_components/columns";
+import { Expense } from "@/app/[locale]/expenses/_components/columns";
 
 export async function fetchClients(): Promise<Client[]> {
   // simulate fetching data from an API with a delay

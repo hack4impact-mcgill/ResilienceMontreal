@@ -1,0 +1,23 @@
+{
+  "HomePage": {
+    "title": "Resilience Montreal",
+    "welcome": "Welcome",
+    "heading": "Home page",
+    "description": "This is the home page of the Resilience Montreal grant tracking application."
+  },
+  "Navigation": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "grants": "Grants",
+    "clients": "Clients",
+    "expenses": "Expenses"
+  },
+  "Common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "save": "Save",
+    "cancel": "Cancel",
+    "refresh": "Refresh",
+    "export": "Export"
+  }
+}

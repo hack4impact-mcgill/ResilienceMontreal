@@ -8,9 +8,21 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  if (pathname.startsWith("/api")) {
+  if (pathname.startsWith("/api") || pathname.startsWith("/auth")) {
     return NextResponse.next({ request });
   }
+
+  // Locale-aware paths: /en/..., /fr/...; first segment may be locale
+  const segment0 = pathname.split("/").filter(Boolean)[0];
+  const locale =
+    segment0 === "en" || segment0 === "fr" ? segment0 : "en";
+  const isLogin = pathname.includes("/login");
+  const isSignup = pathname.includes("/signup");
+  const isAuthRoute = pathname.includes("/auth");
+  const isErrorRoute = pathname.includes("/error");
+  const isClientsRoute = pathname.includes("/clients");
+  const isPublic =
+    isLogin || isSignup || isAuthRoute || isErrorRoute || isClientsRoute;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,26 +62,14 @@ export async function updateSession(request: NextRequest) {
   // } else {
   //   console.log("No user logged in");
   // }
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/signup") &&
-    !request.nextUrl.pathname.startsWith("/auth") &&
-    !request.nextUrl.pathname.startsWith("/error") &&
-    !request.nextUrl.pathname.startsWith("/clients") // revert back after table UI is modified
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = `/${locale}/login`;
     return NextResponse.redirect(url);
-  } else if (
-    user &&
-    (request.nextUrl.pathname.startsWith("/login") ||
-      request.nextUrl.pathname.startsWith("/signup"))
-  ) {
-    // Redirect to home page if user is logged in and tries to go to /login or /signup
+  }
+  if (user && (isLogin || isSignup)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = `/${locale}`;
     return NextResponse.redirect(url);
   }
 

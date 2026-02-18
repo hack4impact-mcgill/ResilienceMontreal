@@ -37,6 +37,7 @@ export type Client = {
   leaseStartDate: Date;
   leaseEndDate: Date;
   workerName: string;
+  workerId: string;
 };
 
 // Map backend client to frontend Client
@@ -50,10 +51,14 @@ export function mapClient(c: BackendClient): Client {
     leaseStartDate: c.leaseStart ? new Date(c.leaseStart) : new Date(0),
     leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(0),
     workerName: c.worker?.name ?? "",
+    workerId: c.worker?.supabaseId ?? "",
   };
 }
 
-export const columns: ColumnDef<Client>[] = [
+export const createColumns = (
+  onEdit: (client: Client) => void,
+  onDelete: (clientId: number) => void
+): ColumnDef<Client>[] => [
   {
     accessorKey: "firstName",
     header: "FIRST NAME",
@@ -115,7 +120,15 @@ export const columns: ColumnDef<Client>[] = [
             <DropdownMenuLabel>
               Actions for {client.firstName} {client.lastName}
             </DropdownMenuLabel>
-            <DropdownMenuItem>View client details</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit(client)}>
+              Edit client
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onDelete(client.id)}>
+              Delete client
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => alert("View details coming soon")}>
+              View details
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );

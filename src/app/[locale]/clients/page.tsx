@@ -28,7 +28,7 @@ export default async function ClientsPage() {
 
   await queryClient.prefetchQuery({
     queryKey: ["clients"],
-    queryFn: () => api.client.list.usePrefetchQuery(),
+    queryFn: () => api.clients.list.usePrefetchQuery(),
   });
 
   return (

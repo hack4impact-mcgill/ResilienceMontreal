@@ -146,7 +146,9 @@ export const grantRouter = createTRPCRouter({
 				} else {
 					// there is an existing single distribution
 					const dist = distributions[0];
-					const currentFundPool = await tx.fundPool.findUnique({ where: { id: dist.fundPoolId } });
+					const currentFundPoolId = dist.fundPoolId;
+					if (currentFundPoolId == null) throw new TRPCError({ code: "NOT_FOUND", message: "Fund pool not found" });
+					const currentFundPool = await tx.fundPool.findUnique({ where: { id: currentFundPoolId } });
 					if (!currentFundPool) throw new TRPCError({ code: "NOT_FOUND", message: "Fund pool not found" });
 
 					// if fundPoolId is changing, move funds between pools
@@ -213,7 +215,9 @@ export const grantRouter = createTRPCRouter({
 
 					const distributions = grant.distributions || [];
 					for (const d of distributions) {
-						const fundPool = await tx.fundPool.findUnique({ where: { id: d.fundPoolId } });
+						const fundPoolId = d.fundPoolId;
+						if (fundPoolId == null) throw new TRPCError({ code: "NOT_FOUND", message: "Fund pool not found" });
+						const fundPool = await tx.fundPool.findUnique({ where: { id: fundPoolId } });
 						if (!fundPool) throw new TRPCError({ code: "NOT_FOUND", message: "Fund pool not found" });
 
 						const available = new Prisma.Decimal(String(fundPool.amount));

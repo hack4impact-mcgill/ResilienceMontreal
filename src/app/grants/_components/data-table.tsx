@@ -107,13 +107,17 @@ export const GrantsTable = () => {
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     staleTime: 60_000,
-    enabled: Boolean(session?.user),
+    // grant.getAll is a public procedure on the server; remove session gating so
+    // the table can load consistently (no intermediate signed-out template).
+    enabled: true,
   });
 
   const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
-    enabled: Boolean(session?.user),
+    // fundPool.getFundPools requires auth on the server. When unauthenticated
+    // this will be undefined; keep the default behavior but don't gate the
+    // grants table itself on session presence.
   });
 
   const [addModalError, setAddModalError] = React.useState<string | null>(null);

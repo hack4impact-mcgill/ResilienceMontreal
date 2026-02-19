@@ -9,6 +9,12 @@ model Grant {
     endDate       DateTime?
     status        Status
     distributions   GrantDistribution[]
+
+    @@index([createdAt(sort: Desc)])
+    @@index([totalAmount])
+    @@index([endDate])
+    @@index([status])
+    @@index([title])
 }
 
 enum Status {

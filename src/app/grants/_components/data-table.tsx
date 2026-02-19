@@ -299,7 +299,6 @@ export const GrantsTable = () => {
         </Button>
       </div>
 
-      {/* Inline Add Grant form (replaces removed modal) */}
       {/* Inline add row will be rendered inside the table body to align under headers */}
 
       <div className="-mx-8">
@@ -507,7 +506,7 @@ export const GrantsTable = () => {
 
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.original.id}>
                   {row.getVisibleCells().map((cell) => {
                     // render actions column manually so we can inject delete handler
                     if (cell.column.id === "actions") {
@@ -530,13 +529,13 @@ export const GrantsTable = () => {
                                     const dbId = row.original.dbId;
                                     if (!dbId) {
                                       // can't delete a non-persisted mock row
-                                      setRowErrors((s) => ({ ...s, [row.id]: "Cannot delete unsaved grant" }));
+                                      setRowErrors((s) => ({ ...s, [row.original.id]: "Cannot delete unsaved grant" }));
                                       return;
                                     }
 
                                     previousSnapshotRef.current = localGrants.slice();
                                     // optimistic remove
-                                    setLocalGrants((prev) => prev.filter((r) => r.id !== row.id));
+                                    setLocalGrants((prev) => prev.filter((r) => r.id !== row.original.id));
 
                                     deleteMutation.mutate(
                                       { id: dbId },
@@ -544,7 +543,7 @@ export const GrantsTable = () => {
                                         onError: (err: any) => {
                                           // revert
                                           if (previousSnapshotRef.current) setLocalGrants(previousSnapshotRef.current);
-                                          setRowErrors((s) => ({ ...s, [row.id]: err?.message ?? "Failed to delete" }));
+                                          setRowErrors((s) => ({ ...s, [row.original.id]: err?.message ?? "Failed to delete" }));
                                         },
                                       }
                                     );
@@ -562,17 +561,17 @@ export const GrantsTable = () => {
                     // default rendering with inline edit support for editable columns
                     const editableColumns = ["organization", "category", "dateReceived", "toBeUsedBy", "email", "phoneNumber", "notes", "amount"];
                     if (editableColumns.includes(cell.column.id)) {
-                      const isEditing = editing?.rowId === row.id && editing?.columnId === cell.column.id;
+                      const isEditing = editing?.rowId === row.original.id && editing?.columnId === cell.column.id;
                       const display = flexRender(cell.column.columnDef.cell, cell.getContext());
 
                       return (
                         <TableCell
                           key={cell.id}
                           onDoubleClick={() => {
-                            setRowErrors((s) => ({ ...s, [row.id]: "" }));
+                            setRowErrors((s) => ({ ...s, [row.original.id]: "" }));
                             // for category, seed editor with the fundPoolId; otherwise use the existing cell value
                             setEditing({
-                              rowId: row.id,
+                              rowId: row.original.id,
                               columnId: cell.column.id,
                               value: cell.column.id === "category" ? (row.original.fundPoolId ?? "") : row.original[cell.column.id as keyof Grant],
                             });
@@ -633,7 +632,6 @@ export const GrantsTable = () => {
                                   const prev = localGrants.slice();
                                   previousSnapshotRef.current = prev;
 
-                                  // optimistic update
                                   if (columnId === "category") {
                                     const chosenPoolId = Number(value);
                                     const pool = fundPools?.find((p: any) => p.id === chosenPoolId);
@@ -652,7 +650,7 @@ export const GrantsTable = () => {
                                     setEditing(null);
                                     return;
                                   }
-
+                                  
                                   const payload: any = { id: dbId };
                                   // map columnId to server fields
                                   if (columnId === "organization") payload.organization = value;
@@ -707,7 +705,7 @@ export const GrantsTable = () => {
                           ) : (
                             <div>
                               {display}
-                              {rowErrors[row.id] ? <div className="text-red-600 text-sm">{rowErrors[row.id]}</div> : null}
+                              {rowErrors[row.original.id] ? <div className="text-red-600 text-sm">{rowErrors[row.original.id]}</div> : null}
                             </div>
                           )}
                         </TableCell>

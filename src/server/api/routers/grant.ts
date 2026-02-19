@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { Prisma } from "@prisma/client";
-import { createGrantSchema, updateGrantSchema } from "~/lib/schemas/grant";
+import { createGrantSchema, updateGrantSchema, grantQuerySchema } from "~/lib/schemas/grant";
 import { TRPCError } from "@trpc/server";
 
 const grantInclude = {
@@ -29,14 +29,91 @@ export const grantRouter = createTRPCRouter({
       return newGrant;
     }),
 
-  // Endpoint to fetch all grants
-  // Example: GET http://localhost:3000/api/trpc/grant.getGrants?input={}
-  getGrants: protectedProcedure.query(async ({ ctx }) => {
-    const grants = await ctx.db.grant.findMany({
-      include: { ...grantInclude },
-    });
-    return grants;
-  }),
+  // Endpoint to fetch grants with filtering, sorting, and pagination
+  // Example: GET http://localhost:3000/api/trpc/grant.getGrants?input={"json":{"page":1,"limit":10,"sortBy":"createdAt","sortOrder":"desc"}}
+  getGrants: protectedProcedure
+    .input(grantQuerySchema.optional())
+    .query(async ({ ctx, input }) => {
+      const {
+        page = 1,
+        limit = 10,
+        sortBy = "createdAt",
+        sortOrder = "desc",
+        title,
+        minAmount,
+        maxAmount,
+        startDate,
+        endDate,
+        status,
+      } = input ?? {};
+
+      const where: Prisma.GrantWhereInput = {};
+
+      if (title) {
+        where.title = {
+          contains: title,
+          mode: "insensitive",
+        };
+      }
+
+      if (minAmount !== undefined || maxAmount !== undefined) {
+        where.totalAmount = {};
+        if (minAmount !== undefined) {
+          where.totalAmount.gte = new Prisma.Decimal(minAmount);
+        }
+        if (maxAmount !== undefined) {
+          where.totalAmount.lte = new Prisma.Decimal(maxAmount);
+        }
+      }
+
+      if (startDate !== undefined || endDate !== undefined) {
+        where.endDate = {};
+        if (startDate !== undefined) {
+          where.endDate.gte = startDate;
+        }
+        if (endDate !== undefined) {
+          where.endDate.lte = endDate;
+        }
+      }
+
+      if (status) {
+        where.status = status;
+      }
+
+      const skip = (page - 1) * limit;
+
+      const orderBy: Prisma.GrantOrderByWithRelationInput = {
+        [sortBy]: sortOrder,
+      };
+
+      const [grants, totalCount] = await Promise.all([
+        ctx.db.grant.findMany({
+          where,
+          orderBy,
+          skip,
+          take: limit,
+          include: { ...grantInclude },
+        }),
+        ctx.db.grant.count({ where }),
+      ]);
+
+      const totalPages = Math.ceil(totalCount / limit);
+      const hasNextPage = page < totalPages;
+      const hasPreviousPage = page > 1;
+
+      return {
+        grants,
+        pagination: {
+          currentPage: page,
+          pageSize: limit,
+          totalCount,
+          totalPages,
+          hasNextPage,
+          hasPreviousPage,
+          returnedCount: grants.length,
+        },
+      };
+    }),
 
   // Endpoint to fetch a grant by ID
   // Example: GET http://localhost:3000/api/trpc/grant.getGrantById?batch=1&input={"0":{"json": {"id": 1}}}

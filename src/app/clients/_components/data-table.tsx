@@ -146,8 +146,8 @@ export const ClientsTable = () => {
     isError,
     refetch,
     isRefetching,
-  } = api.client.list?.useQuery
-    ? api.client.list.useQuery()
+  } = api.clients.list?.useQuery
+    ? api.clients.list.useQuery()
     : { data: [], isLoading: false, isError: true, refetch: undefined };
 
   const mappedClients = React.useMemo(
@@ -198,9 +198,9 @@ export const ClientsTable = () => {
     [users],
   );
 
-  const addClient = api.client.addClient.useMutation();
-  const editClient = api.client.editClient.useMutation();
-  const deleteClient = api.client.deleteClient.useMutation();
+  const addClient = api.clients.addClient.useMutation();
+  const editClient = api.clients.editClient.useMutation();
+  const deleteClient = api.clients.deleteClient.useMutation();
 
   const handleSave = (saveAndAddMore: boolean) => {
     if (!validateForm()) return;

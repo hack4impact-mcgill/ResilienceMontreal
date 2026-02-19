@@ -55,7 +55,6 @@ export interface GrantQueryParams {
   status?: "PENDING" | "APPROVED";
 }
 
-
 // ex:
 // const queryString = buildGrantsQueryString({
 //   page: 1,
@@ -68,12 +67,12 @@ export interface GrantQueryParams {
 // const response = await fetch(`/api/grants?${queryString}`);
 export function buildGrantsQueryString(params: GrantQueryParams): string {
   const searchParams = new URLSearchParams();
-  
+
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
       searchParams.append(key, String(value));
     }
   });
-  
+
   return searchParams.toString();
 }

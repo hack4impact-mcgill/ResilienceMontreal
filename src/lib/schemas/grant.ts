@@ -31,10 +31,12 @@ export const updateGrantSchema = z
 export const grantQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(10),
-  
-  sortBy: z.enum(["createdAt", "totalAmount", "endDate", "title"]).default("createdAt"),
+
+  sortBy: z
+    .enum(["createdAt", "totalAmount", "endDate", "title"])
+    .default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
-  
+
   title: z.string().optional(),
   minAmount: z.coerce.number().positive().optional(),
   maxAmount: z.coerce.number().positive().optional(),

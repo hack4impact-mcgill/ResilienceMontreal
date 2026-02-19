@@ -16,9 +16,11 @@ interface UseGrantsReturn {
 
 export function useGrants(options: UseGrantsOptions = {}): UseGrantsReturn {
   const { enabled = true, ...queryParams } = options;
-  
+
   const [grants, setGrants] = useState<Grant[]>([]);
-  const [pagination, setPagination] = useState<GrantsResponse["pagination"] | null>(null);
+  const [pagination, setPagination] = useState<
+    GrantsResponse["pagination"] | null
+  >(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,9 +33,9 @@ export function useGrants(options: UseGrantsOptions = {}): UseGrantsReturn {
     try {
       const queryString = buildGrantsQueryString(queryParams);
       const url = `/api/grants${queryString ? `?${queryString}` : ""}`;
-      
+
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to fetch grants");

@@ -45,11 +45,11 @@ export async function POST(request: Request) {
   }
 }
 
-// Get all grants with filtering and stuff 
+// Get all grants with filtering and stuff
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    
+
     const queryParams = {
       page: searchParams.get("page"),
       limit: searchParams.get("limit"),

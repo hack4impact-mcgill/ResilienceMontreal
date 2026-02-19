@@ -53,7 +53,11 @@ export function AppSidebar() {
     enabled: Boolean(session?.user),
   });
 
-  const totalAvailable = fundPools?.reduce((sum: number, p: any) => sum + (Number(p.amount ?? 0) || 0), 0) ?? 0;
+  const totalAvailable =
+    fundPools?.reduce(
+      (sum: number, p: any) => sum + (Number(p.amount ?? 0) || 0),
+      0,
+    ) ?? 0;
 
   return (
     <Sidebar>
@@ -129,21 +133,21 @@ export function AppSidebar() {
 
           {/* NAVIGATION */}
           <SidebarGroupContent>
-              <SidebarMenu>
-                {items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <a href={item.url}>
-                        <span>{item.title}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <a href={item.url}>
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-          <SidebarFundPools />
+        <SidebarFundPools />
       </SidebarContent>
 
       {/* FOOTER */}

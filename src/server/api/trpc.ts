@@ -100,5 +100,5 @@ export const interventionTeamProcedure = protectedProcedure.use(
         userRole: user.role,
       },
     });
-  }
+  },
 );

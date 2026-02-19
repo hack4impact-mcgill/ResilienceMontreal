@@ -91,18 +91,27 @@ export const GrantsTable = () => {
   const [localGrants, setLocalGrants] = React.useState<Grant[]>([]);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const [filterColumn, setFilterColumn] = React.useState<"organization" | "category" | "email">("organization");
+  const [filterColumn, setFilterColumn] = React.useState<
+    "organization" | "category" | "email"
+  >("organization");
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
   const [addModalOpen, setAddModalOpen] = React.useState(false);
 
   const utils = api.useContext();
   const { data: session } = api.auth.getSession.useQuery();
-  const { data: dbGrants, isLoading, isError } = api.grant.getAll.useQuery(undefined, {
+  const {
+    data: dbGrants,
+    isLoading,
+    isError,
+  } = api.grant.getAll.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -131,7 +140,9 @@ export const GrantsTable = () => {
   const [phoneField, setPhoneField] = React.useState("");
   const [notesField, setNotesField] = React.useState("");
   const [amountField, setAmountField] = React.useState("");
-  const [selectedPoolId, setSelectedPoolId] = React.useState<number | undefined>(undefined);
+  const [selectedPoolId, setSelectedPoolId] = React.useState<
+    number | undefined
+  >(undefined);
 
   const resetInlineForm = () => {
     setOrgField("");
@@ -147,7 +158,12 @@ export const GrantsTable = () => {
 
   // default the selected pool to the first available pool when opening the inline add form
   React.useEffect(() => {
-    if (addModalOpen && fundPools && fundPools.length > 0 && selectedPoolId === undefined) {
+    if (
+      addModalOpen &&
+      fundPools &&
+      fundPools.length > 0 &&
+      selectedPoolId === undefined
+    ) {
       setSelectedPoolId(fundPools[0].id);
       setCategoryField(fundPools[0].category ?? "");
     }
@@ -176,7 +192,11 @@ export const GrantsTable = () => {
   });
 
   const [rowErrors, setRowErrors] = React.useState<Record<string, string>>({});
-  const [editing, setEditing] = React.useState<{ rowId: string; columnId: string; value: any } | null>(null);
+  const [editing, setEditing] = React.useState<{
+    rowId: string;
+    columnId: string;
+    value: any;
+  } | null>(null);
   const previousSnapshotRef = React.useRef<Grant[] | null>(null);
   React.useEffect(() => {
     if (!dbGrants) return;
@@ -195,8 +215,12 @@ export const GrantsTable = () => {
         fundPoolId: g.distributions?.[0]?.fundPool?.id ?? undefined,
         organization: g.title,
         category: meta.category ?? "",
-        dateReceived: meta.dateReceived ? new Date(meta.dateReceived) : new Date(g.createdAt),
-        toBeUsedBy: meta.toBeUsedBy ? new Date(meta.toBeUsedBy) : new Date(g.endDate || g.createdAt),
+        dateReceived: meta.dateReceived
+          ? new Date(meta.dateReceived)
+          : new Date(g.createdAt),
+        toBeUsedBy: meta.toBeUsedBy
+          ? new Date(meta.toBeUsedBy)
+          : new Date(g.endDate || g.createdAt),
         email: meta.email ?? "",
         phoneNumber: meta.phoneNumber ?? "",
         notes: meta.notes ?? "",
@@ -254,7 +278,9 @@ export const GrantsTable = () => {
           </div>
           <div className="flex flex-col">
             <span className="text-red-600 font-bold text-2xl">X days</span>
-            <span className="text-black text-sm -mt-1">until next grant is due</span>
+            <span className="text-black text-sm -mt-1">
+              until next grant is due
+            </span>
           </div>
         </div>
       </div>
@@ -263,15 +289,24 @@ export const GrantsTable = () => {
       <div className="border-t border-border -mx-8 px-8 flex items-center py-4">
         <Input
           placeholder={`Search by ${prettyLabel(filterColumn)}...`}
-          value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
-          onChange={(e) => table.getColumn(filterColumn)?.setFilterValue(e.target.value)}
+          value={
+            (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""
+          }
+          onChange={(e) =>
+            table.getColumn(filterColumn)?.setFilterValue(e.target.value)
+          }
           className="max-w-sm"
         />
 
         <DropdownMenu open={filterMenuOpen} onOpenChange={setFilterMenuOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="ml-2 flex items-center gap-2 px-2 py-1 h-auto hover:bg-transparent">
-              <ListFilter className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`} />
+            <Button
+              variant="ghost"
+              className="ml-2 flex items-center gap-2 px-2 py-1 h-auto hover:bg-transparent"
+            >
+              <ListFilter
+                className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`}
+              />
               <span>Filter</span>
             </Button>
           </DropdownMenuTrigger>
@@ -287,18 +322,31 @@ export const GrantsTable = () => {
                 }}
                 className="flex items-center gap-2"
               >
-                {filterColumn === col ? <Check className="h-4 w-4" /> : <span className="h-4 w-4 opacity-0" />}
+                {filterColumn === col ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <span className="h-4 w-4 opacity-0" />
+                )}
                 {prettyLabel(col)}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="ghost" className="ml-auto text-black hover:bg-transparent" onClick={() => exportToCSV(localGrants)}>
+        <Button
+          variant="ghost"
+          className="ml-auto text-black hover:bg-transparent"
+          onClick={() => exportToCSV(localGrants)}
+        >
           Export
         </Button>
 
-        <Button variant="outline" className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]" onClick={() => setAddModalOpen(true)} disabled={!session?.user}>
+        <Button
+          variant="outline"
+          className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+          onClick={() => setAddModalOpen(true)}
+          disabled={!session?.user}
+        >
           <CirclePlus /> Add Grant
         </Button>
       </div>
@@ -311,11 +359,14 @@ export const GrantsTable = () => {
             {table.getHeaderGroups().map((group) => (
               <TableRow key={group.id}>
                 {group.headers.map((header) => (
-                  <TableHead key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
+                  <TableHead key={header.id}>
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
+                  </TableHead>
                 ))}
               </TableRow>
-
-              
             ))}
           </TableHeader>
 
@@ -323,188 +374,206 @@ export const GrantsTable = () => {
             {addModalOpen ? (
               // render inline form as the first row so inputs align under headers
               <>
-              <TableRow className="bg-blue-50 hover:!bg-blue-50">
-                <TableCell className="bg-blue-50 p-1">
-                  <Input
-                    placeholder="organization name"
-                    value={orgField}
-                    onChange={(e) => setOrgField(e.target.value)}
-                    className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
-                  />
-                </TableCell>
-                <TableCell className="bg-blue-50 p-1">
-                  {fundPools && fundPools.length > 0 ? (
-                    <select
-                      value={selectedPoolId ?? (fundPools?.[0]?.id ?? "")}
-                      onChange={(e) => {
-                        const id = Number(e.target.value);
-                        setSelectedPoolId(Number.isNaN(id) ? undefined : id);
-                        const pool = fundPools.find((p: any) => p.id === id);
-                        setCategoryField(pool?.category ?? "");
-                      }}
-                      className="w-full h-7 bg-white px-2"
-                    >
-                      {fundPools.map((p: any) => (
-                        <option key={p.id} value={p.id}>
-                          {p.category}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
+                <TableRow className="bg-blue-50 hover:!bg-blue-50">
+                  <TableCell className="bg-blue-50 p-1">
                     <Input
-                      placeholder="category"
-                      value={categoryField}
-                      onChange={(e) => setCategoryField(e.target.value)}
+                      placeholder="organization name"
+                      value={orgField}
+                      onChange={(e) => setOrgField(e.target.value)}
                       className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
                     />
-                  )}
-                </TableCell>
-                <TableCell className="bg-blue-50 p-1">
-                  <Input
-                    type="date"
-                    placeholder="date received"
-                    value={dateReceivedField}
-                    onChange={(e) => setDateReceivedField(e.target.value)}
-                    className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
-                  />
-                </TableCell>
-                <TableCell className="bg-blue-50 p-1">
-                  <Input
-                    type="date"
-                    placeholder="to be used by"
-                    value={toBeUsedByField}
-                    onChange={(e) => setToBeUsedByField(e.target.value)}
-                    className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
-                  />
-                </TableCell>
-                <TableCell className="bg-blue-50 p-1">
-                  <Input
-                    placeholder="email"
-                    value={emailField}
-                    onChange={(e) => setEmailField(e.target.value)}
-                    className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
-                  />
-                </TableCell>
-                <TableCell className="bg-blue-50 p-1">
-                  <Input
-                    placeholder="phone number"
-                    value={phoneField}
-                    onChange={(e) => setPhoneField(e.target.value)}
-                    className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
-                  />
-                </TableCell>
-                <TableCell className="bg-blue-50 p-1">
-                  <Input
-                    placeholder="notes"
-                    value={notesField}
-                    onChange={(e) => setNotesField(e.target.value)}
-                    className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
-                  />
-                </TableCell>
-                <TableCell className="bg-blue-50 p-1">
-                  <Input
-                    type="number"
-                    placeholder="amount"
-                    value={amountField}
-                    onChange={(e) => setAmountField(e.target.value)}
-                    className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
-                  />
-                </TableCell>
-                {/* actions column placeholder to keep columns aligned and avoid white gap */}
-                <TableCell className="bg-blue-50 p-1" />
-              </TableRow>
-
-              <TableRow className="bg-blue-50 hover:!bg-blue-50">
-                <TableCell colSpan={columns.length} className="bg-blue-50 p-1">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1" />
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        className="border-[#45BAB8] text-[#45BAB8] bg-transparent hover:bg-transparent h-7 px-2"
-                        onClick={() => {
-                          resetInlineForm();
-                          setAddModalOpen(false);
-                          setAddModalError(null);
+                  </TableCell>
+                  <TableCell className="bg-blue-50 p-1">
+                    {fundPools && fundPools.length > 0 ? (
+                      <select
+                        value={selectedPoolId ?? fundPools?.[0]?.id ?? ""}
+                        onChange={(e) => {
+                          const id = Number(e.target.value);
+                          setSelectedPoolId(Number.isNaN(id) ? undefined : id);
+                          const pool = fundPools.find((p: any) => p.id === id);
+                          setCategoryField(pool?.category ?? "");
                         }}
+                        className="w-full h-7 bg-white px-2"
                       >
-                        Cancel
-                      </Button>
+                        {fundPools.map((p: any) => (
+                          <option key={p.id} value={p.id}>
+                            {p.category}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        placeholder="category"
+                        value={categoryField}
+                        onChange={(e) => setCategoryField(e.target.value)}
+                        className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell className="bg-blue-50 p-1">
+                    <Input
+                      type="date"
+                      placeholder="date received"
+                      value={dateReceivedField}
+                      onChange={(e) => setDateReceivedField(e.target.value)}
+                      className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                    />
+                  </TableCell>
+                  <TableCell className="bg-blue-50 p-1">
+                    <Input
+                      type="date"
+                      placeholder="to be used by"
+                      value={toBeUsedByField}
+                      onChange={(e) => setToBeUsedByField(e.target.value)}
+                      className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                    />
+                  </TableCell>
+                  <TableCell className="bg-blue-50 p-1">
+                    <Input
+                      placeholder="email"
+                      value={emailField}
+                      onChange={(e) => setEmailField(e.target.value)}
+                      className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                    />
+                  </TableCell>
+                  <TableCell className="bg-blue-50 p-1">
+                    <Input
+                      placeholder="phone number"
+                      value={phoneField}
+                      onChange={(e) => setPhoneField(e.target.value)}
+                      className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                    />
+                  </TableCell>
+                  <TableCell className="bg-blue-50 p-1">
+                    <Input
+                      placeholder="notes"
+                      value={notesField}
+                      onChange={(e) => setNotesField(e.target.value)}
+                      className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                    />
+                  </TableCell>
+                  <TableCell className="bg-blue-50 p-1">
+                    <Input
+                      type="number"
+                      placeholder="amount"
+                      value={amountField}
+                      onChange={(e) => setAmountField(e.target.value)}
+                      className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                    />
+                  </TableCell>
+                  {/* actions column placeholder to keep columns aligned and avoid white gap */}
+                  <TableCell className="bg-blue-50 p-1" />
+                </TableRow>
 
-                      <Button className="bg-[#45BAB8] text-white hover:bg-[#45BAB8] h-7 px-2" onClick={async () => {
-                        setAddModalError(null);
-                        if (!session?.user) {
-                          setAddModalError("Please sign in to create grants");
-                          return;
-                        }
+                <TableRow className="bg-blue-50 hover:!bg-blue-50">
+                  <TableCell
+                    colSpan={columns.length}
+                    className="bg-blue-50 p-1"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1" />
 
-                        const poolId = selectedPoolId ?? fundPools?.[0]?.id;
-                        if (!poolId) {
-                          setAddModalError("Fund pool must be selected");
-                          return;
-                        }
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          className="border-[#45BAB8] text-[#45BAB8] bg-transparent hover:bg-transparent h-7 px-2"
+                          onClick={() => {
+                            resetInlineForm();
+                            setAddModalOpen(false);
+                            setAddModalError(null);
+                          }}
+                        >
+                          Cancel
+                        </Button>
 
-                        try {
-                          await createMutation.mutateAsync({
-                            organization: orgField,
-                            category: categoryField,
-                            dateReceived: dateReceivedField || undefined,
-                            toBeUsedBy: toBeUsedByField || undefined,
-                            email: emailField || undefined,
-                            phoneNumber: phoneField || undefined,
-                            notes: notesField || undefined,
-                            amount: Number(amountField) || 0,
-                            fundPoolId: poolId,
-                          });
-                          resetInlineForm();
-                          setAddModalOpen(false);
-                        } catch (e: any) {
-                          setAddModalError(e?.message ?? "Error creating grant");
-                        }
-                      }}>
-                        Save
-                      </Button>
+                        <Button
+                          className="bg-[#45BAB8] text-white hover:bg-[#45BAB8] h-7 px-2"
+                          onClick={async () => {
+                            setAddModalError(null);
+                            if (!session?.user) {
+                              setAddModalError(
+                                "Please sign in to create grants",
+                              );
+                              return;
+                            }
 
-                      <Button className="bg-[#45BAB8] text-white hover:bg-[#45BAB8] h-7 px-2" onClick={async () => {
-                        setAddModalError(null);
-                        if (!session?.user) {
-                          setAddModalError("Please sign in to create grants");
-                          return;
-                        }
+                            const poolId = selectedPoolId ?? fundPools?.[0]?.id;
+                            if (!poolId) {
+                              setAddModalError("Fund pool must be selected");
+                              return;
+                            }
 
-                        const poolId = selectedPoolId ?? fundPools?.[0]?.id;
-                        if (!poolId) {
-                          setAddModalError("Fund pool must be selected");
-                          return;
-                        }
+                            try {
+                              await createMutation.mutateAsync({
+                                organization: orgField,
+                                category: categoryField,
+                                dateReceived: dateReceivedField || undefined,
+                                toBeUsedBy: toBeUsedByField || undefined,
+                                email: emailField || undefined,
+                                phoneNumber: phoneField || undefined,
+                                notes: notesField || undefined,
+                                amount: Number(amountField) || 0,
+                                fundPoolId: poolId,
+                              });
+                              resetInlineForm();
+                              setAddModalOpen(false);
+                            } catch (e: any) {
+                              setAddModalError(
+                                e?.message ?? "Error creating grant",
+                              );
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
 
-                        try {
-                          await createMutation.mutateAsync({
-                            organization: orgField,
-                            category: categoryField,
-                            dateReceived: dateReceivedField || undefined,
-                            toBeUsedBy: toBeUsedByField || undefined,
-                            email: emailField || undefined,
-                            phoneNumber: phoneField || undefined,
-                            notes: notesField || undefined,
-                            amount: Number(amountField) || 0,
-                            fundPoolId: poolId,
-                          });
-                          // keep the form open for another entry
-                          resetInlineForm();
-                        } catch (e: any) {
-                          setAddModalError(e?.message ?? "Error creating grant");
-                        }
-                      }}>
-                        Save and Add More
-                      </Button>
+                        <Button
+                          className="bg-[#45BAB8] text-white hover:bg-[#45BAB8] h-7 px-2"
+                          onClick={async () => {
+                            setAddModalError(null);
+                            if (!session?.user) {
+                              setAddModalError(
+                                "Please sign in to create grants",
+                              );
+                              return;
+                            }
+
+                            const poolId = selectedPoolId ?? fundPools?.[0]?.id;
+                            if (!poolId) {
+                              setAddModalError("Fund pool must be selected");
+                              return;
+                            }
+
+                            try {
+                              await createMutation.mutateAsync({
+                                organization: orgField,
+                                category: categoryField,
+                                dateReceived: dateReceivedField || undefined,
+                                toBeUsedBy: toBeUsedByField || undefined,
+                                email: emailField || undefined,
+                                phoneNumber: phoneField || undefined,
+                                notes: notesField || undefined,
+                                amount: Number(amountField) || 0,
+                                fundPoolId: poolId,
+                              });
+                              // keep the form open for another entry
+                              resetInlineForm();
+                            } catch (e: any) {
+                              setAddModalError(
+                                e?.message ?? "Error creating grant",
+                              );
+                            }
+                          }}
+                        >
+                          Save and Add More
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  {addModalError ? <div className="text-red-600 mt-2">{addModalError}</div> : null}
-                </TableCell>
-              </TableRow>
-
+                    {addModalError ? (
+                      <div className="text-red-600 mt-2">{addModalError}</div>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
               </>
             ) : null}
 
@@ -526,30 +595,49 @@ export const GrantsTable = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions for {row.original.organization}</DropdownMenuLabel>
+                                <DropdownMenuLabel>
+                                  Actions for {row.original.organization}
+                                </DropdownMenuLabel>
                                 <DropdownMenuItem
                                   onClick={() => {
                                     // delete: optimistic UI handled by invalidation; show inline error on failure
                                     const dbId = row.original.dbId;
                                     if (!dbId) {
                                       // can't delete a non-persisted mock row
-                                      setRowErrors((s) => ({ ...s, [row.original.id]: "Cannot delete unsaved grant" }));
+                                      setRowErrors((s) => ({
+                                        ...s,
+                                        [row.original.id]:
+                                          "Cannot delete unsaved grant",
+                                      }));
                                       return;
                                     }
 
-                                    previousSnapshotRef.current = localGrants.slice();
+                                    previousSnapshotRef.current =
+                                      localGrants.slice();
                                     // optimistic remove
-                                    setLocalGrants((prev) => prev.filter((r) => r.id !== row.original.id));
+                                    setLocalGrants((prev) =>
+                                      prev.filter(
+                                        (r) => r.id !== row.original.id,
+                                      ),
+                                    );
 
                                     deleteMutation.mutate(
                                       { id: dbId },
                                       {
                                         onError: (err: any) => {
                                           // revert
-                                          if (previousSnapshotRef.current) setLocalGrants(previousSnapshotRef.current);
-                                          setRowErrors((s) => ({ ...s, [row.original.id]: err?.message ?? "Failed to delete" }));
+                                          if (previousSnapshotRef.current)
+                                            setLocalGrants(
+                                              previousSnapshotRef.current,
+                                            );
+                                          setRowErrors((s) => ({
+                                            ...s,
+                                            [row.original.id]:
+                                              err?.message ??
+                                              "Failed to delete",
+                                          }));
                                         },
-                                      }
+                                      },
                                     );
                                   }}
                                 >
@@ -563,21 +651,41 @@ export const GrantsTable = () => {
                     }
 
                     // default rendering with inline edit support for editable columns
-                    const editableColumns = ["organization", "category", "dateReceived", "toBeUsedBy", "email", "phoneNumber", "notes", "amount"];
+                    const editableColumns = [
+                      "organization",
+                      "category",
+                      "dateReceived",
+                      "toBeUsedBy",
+                      "email",
+                      "phoneNumber",
+                      "notes",
+                      "amount",
+                    ];
                     if (editableColumns.includes(cell.column.id)) {
-                      const isEditing = editing?.rowId === row.original.id && editing?.columnId === cell.column.id;
-                      const display = flexRender(cell.column.columnDef.cell, cell.getContext());
+                      const isEditing =
+                        editing?.rowId === row.original.id &&
+                        editing?.columnId === cell.column.id;
+                      const display = flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      );
 
                       return (
                         <TableCell
                           key={cell.id}
                           onDoubleClick={() => {
-                            setRowErrors((s) => ({ ...s, [row.original.id]: "" }));
+                            setRowErrors((s) => ({
+                              ...s,
+                              [row.original.id]: "",
+                            }));
                             // for category, seed editor with the fundPoolId; otherwise use the existing cell value
                             setEditing({
                               rowId: row.original.id,
                               columnId: cell.column.id,
-                              value: cell.column.id === "category" ? (row.original.fundPoolId ?? "") : row.original[cell.column.id as keyof Grant],
+                              value:
+                                cell.column.id === "category"
+                                  ? (row.original.fundPoolId ?? "")
+                                  : row.original[cell.column.id as keyof Grant],
                             });
                           }}
                         >
@@ -586,27 +694,63 @@ export const GrantsTable = () => {
                               {cell.column.id === "notes" ? (
                                 <textarea
                                   value={editing.value ?? ""}
-                                  onChange={(e) => setEditing((p) => p && { ...p, value: e.target.value })}
+                                  onChange={(e) =>
+                                    setEditing(
+                                      (p) =>
+                                        p && { ...p, value: e.target.value },
+                                    )
+                                  }
                                   className="w-full h-20 p-2 border rounded"
                                 />
                               ) : cell.column.id === "amount" ? (
                                 <Input
                                   type="number"
                                   value={editing.value ?? 0}
-                                  onChange={(e) => setEditing((p) => p && { ...p, value: Number(e.target.value) })}
+                                  onChange={(e) =>
+                                    setEditing(
+                                      (p) =>
+                                        p && {
+                                          ...p,
+                                          value: Number(e.target.value),
+                                        },
+                                    )
+                                  }
                                   className="w-28"
                                 />
-                              ) : cell.column.id === "dateReceived" || cell.column.id === "toBeUsedBy" ? (
+                              ) : cell.column.id === "dateReceived" ||
+                                cell.column.id === "toBeUsedBy" ? (
                                 <Input
                                   type="date"
-                                  value={editing.value ? new Date(editing.value).toISOString().slice(0, 10) : ""}
-                                  onChange={(e) => setEditing((p) => p && { ...p, value: new Date(e.target.value) })}
+                                  value={
+                                    editing.value
+                                      ? new Date(editing.value)
+                                          .toISOString()
+                                          .slice(0, 10)
+                                      : ""
+                                  }
+                                  onChange={(e) =>
+                                    setEditing(
+                                      (p) =>
+                                        p && {
+                                          ...p,
+                                          value: new Date(e.target.value),
+                                        },
+                                    )
+                                  }
                                 />
                               ) : cell.column.id === "category" ? (
                                 fundPools && fundPools.length > 0 ? (
                                   <select
                                     value={editing.value ?? ""}
-                                    onChange={(e) => setEditing((p) => p && { ...p, value: Number(e.target.value) })}
+                                    onChange={(e) =>
+                                      setEditing(
+                                        (p) =>
+                                          p && {
+                                            ...p,
+                                            value: Number(e.target.value),
+                                          },
+                                      )
+                                    }
                                     className="w-full h-7 bg-white px-2"
                                   >
                                     {fundPools.map((p: any) => (
@@ -618,13 +762,23 @@ export const GrantsTable = () => {
                                 ) : (
                                   <Input
                                     value={editing.value ?? ""}
-                                    onChange={(e) => setEditing((p) => p && { ...p, value: e.target.value })}
+                                    onChange={(e) =>
+                                      setEditing(
+                                        (p) =>
+                                          p && { ...p, value: e.target.value },
+                                      )
+                                    }
                                   />
                                 )
                               ) : (
                                 <Input
                                   value={editing.value ?? ""}
-                                  onChange={(e) => setEditing((p) => p && { ...p, value: e.target.value })}
+                                  onChange={(e) =>
+                                    setEditing(
+                                      (p) =>
+                                        p && { ...p, value: e.target.value },
+                                    )
+                                  }
                                 />
                               )}
 
@@ -638,54 +792,101 @@ export const GrantsTable = () => {
 
                                   if (columnId === "category") {
                                     const chosenPoolId = Number(value);
-                                    const pool = fundPools?.find((p: any) => p.id === chosenPoolId);
-                                    setLocalGrants((curr) => curr.map((r) => (r.id === rowId ? { ...r, category: pool?.category ?? "", fundPoolId: chosenPoolId } : r)));
+                                    const pool = fundPools?.find(
+                                      (p: any) => p.id === chosenPoolId,
+                                    );
+                                    setLocalGrants((curr) =>
+                                      curr.map((r) =>
+                                        r.id === rowId
+                                          ? {
+                                              ...r,
+                                              category: pool?.category ?? "",
+                                              fundPoolId: chosenPoolId,
+                                            }
+                                          : r,
+                                      ),
+                                    );
                                   } else {
-                                    setLocalGrants((curr) => curr.map((r) => (r.id === rowId ? { ...r, [columnId]: value } : r)));
+                                    setLocalGrants((curr) =>
+                                      curr.map((r) =>
+                                        r.id === rowId
+                                          ? { ...r, [columnId]: value }
+                                          : r,
+                                      ),
+                                    );
                                   }
 
                                   // build payload for update mutation; include dbId if present
-                                  const target = localGrants.find((r) => r.id === rowId);
+                                  const target = localGrants.find(
+                                    (r) => r.id === rowId,
+                                  );
                                   const dbId = target?.dbId;
                                   if (!dbId) {
                                     // can't update mock-only row on server
-                                    setRowErrors((s) => ({ ...s, [rowId]: "Cannot update unsaved grant" }));
+                                    setRowErrors((s) => ({
+                                      ...s,
+                                      [rowId]: "Cannot update unsaved grant",
+                                    }));
                                     setLocalGrants(prev);
                                     setEditing(null);
                                     return;
                                   }
-                                  
+
                                   const payload: any = { id: dbId };
                                   // map columnId to server fields
-                                  if (columnId === "organization") payload.organization = value;
+                                  if (columnId === "organization")
+                                    payload.organization = value;
                                   else if (columnId === "category") {
                                     const chosenPoolId = Number(value);
-                                    const pool = fundPools?.find((p: any) => p.id === chosenPoolId);
+                                    const pool = fundPools?.find(
+                                      (p: any) => p.id === chosenPoolId,
+                                    );
                                     if (!pool) {
                                       // revert
-                                      if (previousSnapshotRef.current) setLocalGrants(previousSnapshotRef.current);
-                                      setRowErrors((s) => ({ ...s, [rowId]: "Selected fund pool not found" }));
+                                      if (previousSnapshotRef.current)
+                                        setLocalGrants(
+                                          previousSnapshotRef.current,
+                                        );
+                                      setRowErrors((s) => ({
+                                        ...s,
+                                        [rowId]: "Selected fund pool not found",
+                                      }));
                                       setEditing(null);
                                       return;
                                     }
                                     payload.category = pool.category;
                                     payload.fundPoolId = chosenPoolId;
-                                  }
-                                  else if (columnId === "dateReceived") payload.dateReceived = value;
-                                  else if (columnId === "toBeUsedBy") payload.toBeUsedBy = value;
-                                  else if (columnId === "email") payload.email = value;
-                                  else if (columnId === "phoneNumber") payload.phoneNumber = value;
-                                  else if (columnId === "notes") payload.notes = value;
-                                  else if (columnId === "amount") payload.amount = Number(value) || 0;
+                                  } else if (columnId === "dateReceived")
+                                    payload.dateReceived = value;
+                                  else if (columnId === "toBeUsedBy")
+                                    payload.toBeUsedBy = value;
+                                  else if (columnId === "email")
+                                    payload.email = value;
+                                  else if (columnId === "phoneNumber")
+                                    payload.phoneNumber = value;
+                                  else if (columnId === "notes")
+                                    payload.notes = value;
+                                  else if (columnId === "amount")
+                                    payload.amount = Number(value) || 0;
 
                                   updateMutation.mutate(payload, {
                                     onError: (err: any) => {
                                       // revert
-                                      if (previousSnapshotRef.current) setLocalGrants(previousSnapshotRef.current);
-                                      setRowErrors((s) => ({ ...s, [rowId]: err?.message ?? "Failed to save" }));
+                                      if (previousSnapshotRef.current)
+                                        setLocalGrants(
+                                          previousSnapshotRef.current,
+                                        );
+                                      setRowErrors((s) => ({
+                                        ...s,
+                                        [rowId]:
+                                          err?.message ?? "Failed to save",
+                                      }));
                                     },
                                     onSuccess: () => {
-                                      setRowErrors((s) => ({ ...s, [rowId]: "" }));
+                                      setRowErrors((s) => ({
+                                        ...s,
+                                        [rowId]: "",
+                                      }));
                                     },
                                   });
 
@@ -709,7 +910,11 @@ export const GrantsTable = () => {
                           ) : (
                             <div>
                               {display}
-                              {rowErrors[row.original.id] ? <div className="text-red-600 text-sm">{rowErrors[row.original.id]}</div> : null}
+                              {rowErrors[row.original.id] ? (
+                                <div className="text-red-600 text-sm">
+                                  {rowErrors[row.original.id]}
+                                </div>
+                              ) : null}
                             </div>
                           )}
                         </TableCell>
@@ -718,7 +923,10 @@ export const GrantsTable = () => {
 
                     return (
                       <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
                       </TableCell>
                     );
                   })}
@@ -726,7 +934,10 @@ export const GrantsTable = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   No results.
                 </TableCell>
               </TableRow>
@@ -739,15 +950,23 @@ export const GrantsTable = () => {
 
       {/* Pagination */}
       <div className="flex items-center justify-end space-x-2 py-4 px-8">
-        <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
           Previous
         </Button>
-        <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
           Next
         </Button>
       </div>
-
-      
     </div>
   );
 };

@@ -18,6 +18,13 @@ export default async function ClientsPage() {
   if (!user || (user.role !== "InterventionTeam" && user.role !== "Admin")) {
     redirect("/unauthorized");
   }
+  const queryClient = new QueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: ["clients"],
+    queryFn: () => api.clients.list.usePrefetchQuery(),
+  });
+
   return (
     <div className="p-8">
       <h1 className="text-4xl mb-4">Clients</h1>

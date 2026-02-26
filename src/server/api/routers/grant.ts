@@ -111,7 +111,7 @@ export const grantRouter = createTRPCRouter({
         newAmountRaw !== undefined
           ? new Prisma.Decimal(String(newAmountRaw))
           : undefined;
-      
+
       // if only metadata changes (no amount and no fundPoolId changes)
       if (newAmount === undefined && newFundPoolId === undefined) {
         const grant = await ctx.db.grant.findUnique({ where: { id } });
@@ -441,7 +441,7 @@ export const grantRouter = createTRPCRouter({
       });
     }),
 
-	 // Endpoint to fetch grants with filtering, sorting, and pagination
+  // Endpoint to fetch grants with filtering, sorting, and pagination
   // Example: GET http://localhost:3000/api/trpc/grant.getGrants?input={"json":{"page":1,"limit":10,"sortBy":"createdAt","sortOrder":"desc"}}
   getGrants: protectedProcedure
     .input(grantQuerySchema.optional())

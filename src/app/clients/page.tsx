@@ -1,5 +1,11 @@
 import { ClientsTable } from "./_components/data-table";
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
 import { redirect } from "next/navigation";
+import { api } from "~/trpc/react";
 import { getServerAuthSession } from "~/server/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -26,9 +32,11 @@ export default async function ClientsPage() {
   });
 
   return (
-    <div className="p-8">
-      <h1 className="text-4xl mb-4">Clients</h1>
-      <ClientsTable />
-    </div>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <div className="p-8">
+        <h1 className="text-4xl mb-4">Clients</h1>
+        <ClientsTable />
+      </div>
+    </HydrationBoundary>
   );
 }

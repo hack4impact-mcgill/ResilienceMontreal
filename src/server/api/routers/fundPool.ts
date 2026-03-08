@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "~/generated/prisma/client";
 import {
   createFundPoolSchema,
   updateFundPoolSchema,

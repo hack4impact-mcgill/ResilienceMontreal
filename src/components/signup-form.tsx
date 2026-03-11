@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import { toast } from "sonner";
 
 export default function SignupForm({
   className,
@@ -19,17 +20,40 @@ export default function SignupForm({
 
   const mutation = api.auth.signUp.useMutation({
     onSuccess: async () => {
-      router.push("/");
+      toast.success("Account created successfully! You can now log in.");
+      router.push("/login");
       router.refresh();
     },
     onError: (err) => {
       console.error("signUp error:", err);
-      alert(err?.message ?? "Sign up failed");
+      toast.error(
+        err?.message ?? "Failed to create account. Please try again.",
+      );
     },
   });
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Minimal client-side validation - let server handle detailed checks
+    if (!email) {
+      toast.error("Please enter your email address.");
+      return;
+    }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    if (!password) {
+      toast.error("Please enter your password.");
+      return;
+    }
+
+    // Let server validate password requirements to prioritize email existence check
     mutation.mutate({ email, password });
   };
 

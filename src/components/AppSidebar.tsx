@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
@@ -24,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SidebarFundPools } from "./sidebar-fund-pools";
 
 import { api } from "@/trpc/react";
 import Image from "next/image";
@@ -150,27 +149,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* FUNDING POOL */}
-        <div className="mt-10 px-4 text-xs">
-          <div className="flex items-center justify-between mb-2 font-medium text-muted-foreground">
-            <span className="-ml-2">FUNDING POOLS</span>
-            <span className="tabular-nums px-2">$6,000</span>
-          </div>
-
-          <div className="space-y-2">
-            {fundingPools.map((pool) => (
-              <div
-                key={pool.name}
-                className="flex items-center justify-between w-full px-2"
-              >
-                <span>{pool.name}</span>
-                <span className="tabular-nums text-muted-foreground">
-                  ${pool.amount.toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SidebarFundPools />
       </SidebarContent>
 
       {/* FOOTER */}

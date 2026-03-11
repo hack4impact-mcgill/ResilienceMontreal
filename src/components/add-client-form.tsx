@@ -24,7 +24,7 @@ export function AddClientForm() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const addClientMutation = api.client.addClient.useMutation({
+  const addClientMutation = api.clients.addClient.useMutation({
     onSuccess: () => {
       router.push("/clients");
     },

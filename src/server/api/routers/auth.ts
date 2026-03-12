@@ -280,11 +280,15 @@ export const authRouter = createTRPCRouter({
         });
 
         if (updateError) {
-          console.error("updateUser error in tRPC updatePassword:", updateError);
+          console.error(
+            "updateUser error in tRPC updatePassword:",
+            updateError,
+          );
           throw new TRPCError({
             code: "BAD_REQUEST",
             message:
-              updateError.message ?? "Failed to update password. Please try again.",
+              updateError.message ??
+              "Failed to update password. Please try again.",
           });
         }
 

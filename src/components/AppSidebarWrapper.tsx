@@ -14,7 +14,9 @@ export function AppSidebarWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const hideSidebar = HIDE_SIDEBAR_PATHS.some((path) => pathname?.startsWith(path));
+  const hideSidebar = HIDE_SIDEBAR_PATHS.some((path) =>
+    pathname?.startsWith(path),
+  );
 
   if (!isLoggedIn || hideSidebar) {
     return <main className="w-full">{children}</main>;

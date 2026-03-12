@@ -14,7 +14,7 @@ import { TRPCError } from "@trpc/server";
 
 // Use existing schema fields. Workarounds:
 // - Store extra grant metadata (category, dates, email, phone, notes) inside Grant.description as JSON.
-// - Treat FundPool.amount as the available amount (deduct on create, add back on delete).
+// - Treat FundPool.amount as the total amount allocated to that pool (add on create, deduct back on delete).
 
 const grantInclude = {
   distributions: { include: { fundPool: true } },
@@ -28,7 +28,7 @@ export const grantRouter = createTRPCRouter({
     return grants;
   }),
 
-  // create - transactional: create grant, create one GrantDistribution linking to fundPool, deduct fund pool amount
+  // create - transactional: create grant, create one GrantDistribution linking to fundPool, add to fund pool amount
   create: protectedProcedure
     .input(createGrantFullSchema)
     .mutation(async ({ ctx, input }) => {
@@ -42,14 +42,6 @@ export const grantRouter = createTRPCRouter({
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Fund pool not found",
-          });
-        }
-
-        const available = new Prisma.Decimal(String(fundPool.amount));
-        if (available.lessThan(amount)) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "Insufficient funds in fund pool",
           });
         }
 
@@ -81,11 +73,11 @@ export const grantRouter = createTRPCRouter({
           },
         });
 
-        // deduct from fundPool.amount
+        // add the grant amount to fundPool.amount
         await tx.fundPool.update({
           where: { id: input.fundPoolId },
           data: {
-            amount: new Prisma.Decimal(String(fundPool.amount)).minus(amount),
+            amount: new Prisma.Decimal(String(fundPool.amount)).plus(amount),
           },
         });
 
@@ -111,7 +103,7 @@ export const grantRouter = createTRPCRouter({
         newAmountRaw !== undefined
           ? new Prisma.Decimal(String(newAmountRaw))
           : undefined;
-
+      
       // if only metadata changes (no amount and no fundPoolId changes)
       if (newAmount === undefined && newFundPoolId === undefined) {
         const grant = await ctx.db.grant.findUnique({ where: { id } });
@@ -190,7 +182,7 @@ export const grantRouter = createTRPCRouter({
 
         const oldAmount = new Prisma.Decimal(String(grant.totalAmount));
         const amountToSet = newAmount ?? oldAmount;
-        const diff = amountToSet.minus(oldAmount); // positive => need more funds from pool
+        const diff = amountToSet.minus(oldAmount); // positive => need to add more to pool
 
         // if there's no existing distribution but client provides a fundPoolId, create one
         if (distributions.length === 0) {
@@ -211,13 +203,7 @@ export const grantRouter = createTRPCRouter({
               message: "Fund pool not found",
             });
 
-          const available = new Prisma.Decimal(String(newFundPool.amount));
-          if (available.lessThan(amountToSet))
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "Insufficient funds in fund pool",
-            });
-
+          // add the full amount to the new pool
           await tx.grantDistribution.create({
             data: {
               grantId: grant.id,
@@ -227,7 +213,8 @@ export const grantRouter = createTRPCRouter({
           });
           await tx.fundPool.update({
             where: { id: newFundPoolId },
-            data: { amount: available.minus(amountToSet) },
+            data: { amount: new Prisma.Decimal(String(newFundPool.amount)).plus(amountToSet) },
+
           });
         } else {
           // there is an existing single distribution
@@ -260,31 +247,30 @@ export const grantRouter = createTRPCRouter({
                 code: "NOT_FOUND",
                 message: "Target fund pool not found",
               });
+            
+            // ensure the source pool has enough to remove
+            const sourceAmount = new Prisma.Decimal(String(currentFundPool.amount));
+            if (sourceAmount.lessThan(amountToSet)) {
+              throw new TRPCError({
+                code: "CONFLICT",
+                message: "Insufficient amount in source fund pool to remove",
+              });
+            }
 
-            // return current distribution amount to old pool
+            // subtract from old pool
             await tx.fundPool.update({
               where: { id: currentFundPool.id },
               data: {
-                amount: new Prisma.Decimal(String(currentFundPool.amount)).plus(
-                  new Prisma.Decimal(String(dist.amount)),
-                ),
+                amount: sourceAmount.minus(amountToSet),
               },
             });
 
-            // ensure target pool has available funds for amountToSet
-            const targetAvailable = new Prisma.Decimal(
-              String(targetPool.amount),
-            );
-            if (targetAvailable.lessThan(amountToSet))
-              throw new TRPCError({
-                code: "CONFLICT",
-                message: "Insufficient funds in target fund pool",
-              });
-
-            // deduct from target pool
+            // add to new pool (no insufficiency check – we are increasing total)
             await tx.fundPool.update({
               where: { id: targetPool.id },
-              data: { amount: targetAvailable.minus(amountToSet) },
+              data: {
+                amount: new Prisma.Decimal(String(targetPool.amount)).plus(amountToSet),
+              },
             });
 
             // update distribution to point to new pool and amount
@@ -293,17 +279,14 @@ export const grantRouter = createTRPCRouter({
               data: { fundPoolId: newFundPoolId, amount: amountToSet },
             });
           } else {
-            // same pool: adjust by diff (positive => deduct more, negative => refund)
-            const available = new Prisma.Decimal(
-              String(currentFundPool.amount),
-            );
-            if (
-              diff.greaterThan(new Prisma.Decimal(0)) &&
-              available.lessThan(diff)
-            ) {
+            // same pool: adjust by diff (positive => add to pool, negative => subtract)
+            const poolOld = new Prisma.Decimal(String(currentFundPool.amount));
+            const newPoolAmount = poolOld.plus(diff); // diff can be positive or negative
+
+            if (newPoolAmount.lessThan(0)) {
               throw new TRPCError({
                 code: "CONFLICT",
-                message: "Insufficient funds in fund pool for increase",
+                message: "Operation would make fund pool total negative",
               });
             }
 
@@ -314,9 +297,7 @@ export const grantRouter = createTRPCRouter({
             await tx.fundPool.update({
               where: { id: currentFundPool.id },
               data: {
-                amount: new Prisma.Decimal(
-                  String(currentFundPool.amount),
-                ).minus(diff),
+                amount: newPoolAmount,
               },
             });
           }
@@ -429,7 +410,7 @@ export const grantRouter = createTRPCRouter({
           await tx.fundPool.update({
             where: { id: fundPool.id },
             data: {
-              amount: available.plus(new Prisma.Decimal(String(d.amount))),
+              amount: available.minus(new Prisma.Decimal(String(d.amount))),
             },
           });
 
@@ -441,7 +422,7 @@ export const grantRouter = createTRPCRouter({
       });
     }),
 
-  // Endpoint to fetch grants with filtering, sorting, and pagination
+	 // Endpoint to fetch grants with filtering, sorting, and pagination
   // Example: GET http://localhost:3000/api/trpc/grant.getGrants?input={"json":{"page":1,"limit":10,"sortBy":"createdAt","sortOrder":"desc"}}
   getGrants: protectedProcedure
     .input(grantQuerySchema.optional())

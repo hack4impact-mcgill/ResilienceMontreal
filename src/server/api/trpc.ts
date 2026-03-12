@@ -4,9 +4,6 @@ import { ZodError } from "zod";
 
 import { db } from "~/server/db";
 import { getServerAuthSession } from "~/server/auth";
-
-// CONTEXT
-// defines the "contexts" that are available in the backend API
 // allow you to access things when processing a request, like the database, the session, etc.
 // this helper generates the "internals" for a tRPC context
 // the API handler and RSC clients each wrap this and provides the required context (https://trpc.io/docs/server/context)

@@ -103,7 +103,7 @@ export const grantRouter = createTRPCRouter({
         newAmountRaw !== undefined
           ? new Prisma.Decimal(String(newAmountRaw))
           : undefined;
-      
+
       // if only metadata changes (no amount and no fundPoolId changes)
       if (newAmount === undefined && newFundPoolId === undefined) {
         const grant = await ctx.db.grant.findUnique({ where: { id } });
@@ -213,8 +213,11 @@ export const grantRouter = createTRPCRouter({
           });
           await tx.fundPool.update({
             where: { id: newFundPoolId },
-            data: { amount: new Prisma.Decimal(String(newFundPool.amount)).plus(amountToSet) },
-
+            data: {
+              amount: new Prisma.Decimal(String(newFundPool.amount)).plus(
+                amountToSet,
+              ),
+            },
           });
         } else {
           // there is an existing single distribution
@@ -247,9 +250,11 @@ export const grantRouter = createTRPCRouter({
                 code: "NOT_FOUND",
                 message: "Target fund pool not found",
               });
-            
+
             // ensure the source pool has enough to remove
-            const sourceAmount = new Prisma.Decimal(String(currentFundPool.amount));
+            const sourceAmount = new Prisma.Decimal(
+              String(currentFundPool.amount),
+            );
             if (sourceAmount.lessThan(amountToSet)) {
               throw new TRPCError({
                 code: "CONFLICT",
@@ -269,7 +274,9 @@ export const grantRouter = createTRPCRouter({
             await tx.fundPool.update({
               where: { id: targetPool.id },
               data: {
-                amount: new Prisma.Decimal(String(targetPool.amount)).plus(amountToSet),
+                amount: new Prisma.Decimal(String(targetPool.amount)).plus(
+                  amountToSet,
+                ),
               },
             });
 
@@ -422,7 +429,7 @@ export const grantRouter = createTRPCRouter({
       });
     }),
 
-	 // Endpoint to fetch grants with filtering, sorting, and pagination
+  // Endpoint to fetch grants with filtering, sorting, and pagination
   // Example: GET http://localhost:3000/api/trpc/grant.getGrants?input={"json":{"page":1,"limit":10,"sortBy":"createdAt","sortOrder":"desc"}}
   getGrants: protectedProcedure
     .input(grantQuerySchema.optional())

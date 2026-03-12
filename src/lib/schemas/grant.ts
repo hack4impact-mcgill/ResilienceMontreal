@@ -28,6 +28,36 @@ export const updateGrantSchema = z
     { message: "at least one field must be provided for update" },
   );
 
+// New schemas for Grants CRUD used by the new grants router
+export const createGrantFullSchema = z.object({
+  organization: z.string().trim().min(1, "Organization is required"),
+  category: z.string().trim().min(1, "Category is required"),
+  dateReceived: z.coerce.date(),
+  toBeUsedBy: z.coerce.date(),
+  email: z.string().email().optional(),
+  phoneNumber: z.string().optional(),
+  notes: z.string().optional(),
+  amount: z.coerce.number().positive("Amount must be > 0"),
+  // require a fund pool id so each grant gets one GrantDistribution associated with a FundPool
+  fundPoolId: z.coerce.number().int().positive("FundPoolId required"),
+});
+
+export const updateGrantFullSchema = z
+  .object({
+    id: z.coerce.number().int().positive("GrantID must be a positive integer"),
+    organization: z.string().trim().min(1).optional(),
+    category: z.string().trim().min(1).optional(),
+    dateReceived: z.coerce.date().optional(),
+    toBeUsedBy: z.coerce.date().optional(),
+    email: z.string().email().optional(),
+    phoneNumber: z.string().optional(),
+    notes: z.string().optional(),
+    amount: z.coerce.number().positive("Amount must be > 0").optional(),
+    fundPoolId: z.coerce.number().int().positive().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 1, {
+    message: "At least one field to update must be provided",
+  });
 export const grantQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(10),

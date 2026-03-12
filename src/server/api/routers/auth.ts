@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
+import { env } from "~/env";
 
 import {
   createTRPCRouter,
@@ -10,8 +11,6 @@ import {
 import { createClient } from "~/utils/supabase/server";
 import { getServerAuthSession } from "~/server/auth";
 import { prisma } from "@/lib/prisma";
-
-const APP_URL = "http://localhost:3000";  // update later when deployed
 
 export const authRouter = createTRPCRouter({
   signIn: publicProcedure
@@ -228,7 +227,7 @@ export const authRouter = createTRPCRouter({
       try {
         const supabase = await createClient();
 
-        const redirectTo = `${APP_URL}/update-password`;
+        const redirectTo = `${env.NEXT_PUBLIC_APP_URL}/update-password`;
 
         const { error } = await supabase.auth.resetPasswordForEmail(
           input.email,

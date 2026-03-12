@@ -29,12 +29,16 @@ import Image from "next/image";
 
 const items = [
   { title: "Dashboard", url: "/" },
-  { title: "Grants", url: "grants" },
-  { title: "Expenses", url: "expenses" },
+  { title: "Grants", url: "#" },
+  { title: "Expenses", url: "/expenses" },
   { title: "Clients", url: "clients" },
 ];
 
-// funding pools will be fetched live from the server
+const fundingPools = [
+  { name: "Housing", amount: 3000 },
+  { name: "Furniture", amount: 2000 },
+  { name: "Clothing", amount: 1000 },
+];
 
 export function AppSidebar() {
   const router = useRouter();
@@ -46,18 +50,6 @@ export function AppSidebar() {
     router.push("/login");
     router.refresh();
   };
-
-  // fetch session and fund pools to display live totals
-  const { data: session } = api.auth.getSession.useQuery();
-  const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
-    enabled: Boolean(session?.user),
-  });
-
-  const totalAvailable =
-    fundPools?.reduce(
-      (sum: number, p: any) => sum + (Number(p.amount ?? 0) || 0),
-      0,
-    ) ?? 0;
 
   return (
     <Sidebar>

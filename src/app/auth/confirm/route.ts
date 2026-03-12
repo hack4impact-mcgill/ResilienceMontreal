@@ -1,5 +1,4 @@
-import { type NextRequest } from "next/server";
-import { redirect } from "next/navigation";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { createCaller } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
@@ -9,6 +8,10 @@ export async function GET(request: NextRequest) {
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type");
   const next = searchParams.get("next") ?? "/";
+
+  const redirectTo = request.nextUrl.clone();
+  redirectTo.pathname = next;
+  redirectTo.search = "";
 
   if (token_hash && type) {
     try {
@@ -27,15 +30,13 @@ export async function GET(request: NextRequest) {
       });
 
       // redirect user to specified redirect URL or root of app
-      redirect(next);
-    } catch (err: unknown) {
-      console.error("Error " + err);
-
-      // redirect the user to an error page with some instructions
-      redirect("/error");
+      return NextResponse.redirect(redirectTo);
+    } catch (err) {
+      console.error("Error confirming email:", err);
     }
-  } else {
-    // redirect the user to an error page with some instructions
-    redirect("/error");
   }
+  // redirect the user to an error page with some instructions
+  redirectTo.pathname = "/error";
+  redirectTo.search = "";
+  return NextResponse.redirect(redirectTo);
 }

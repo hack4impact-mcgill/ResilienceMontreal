@@ -8,4 +8,3 @@ const UpdatePasswordPage: React.FC = () => {
 };
 
 export default UpdatePasswordPage;
-

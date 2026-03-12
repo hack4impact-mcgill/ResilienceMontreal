@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +11,6 @@ export default function UpdatePasswordForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-  const router = useRouter();
-
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -26,8 +23,7 @@ export default function UpdatePasswordForm({
         data?.message ?? "Your password has been updated successfully.",
       );
       setTimeout(() => {
-        router.push("/");
-        router.refresh();
+        window.location.href = "/login";
       }, 2000);
     },
     onError: (err) => {

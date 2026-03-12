@@ -2,7 +2,11 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 import { createClient } from "~/utils/supabase/server";
 import { getServerAuthSession } from "~/server/auth";
 import { prisma } from "@/lib/prisma";
@@ -249,7 +253,7 @@ export const authRouter = createTRPCRouter({
       }
     }),
 
-  updatePassword: publicProcedure
+  updatePassword: protectedProcedure
     .input(z.object({ password: z.string().min(6) }))
     .mutation(async ({ input }) => {
       try {
@@ -284,6 +288,9 @@ export const authRouter = createTRPCRouter({
               updateError.message ?? "Failed to update password. Please try again.",
           });
         }
+
+        // Sign out the user to clear the session and redirect to login page
+        await supabase.auth.signOut();
 
         return {
           ok: true,

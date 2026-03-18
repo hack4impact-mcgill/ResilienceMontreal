@@ -1,25 +1,15 @@
 model Client {
-  id          Int      @id @default(autoincrement())
-  firstName   String
-  lastName    String
-  dateOfBirth DateTime
-
-  // Worker (staff) responsible for the client - relation to User model
-  worker   User @relation(fields: [workerId], references: [supabaseId])
-  workerId String
-
-  email String? @unique
-  phone String?
-
+  id           Int       @id @default(autoincrement())
+  firstName    String
+  lastName     String
+  dateOfBirth  DateTime
+  workerId     String
+  email        String?   @unique
+  phone        String?
   landlordName String?
   leaseStart   DateTime?
   leaseEnd     DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([workerId])
-  @@index([createdAt])
-  @@index([lastName, firstName])
-  @@index([leaseEnd])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  worker       User      @relation(fields: [workerId], references: [supabaseId])
 }

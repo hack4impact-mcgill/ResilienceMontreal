@@ -3,8 +3,8 @@ model GrantDistribution {
   grantId    Int
   fundPoolId Int?
   amount     Decimal   @db.Decimal(10, 2)
+  fundPool   FundPool? @relation(fields: [fundPoolId], references: [id])
   grant      Grant     @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  fundPool   FundPool? @relation(fields: [fundPoolId], references: [id], onDelete: SetNull)
 
   @@unique([grantId, fundPoolId])
   @@index([grantId])

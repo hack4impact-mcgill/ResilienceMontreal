@@ -25,6 +25,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import { api } from "@/trpc/react";
 import Image from "next/image";
 
@@ -35,16 +45,30 @@ const items = [
   { title: "Clients", url: "clients" },
 ];
 
-const fundingPools = [
-  { name: "Housing", amount: 3000 },
-  { name: "Furniture", amount: 2000 },
-  { name: "Clothing", amount: 1000 },
-];
-
 export function AppSidebar() {
   const router = useRouter();
+  const [showUnauthorized, setShowUnauthorized] = React.useState(false);
 
   const supabase = createClient();
+
+  const { data: currentUser } = api.users.me.useQuery();
+
+  const canViewFundPools =
+    currentUser?.role === "Admin" ||
+    currentUser?.role === "Bookkeeper" ||
+    currentUser?.role === "InterventionTeam";
+
+  const canEdit =
+    currentUser?.role === "Admin" || currentUser?.role === "Bookkeeper";
+
+  const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
+    enabled: canViewFundPools,
+  });
+
+  const totalAmount = fundPools?.reduce(
+    (sum, pool) => sum + Number(pool.amount),
+    0,
+  );
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -141,26 +165,41 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* FUNDING POOL */}
-        <div className="mt-10 px-4 text-xs">
-          <div className="flex items-center justify-between mb-2 font-medium text-muted-foreground">
-            <span className="-ml-2">FUNDING POOLS</span>
-            <span className="tabular-nums px-2">$6,000</span>
-          </div>
+        {canViewFundPools && (
+          <div className="mt-10 px-4 text-xs">
+            <div className="flex items-center justify-between mb-2 font-medium text-muted-foreground">
+              <span className="-ml-2">FUNDING POOLS</span>
+              <span className="tabular-nums px-2">
+                {totalAmount !== undefined
+                  ? `$${totalAmount.toLocaleString()}`
+                  : "..."}
+              </span>
+            </div>
 
-          <div className="space-y-2">
-            {fundingPools.map((pool) => (
-              <div
-                key={pool.name}
-                className="flex items-center justify-between w-full px-2"
+            <div className="space-y-2">
+              {fundPools?.map((pool) => (
+                <div
+                  key={pool.id}
+                  className="flex items-center justify-between w-full px-2"
+                >
+                  <span>{pool.category}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    ${Number(pool.amount).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {canEdit && (
+              <button
+                className="mt-3 w-full rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
+                onClick={() => router.push("/fund-pools")}
               >
-                <span>{pool.name}</span>
-                <span className="tabular-nums text-muted-foreground">
-                  ${pool.amount.toLocaleString()}
-                </span>
-              </div>
-            ))}
+                Edit
+              </button>
+            )}
           </div>
-        </div>
+        )}
       </SidebarContent>
 
       {/* FOOTER */}
@@ -179,6 +218,23 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      {/* UNAUTHORIZED DIALOG */}
+      <AlertDialog open={showUnauthorized} onOpenChange={setShowUnauthorized}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unauthorized</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are not authorized to perform this action.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowUnauthorized(false)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   );
 }

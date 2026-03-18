@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  fundPoolReadProcedure,
+  bookkeeperProcedure,
+} from "~/server/api/trpc";
 import { Prisma } from "@prisma/client";
 import {
   createFundPoolSchema,
@@ -15,7 +19,7 @@ const fundPoolInclude = {
 export const fundPoolRouter = createTRPCRouter({
   // Endpoint to create a new fundpool using given category and amount
   // Example: POST http://localhost:3000/api/trpc/fundPool.createFundPool with body {"json": {"category": "example", "amount": 100}}
-  createFundPool: protectedProcedure
+  createFundPool: bookkeeperProcedure
     .input(createFundPoolSchema)
     .mutation(async ({ ctx, input }) => {
       const totalAmount = new Prisma.Decimal(String(input.amount));
@@ -31,7 +35,7 @@ export const fundPoolRouter = createTRPCRouter({
 
   // Endpoint to fetch all fundPools
   // Example: GET http://localhost:3000/api/trpc/fundPool.getFundPools?input={}
-  getFundPools: protectedProcedure.query(async ({ ctx }) => {
+  getFundPools: fundPoolReadProcedure.query(async ({ ctx }) => {
     const fundPools = await ctx.db.fundPool.findMany({
       include: { ...fundPoolInclude },
     });
@@ -40,7 +44,7 @@ export const fundPoolRouter = createTRPCRouter({
 
   // Endpoint to fetch a fundPool by ID
   // Example: GET http://localhost:3000/api/trpc/fundPool.getFundPoolById?batch=1&input={"0":{"json": {"id": 1}}}
-  getFundPoolById: protectedProcedure
+  getFundPoolById: fundPoolReadProcedure
     .input(
       z.object({
         id: z.coerce
@@ -77,7 +81,7 @@ export const fundPoolRouter = createTRPCRouter({
     }
   }
   */
-  updateFundPoolById: protectedProcedure
+  updateFundPoolById: bookkeeperProcedure
     .input(updateFundPoolSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, ...updateFields } = input;
@@ -100,7 +104,7 @@ export const fundPoolRouter = createTRPCRouter({
     }
   }
   */
-  deleteFundPoolById: protectedProcedure
+  deleteFundPoolById: bookkeeperProcedure
     .input(
       z.object({
         id: z.coerce

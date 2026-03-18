@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
@@ -24,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SidebarFundPools } from "./sidebar-fund-pools";
 
 import {
   AlertDialog,
@@ -40,8 +39,8 @@ import Image from "next/image";
 
 const items = [
   { title: "Dashboard", url: "/" },
-  { title: "Grants", url: "#" },
-  { title: "Expenses", url: "/expenses" },
+  { title: "Grants", url: "grants" },
+  { title: "Expenses", url: "expenses" },
   { title: "Clients", url: "clients" },
 ];
 
@@ -75,6 +74,18 @@ export function AppSidebar() {
     router.push("/login");
     router.refresh();
   };
+
+  // fetch session and fund pools to display live totals
+  const { data: session } = api.auth.getSession.useQuery();
+  const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
+    enabled: Boolean(session?.user),
+  });
+
+  const totalAvailable =
+    fundPools?.reduce(
+      (sum: number, p: any) => sum + (Number(p.amount ?? 0) || 0),
+      0,
+    ) ?? 0;
 
   return (
     <Sidebar>
@@ -130,6 +141,16 @@ export function AppSidebar() {
                 <a href="/admin/users">
                   <UserRound size={16} />
                   <span>People &amp; Permissions</span>
+                </a>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer flex items-center gap-2 px-3 py-1"
+              >
+                <a href="/update-password">
+                  <UserRound size={16} />
+                  <span>Change password</span>
                 </a>
               </DropdownMenuItem>
 

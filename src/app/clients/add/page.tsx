@@ -11,7 +11,7 @@ export default async function AddClientPage() {
     redirect("/login");
   }
 
-  const user = await db.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { email: session.user.email },
   });
 

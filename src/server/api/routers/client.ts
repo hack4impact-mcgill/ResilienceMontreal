@@ -131,4 +131,85 @@ export const clientRouter = createTRPCRouter({
         });
       }
     }),
+  getClients: protectedProcedure
+    .input(
+      z.object({
+        // Pagination
+        page: z.number().int().positive().default(1),
+        limit: z.number().int().min(1).max(100).default(20),
+
+        // Sorting
+        sortBy: z
+          .enum(["firstName", "lastName", "createdAt", "leaseEnd", "workerId"])
+          .default("createdAt"),
+        sortOrder: z.enum(["asc", "desc"]).default("desc"),
+
+        // Filters
+        search: z.string().optional(),
+        workerId: z.string().optional(),
+        dateFrom: z.date().optional(),
+        dateTo: z.date().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const skip = (input.page - 1) * input.limit;
+
+      // Build where clause
+      const where = {
+        AND: [
+          input.search
+            ? {
+                OR: [
+                  {
+                    firstName: { contains: input.search, mode: "insensitive" as const },
+                  },
+                  {
+                    lastName: { contains: input.search, mode: "insensitive" as const },
+                  },
+                  {
+                    email: { contains: input.search, mode: "insensitive" as const },
+                  },
+                ],
+              }
+            : {},
+          input.workerId ? { workerId: input.workerId } : {},
+          input.dateFrom || input.dateTo
+            ? {
+                leaseEnd: {
+                  ...(input.dateFrom && { gte: input.dateFrom }),
+                  ...(input.dateTo && { lte: input.dateTo }),
+                },
+              }
+            : {},
+        ],
+      } as any;
+
+      // Get total count and data
+      const [total, clients] = await Promise.all([
+        ctx.db.client.count({ where }),
+        ctx.db.client.findMany({
+          where,
+          skip,
+          take: input.limit,
+          orderBy: { [input.sortBy]: input.sortOrder },
+          include: {
+            worker: {
+              select: { name: true, email: true },
+            },
+          },
+        }),
+      ]);
+
+      return {
+        data: clients,
+        metadata: {
+          total,
+          page: input.page,
+          limit: input.limit,
+          totalPages: Math.ceil(total / input.limit),
+          hasNextPage: skip + input.limit < total,
+          hasPrevPage: input.page > 1,
+        },
+      };
+    }),
 });

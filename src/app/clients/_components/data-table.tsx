@@ -2,13 +2,8 @@
 
 import * as React from "react";
 import {
-  ColumnFiltersState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  SortingState,
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
@@ -35,10 +30,8 @@ import {
 } from "@/components/ui/table";
 
 import { columns, Client } from "./columns";
-import { useQuery } from "@tanstack/react-query";
-import { fetchClients } from "@/lib/api";
+import { api } from "~/trpc/react";
 import { z } from "zod";
-
 // Validation schema (inline add row)
 const clientSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -49,14 +42,14 @@ const clientSchema = z.object({
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
+type SortByField = "firstName" | "lastName" | "createdAt" | "leaseEnd" | "workerId";
 
-// ------------------------------------------------------------
-// EXPORT CLIENTS TO CSV
-// ------------------------------------------------------------
-const exportToCSV = (clients: Client[]) => {
+// ============================================================
+// EXPORT TO CSV
+// ============================================================
+const exportToCSV = (clients: any[]) => {
   if (!clients.length) return;
 
-  // CSV header
   const header = [
     "First Name",
     "Last Name",
@@ -65,24 +58,20 @@ const exportToCSV = (clients: Client[]) => {
     "Lease End Date",
   ];
 
-  // CSV rows
   const rows = clients.map((c) => [
     c.firstName,
     c.lastName,
     c.email,
-    c.leaseStartDate.toLocaleDateString(),
-    c.leaseEndDate.toLocaleDateString(),
+    c.leaseStart ? new Date(c.leaseStart).toLocaleDateString() : "",
+    c.leaseEnd ? new Date(c.leaseEnd).toLocaleDateString() : "",
   ]);
 
-  // combine header + rows
   const csvContent = [header, ...rows].map((row) => row.join(",")).join("\n");
 
-  // create filename with current date
   const now = new Date();
-  const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`; // MM-DD-YY
+  const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`;
   const fileName = `client_list_${dateStr}.csv`;
 
-  // create a blob and trigger download
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -93,25 +82,18 @@ const exportToCSV = (clients: Client[]) => {
   document.body.removeChild(link);
 };
 
-// ------------------------------------------------------------
+// ============================================================
 // MAIN TABLE COMPONENT
-// ------------------------------------------------------------
+// ============================================================
 export const ClientsTable = () => {
-  const [localClients, setLocalClients] = React.useState<Client[]>([]);
-
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-
-  const [filterColumn, setFilterColumn] = React.useState<
-    "firstName" | "lastName" | "email"
-  >("email");
+  // Pagination & Filter State
+  const [page, setPage] = React.useState(1);
+  const [search, setSearch] = React.useState("");
+  const [sortBy, setSortBy] = React.useState<SortByField>("createdAt");
+  const [filterColumn, setFilterColumn] = React.useState<"firstName" | "lastName" | "email">("email");
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
 
+  // Add Client State
   const [isAdding, setIsAdding] = React.useState(false);
   const [formData, setFormData] = React.useState<ClientFormData>({
     firstName: "",
@@ -120,42 +102,31 @@ export const ClientsTable = () => {
     leaseStart: "",
     leaseEnd: "",
   });
-  const [formErrors, setFormErrors] = React.useState<Record<string, string>>(
-    {},
-  );
+  const [formErrors, setFormErrors] = React.useState<Record<string, string>>({});
 
-  // fetch initial server data
-  const {
-    data: fetchedClients,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["clients"],
-    queryFn: fetchClients,
+  // Fetch clients with filters and pagination
+  const { data, isLoading, isError } = api.client.getClients.useQuery({
+    page,
+    limit: 20,
+    sortBy,
+    sortOrder: "desc",
+    search: search || undefined,
   });
 
-  // merge server-loaded + local-added
-  React.useEffect(() => {
-    if (fetchedClients) setLocalClients(fetchedClients);
-  }, [fetchedClients]);
+  // Map API response to client format for table
+  const clients = data?.data.map((c) => ({
+    id: c.id.toString(),
+    firstName: c.firstName,
+    lastName: c.lastName,
+    email: c.email ?? "",
+    leaseStartDate: c.leaseStart ? new Date(c.leaseStart) : new Date(),
+    leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(),
+  })) ?? [];
 
-  const table = useReactTable<Client>({
-    data: localClients,
+  const table = useReactTable({
+    data: clients,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
   });
 
   const prettyLabel = (col: string) => {
@@ -193,28 +164,14 @@ export const ClientsTable = () => {
   const handleSave = (saveAndAddMore: boolean) => {
     if (!validateForm()) return;
 
-    const newClient: Client = {
-      id: Date.now().toString(),
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      leaseStartDate: new Date(formData.leaseStart),
-      leaseEndDate: new Date(formData.leaseEnd),
-    };
-
-    setLocalClients((prev) => [...prev, newClient]);
-
-    if (saveAndAddMore) {
-      resetForm();
-    } else {
+    // TODO: Call mutation to add client to database
+    // For now, just close the form
+    if (!saveAndAddMore) {
       resetForm();
       setIsAdding(false);
+    } else {
+      resetForm();
     }
-
-    // force React Table to recompute with new data
-    setTimeout(() => {
-      table.setPageIndex(table.getPageCount() - 1);
-    }, 10);
   };
 
   const handleCancel = () => {
@@ -222,10 +179,21 @@ export const ClientsTable = () => {
     setIsAdding(false);
   };
 
-  if (isLoading) return <div>Loading...</div>;
-  if (isError) return <div>Error loading data.</div>;
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1); // Reset to page 1 when searching
+  };
 
-  type FilterColumn = "firstName" | "lastName" | "email";
+  const handleSortChange = (newSortBy: SortByField) => {
+    setSortBy(newSortBy);
+    setPage(1); // Reset to page 1 when changing sort
+  };
+
+  if (isLoading) return <div className="p-8">Loading clients...</div>;
+  if (isError) return <div className="p-8 text-red-500">Error loading clients.</div>;
+
+  const metadata = data?.metadata;
+
   return (
     <div className="w-full">
       {/* Top Messages */}
@@ -249,12 +217,8 @@ export const ClientsTable = () => {
         {/* Search Input */}
         <Input
           placeholder={`Search by ${prettyLabel(filterColumn)}...`}
-          value={
-            (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""
-          }
-          onChange={(e) =>
-            table.getColumn(filterColumn)?.setFilterValue(e.target.value)
-          }
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="max-w-sm bg-white border-[#3FA9A9]"
         />
 
@@ -268,22 +232,21 @@ export const ClientsTable = () => {
               <ListFilter
                 className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`}
               />
-              <span>Filter</span>
+              <span>Sort</span>
             </Button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="start">
-            {["firstName", "lastName", "email"].map((col) => (
+            {(["createdAt", "firstName", "lastName", "leaseEnd"] as const).map((col) => (
               <DropdownMenuItem
                 key={col}
                 onClick={() => {
-                  table.getColumn(filterColumn)?.setFilterValue("");
-                  setFilterColumn(col as FilterColumn);
+                  handleSortChange(col);
                   setFilterMenuOpen(false);
                 }}
                 className="flex items-center gap-2"
               >
-                {filterColumn === col ? (
+                {sortBy === col ? (
                   <Check className="h-4 w-4" />
                 ) : (
                   <span className="h-4 w-4 opacity-0" />
@@ -298,7 +261,7 @@ export const ClientsTable = () => {
         <Button
           variant="ghost"
           className="ml-auto text-black hover:bg-transparent"
-          onClick={() => exportToCSV(localClients)}
+          onClick={() => exportToCSV(clients)}
         >
           Export
         </Button>
@@ -474,23 +437,28 @@ export const ClientsTable = () => {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4 px-8">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
+      <div className="flex items-center justify-between py-4 px-8">
+        <div className="text-sm text-gray-600">
+          Page {metadata?.page} of {metadata?.totalPages} | {metadata?.total} total clients
+        </div>
+        <div className="flex items-center justify-end space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(page - 1)}
+            disabled={!metadata?.hasPrevPage}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(page + 1)}
+            disabled={!metadata?.hasNextPage}
+          >
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );

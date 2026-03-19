@@ -272,7 +272,7 @@ export const clientRouter = createTRPCRouter({
           orderBy: { [input.sortBy]: input.sortOrder },
           include: {
             worker: {
-              select: { name: true, email: true },
+              select: { name: true, email: true, supabaseId: true, role: true },
             },
           },
         }),

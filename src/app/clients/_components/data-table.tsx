@@ -2,15 +2,9 @@
 
 import * as React from "react";
 import {
-  ColumnFiltersState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  SortingState,
   useReactTable,
-  VisibilityState,
 } from "@tanstack/react-table";
 
 import { ListFilter, Check, CirclePlus } from "lucide-react";
@@ -34,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { Client, mapClient, createColumns } from "./columns";
+import { Client, createColumns } from "./columns";
 import { api } from "~/trpc/react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -51,6 +45,7 @@ const clientSchema = z.object({
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
+type SortByField = "firstName" | "lastName" | "createdAt" | "leaseEnd" | "workerId";
 
 // ------------------------------------------------------------
 // EXPORT CLIENTS TO CSV
@@ -98,18 +93,11 @@ const exportToCSV = (clients: Client[]) => {
 // MAIN TABLE COMPONENT
 // ------------------------------------------------------------
 export const ClientsTable = () => {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-
-  const [filterColumn, setFilterColumn] = React.useState<
-    "firstName" | "lastName" | "email"
-  >("email");
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const [limit] = React.useState(10);
+  const [sortBy, setSortBy] = React.useState<SortByField>("createdAt");
 
   const [isAdding, setIsAdding] = React.useState(false);
   const [formData, setFormData] = React.useState({
@@ -140,25 +128,52 @@ export const ClientsTable = () => {
     Record<string, string>
   >({});
 
+  const utils = api.useUtils();
+
   const {
-    data: clientList,
+    data: pagedClients,
     isLoading,
     isError,
     refetch,
     isRefetching,
-  } = api.clients.list?.useQuery
-    ? api.clients.list.useQuery()
-    : { data: [], isLoading: false, isError: true, refetch: undefined };
+  } = api.clients.getClients.useQuery(
+    {
+      page,
+      limit,
+      sortBy,
+      sortOrder: "desc",
+      search: search.trim() || undefined,
+    },
+    {
+      placeholderData: (previous) => previous,
+    },
+  );
 
   const mappedClients = React.useMemo(
-    () => (clientList ?? []).map(mapClient),
-    [clientList],
+    () =>
+      (pagedClients?.data ?? []).map((c) => ({
+        id: c.id,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        email: c.email ?? "",
+        dateOfBirth: c.dateOfBirth ? new Date(c.dateOfBirth) : null,
+        leaseStartDate: c.leaseStart ? new Date(c.leaseStart) : new Date(0),
+        leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(0),
+        workerName: c.worker?.name ?? "",
+        workerId: c.worker?.supabaseId ?? "",
+      })),
+    [pagedClients],
   );
+
+  const metadata = pagedClients?.metadata;
 
   const prettyLabel = (col: string) => {
     if (col === "firstName") return "First Name";
     if (col === "lastName") return "Last Name";
     if (col === "email") return "Email";
+    if (col === "createdAt") return "Created At";
+    if (col === "leaseEnd") return "Lease End";
+    if (col === "workerId") return "Worker";
     return col;
   };
 
@@ -216,15 +231,13 @@ export const ClientsTable = () => {
       },
       {
         onSuccess: () => {
+          void utils.clients.getClients.invalidate();
           refetch?.();
           resetForm();
           if (!saveAndAddMore) {
             setIsAdding(false);
           }
           toast.success("Client added successfully!");
-          setTimeout(() => {
-            table.setPageIndex(table.getPageCount() - 1);
-          }, 10);
         },
         onError: (error) => {
           console.error("Error adding client:", error);
@@ -305,6 +318,7 @@ export const ClientsTable = () => {
       },
       {
         onSuccess: () => {
+          void utils.clients.getClients.invalidate();
           refetch?.();
           cancelEdit();
           toast.success("Client updated successfully!");
@@ -329,6 +343,7 @@ export const ClientsTable = () => {
         { id: clientId },
         {
           onSuccess: () => {
+            void utils.clients.getClients.invalidate();
             refetch?.();
             toast.success("Client deleted successfully!");
           },
@@ -351,20 +366,7 @@ export const ClientsTable = () => {
   const table = useReactTable<Client>({
     data: mappedClients,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
   });
 
   if (isLoading) return <div>Loading...</div>;
@@ -378,13 +380,12 @@ export const ClientsTable = () => {
       <div className="border-border -mx-8 px-8 flex items-center py-4">
         {/* Search Input */}
         <Input
-          placeholder={`Search by ${prettyLabel(filterColumn)}...`}
-          value={
-            (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""
-          }
-          onChange={(e) =>
-            table.getColumn(filterColumn)?.setFilterValue(e.target.value)
-          }
+          placeholder="Search by name or email..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           className="max-w-sm bg-white border-[#3FA9A9]"
         />
 
@@ -398,22 +399,28 @@ export const ClientsTable = () => {
               <ListFilter
                 className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`}
               />
-              <span>Filter</span>
+              <span>Sort</span>
             </Button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="start">
-            {["firstName", "lastName", "email"].map((col) => (
+            {([
+              "createdAt",
+              "firstName",
+              "lastName",
+              "leaseEnd",
+              "workerId",
+            ] as const).map((col) => (
               <DropdownMenuItem
                 key={col}
                 onClick={() => {
-                  table.getColumn(filterColumn)?.setFilterValue("");
-                  setFilterColumn(col as FilterColumn);
+                  setSortBy(col);
+                  setPage(1);
                   setFilterMenuOpen(false);
                 }}
                 className="flex items-center gap-2"
               >
-                {filterColumn === col ? (
+                {sortBy === col ? (
                   <Check className="h-4 w-4" />
                 ) : (
                   <span className="h-4 w-4 opacity-0" />
@@ -819,13 +826,22 @@ export const ClientsTable = () => {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4 px-8">
+      <div className="flex items-center justify-between space-x-2 py-4 px-8">
+        <div className="text-sm text-muted-foreground">
+          {metadata
+            ? `Page ${metadata.page} of ${metadata.totalPages} • ${metadata.total} total clients`
+            : ""}
+        </div>
+        <div className="flex items-center space-x-2">
         <Button
           variant="outline"
           size="sm"
-          onClick={() => table.previousPage()}
+          onClick={() => setPage((prev) => Math.max(1, prev - 1))}
           disabled={
-            !table.getCanPreviousPage() || editingRowId !== null || isAdding
+            !metadata?.hasPrevPage ||
+            editingRowId !== null ||
+            isAdding ||
+            isRefetching
           }
         >
           Previous
@@ -833,13 +849,17 @@ export const ClientsTable = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => table.nextPage()}
+          onClick={() => setPage((prev) => prev + 1)}
           disabled={
-            !table.getCanNextPage() || editingRowId !== null || isAdding
+            !metadata?.hasNextPage ||
+            editingRowId !== null ||
+            isAdding ||
+            isRefetching
           }
         >
           Next
         </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
@@ -24,22 +22,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SidebarFundPools } from "./sidebar-fund-pools";
 
 import { api } from "@/trpc/react";
 import Image from "next/image";
 
 const items = [
   { title: "Dashboard", url: "/" },
-  { title: "Grants", url: "#" },
-  { title: "Expenses", url: "/expenses" },
+  { title: "Grants", url: "grants" },
+  { title: "Expenses", url: "expenses" },
   { title: "Clients", url: "clients" },
 ];
 
-const fundingPools = [
-  { name: "Housing", amount: 3000 },
-  { name: "Furniture", amount: 2000 },
-  { name: "Clothing", amount: 1000 },
-];
+// funding pools will be fetched live from the server
 
 export function AppSidebar() {
   const router = useRouter();
@@ -51,6 +46,18 @@ export function AppSidebar() {
     router.push("/login");
     router.refresh();
   };
+
+  // fetch session and fund pools to display live totals
+  const { data: session } = api.auth.getSession.useQuery();
+  const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
+    enabled: Boolean(session?.user),
+  });
+
+  const totalAvailable =
+    fundPools?.reduce(
+      (sum: number, p: any) => sum + (Number(p.amount ?? 0) || 0),
+      0,
+    ) ?? 0;
 
   return (
     <Sidebar>
@@ -109,6 +116,16 @@ export function AppSidebar() {
                 </a>
               </DropdownMenuItem>
 
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer flex items-center gap-2 px-3 py-1"
+              >
+                <a href="/update-password">
+                  <UserRound size={16} />
+                  <span>Change password</span>
+                </a>
+              </DropdownMenuItem>
+
               <div className="h-px bg-border mx-3 my-1" />
 
               <DropdownMenuItem
@@ -140,27 +157,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* FUNDING POOL */}
-        <div className="mt-10 px-4 text-xs">
-          <div className="flex items-center justify-between mb-2 font-medium text-muted-foreground">
-            <span className="-ml-2">FUNDING POOLS</span>
-            <span className="tabular-nums px-2">$6,000</span>
-          </div>
-
-          <div className="space-y-2">
-            {fundingPools.map((pool) => (
-              <div
-                key={pool.name}
-                className="flex items-center justify-between w-full px-2"
-              >
-                <span>{pool.name}</span>
-                <span className="tabular-nums text-muted-foreground">
-                  ${pool.amount.toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SidebarFundPools />
       </SidebarContent>
 
       {/* FOOTER */}

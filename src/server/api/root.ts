@@ -17,7 +17,7 @@ export const appRouter = createTRPCRouter({
   fundPool: fundPoolRouter,
   grant: grantRouter,
   grantDistribution: grantDistributionRouter,
-  client: clientRouter,
+  clients: clientRouter, // collision with 'client' -> erenamed
 });
 
 // export type definition of API

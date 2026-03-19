@@ -1,16 +1,16 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, interventionTeamProcedure } from "~/server/api/trpc";
 
 export const clientRouter = createTRPCRouter({
-  addClient: protectedProcedure
+  addClient: interventionTeamProcedure
     .input(
       z.object({
         firstName: z.string().min(1, "First name is required"),
         lastName: z.string().min(1, "Last name is required"),
         dateOfBirth: z.date(),
-        workerId: z.string(),
+        workerId: z.string().min(1, "Intervention worker is required"),
         email: z.email().optional().nullable(),
         phone: z.string().optional().nullable(),
         landlordName: z.string().optional().nullable(),
@@ -20,6 +20,18 @@ export const clientRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       try {
+        // Validate workerId
+        const workerExists = await ctx.db.user.findUnique({
+          where: { supabaseId: input.workerId },
+        });
+
+        if (!workerExists) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected intervention worker does not exist",
+          });
+        }
+
         const client = await ctx.db.client.create({
           data: {
             firstName: input.firstName,
@@ -36,7 +48,27 @@ export const clientRouter = createTRPCRouter({
 
         return { ok: true, client };
       } catch (err: unknown) {
+        if (err instanceof TRPCError) {
+          throw err;
+        }
+        // Handle Prisma constraint errors
         const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("Foreign key constraint")) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Invalid intervention worker selected. Please select a valid worker.",
+          });
+        }
+        if (
+          message.includes("Unique constraint") &&
+          message.includes("email")
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This email address is already in use by another client.",
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: message ?? "Failed to add client",
@@ -44,14 +76,17 @@ export const clientRouter = createTRPCRouter({
       }
     }),
 
-  editClient: protectedProcedure
+  editClient: interventionTeamProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
         firstName: z.string().min(1, "First name is required").optional(),
         lastName: z.string().min(1, "Last name is required").optional(),
         dateOfBirth: z.date().optional(),
-        workerId: z.string().optional(),
+        workerId: z
+          .string()
+          .min(1, "Intervention worker is required")
+          .optional(),
         email: z.email().optional().nullable(),
         phone: z.string().optional().nullable(),
         landlordName: z.string().optional().nullable(),
@@ -63,7 +98,6 @@ export const clientRouter = createTRPCRouter({
       try {
         const { id, ...updateData } = input;
 
-        // Check if client exists
         const existingClient = await ctx.db.client.findUnique({
           where: { id },
         });
@@ -73,6 +107,19 @@ export const clientRouter = createTRPCRouter({
             code: "NOT_FOUND",
             message: "Client not found",
           });
+        }
+
+        if (updateData.workerId) {
+          const workerExists = await ctx.db.user.findUnique({
+            where: { supabaseId: updateData.workerId },
+          });
+
+          if (!workerExists) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Selected intervention worker does not exist",
+            });
+          }
         }
 
         // Update the client
@@ -86,7 +133,22 @@ export const clientRouter = createTRPCRouter({
         if (err instanceof TRPCError) {
           throw err;
         }
+        // Handle (common) Prisma constraint errors
         const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("Foreign key constraint")) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Invalid intervention worker selected. Please select a valid worker.",
+          });
+        }
+        if (message.includes("Unique constraint")) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Duplicate field detected. Please ensure the email address is unique.",
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: message ?? "Failed to edit client",
@@ -94,7 +156,7 @@ export const clientRouter = createTRPCRouter({
       }
     }),
 
-  deleteClient: protectedProcedure
+  deleteClient: interventionTeamProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -131,6 +193,22 @@ export const clientRouter = createTRPCRouter({
         });
       }
     }),
+  list: interventionTeamProcedure.query(async ({ ctx }) => {
+    try {
+      const clients = await ctx.db.client.findMany({
+        include: {
+          worker: true,
+        },
+      });
+      return clients;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: message ?? "Failed to fetch clients",
+      });
+    }
+  }),
   getClients: protectedProcedure
     .input(
       z.object({

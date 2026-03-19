@@ -45,7 +45,12 @@ const clientSchema = z.object({
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
-type SortByField = "firstName" | "lastName" | "createdAt" | "leaseEnd" | "workerId";
+type SortByField =
+  | "firstName"
+  | "lastName"
+  | "createdAt"
+  | "leaseEnd"
+  | "workerId";
 
 // ------------------------------------------------------------
 // EXPORT CLIENTS TO CSV
@@ -404,13 +409,15 @@ export const ClientsTable = () => {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="start">
-            {([
-              "createdAt",
-              "firstName",
-              "lastName",
-              "leaseEnd",
-              "workerId",
-            ] as const).map((col) => (
+            {(
+              [
+                "createdAt",
+                "firstName",
+                "lastName",
+                "leaseEnd",
+                "workerId",
+              ] as const
+            ).map((col) => (
               <DropdownMenuItem
                 key={col}
                 onClick={() => {
@@ -833,32 +840,32 @@ export const ClientsTable = () => {
             : ""}
         </div>
         <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-          disabled={
-            !metadata?.hasPrevPage ||
-            editingRowId !== null ||
-            isAdding ||
-            isRefetching
-          }
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage((prev) => prev + 1)}
-          disabled={
-            !metadata?.hasNextPage ||
-            editingRowId !== null ||
-            isAdding ||
-            isRefetching
-          }
-        >
-          Next
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            disabled={
+              !metadata?.hasPrevPage ||
+              editingRowId !== null ||
+              isAdding ||
+              isRefetching
+            }
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((prev) => prev + 1)}
+            disabled={
+              !metadata?.hasNextPage ||
+              editingRowId !== null ||
+              isAdding ||
+              isRefetching
+            }
+          >
+            Next
+          </Button>
         </div>
       </div>
     </div>

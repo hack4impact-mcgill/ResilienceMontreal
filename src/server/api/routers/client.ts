@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-import { createTRPCRouter, interventionTeamProcedure, protectedProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  interventionTeamProcedure,
+  protectedProcedure,
+} from "~/server/api/trpc";
 
 export const clientRouter = createTRPCRouter({
   addClient: interventionTeamProcedure
@@ -239,13 +243,22 @@ export const clientRouter = createTRPCRouter({
             ? {
                 OR: [
                   {
-                    firstName: { contains: input.search, mode: "insensitive" as const },
+                    firstName: {
+                      contains: input.search,
+                      mode: "insensitive" as const,
+                    },
                   },
                   {
-                    lastName: { contains: input.search, mode: "insensitive" as const },
+                    lastName: {
+                      contains: input.search,
+                      mode: "insensitive" as const,
+                    },
                   },
                   {
-                    email: { contains: input.search, mode: "insensitive" as const },
+                    email: {
+                      contains: input.search,
+                      mode: "insensitive" as const,
+                    },
                   },
                 ],
               }

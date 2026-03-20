@@ -1,5 +1,5 @@
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "~/generated/prisma/client";
 import { createGrantDistributionSchema } from "~/lib/schemas/grantDistribution";
 import { TRPCError } from "@trpc/server";
 

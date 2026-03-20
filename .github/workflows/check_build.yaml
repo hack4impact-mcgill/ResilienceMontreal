@@ -21,6 +21,9 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma client
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: npx prisma generate
 
       - name: Build

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
@@ -75,17 +76,6 @@ export function AppSidebar() {
     router.refresh();
   };
 
-  // fetch session and fund pools to display live totals
-  const { data: session } = api.auth.getSession.useQuery();
-  const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
-    enabled: Boolean(session?.user),
-  });
-
-  const totalAvailable =
-    fundPools?.reduce(
-      (sum: number, p: any) => sum + (Number(p.amount ?? 0) || 0),
-      0,
-    ) ?? 0;
 
   return (
     <Sidebar>

@@ -4,7 +4,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "~/generated/prisma/client";
 import {
   createGrantFullSchema,
   updateGrantFullSchema,

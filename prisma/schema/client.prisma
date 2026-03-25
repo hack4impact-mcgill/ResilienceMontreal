@@ -17,4 +17,9 @@ model Client {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([workerId])
+  @@index([createdAt])
+  @@index([lastName, firstName])
+  @@index([leaseEnd])
 }

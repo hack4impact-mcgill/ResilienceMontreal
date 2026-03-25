@@ -1,20 +1,19 @@
 model Expense {
-    id            Int                @id @default(autoincrement())
-    fundAllocations ExpenseFundAllocation[]
-    totalAmount   Decimal            @db.Decimal(10, 2)
-    description   String
-    date          DateTime           @default(now())
-    invoiceUrl    String?
+  id              Int                     @id @default(autoincrement())
+  totalAmount     Decimal                 @db.Decimal(10, 2)
+  description     String
+  date            DateTime                @default(now())
+  invoiceUrl      String?
+  fundAllocations ExpenseFundAllocation[]
 }
 
 model ExpenseFundAllocation {
-    id         Int      @id @default(autoincrement())
-    expenseId  Int
-    fundPoolId Int
-    amount     Decimal  @db.Decimal(10, 2)  // Amount taken from this specific fund pool
-    
-    expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-    fundPool   FundPool @relation(fields: [fundPoolId], references: [id])
-    
-    @@unique([expenseId, fundPoolId])
+  id         Int      @id @default(autoincrement())
+  expenseId  Int
+  fundPoolId Int
+  amount     Decimal  @db.Decimal(10, 2)
+  expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  fundPool   FundPool @relation(fields: [fundPoolId], references: [id])
+
+  @@unique([expenseId, fundPoolId])
 }

@@ -1,10 +1,8 @@
 model FundPool {
   id              Int                     @id @default(autoincrement())
   amount          Decimal                 @db.Decimal(10, 2)
-  category        String
+  category        String                  @unique
   order           Int                     @default(0)
-  distributions   GrantDistribution[]
   fundAllocations ExpenseFundAllocation[]
-
-  @@unique([category])
+  distributions   GrantDistribution[]
 }

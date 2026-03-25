@@ -76,7 +76,6 @@ export function AppSidebar() {
     router.refresh();
   };
 
-
   return (
     <Sidebar>
       <SidebarContent>

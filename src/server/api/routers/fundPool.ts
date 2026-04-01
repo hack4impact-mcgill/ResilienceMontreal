@@ -17,39 +17,21 @@ const fundPoolInclude = {
 } as const;
 
 export const fundPoolRouter = createTRPCRouter({
-  // Endpoint to create a new fundpool using given category and amount
-  // Example: POST http://localhost:3000/api/trpc/fundPool.createFundPool with body {"json": {"category": "example", "amount": 100}}
-  createFundPool: bookkeeperProcedure
-    .input(createFundPoolSchema)
-    .mutation(async ({ ctx, input }) => {
-      const maxOrder = await ctx.db.fundPool.aggregate({
-        _max: { order: true },
-      });
-      const nextOrder = (maxOrder._max.order ?? -1) + 1;
-
-      const totalAmount = new Prisma.Decimal(String(input.amount ?? 0));
-      const newFundPool = await ctx.db.fundPool.create({
-        data: {
-          amount: totalAmount,
-          category: input.category,
-          order: nextOrder,
-        },
-        include: { ...fundPoolInclude },
-      });
-      return newFundPool;
-    }),
-
-  // Endpoint to fetch all fundPools
-  // Example: GET http://localhost:3000/api/trpc/fundPool.getFundPools?input={}
-  getFundPools: fundPoolReadProcedure.query(async ({ ctx }) => {
+  getAll: fundPoolReadProcedure.query(async ({ ctx }) => {
     const fundPools = await ctx.db.fundPool.findMany({
       include: { ...fundPoolInclude },
+      orderBy: { order: "asc" },
     });
-    return fundPools;
+
+    return fundPools.map((pool) => ({
+      ...pool,
+      calculatedAmount: pool.fundAllocations.reduce(
+        (sum, allocation) => sum + allocation.amount.toNumber(),
+        0,
+      ),
+    }));
   }),
 
-  // Endpoint to fetch a fundPool by ID
-  // Example: GET http://localhost:3000/api/trpc/fundPool.getFundPoolById?batch=1&input={"0":{"json": {"id": 1}}}
   getFundPoolById: fundPoolReadProcedure
     .input(
       z.object({
@@ -75,7 +57,27 @@ export const fundPoolRouter = createTRPCRouter({
       return fundPool;
     }),
 
-  update: protectedProcedure
+  create: bookkeeperProcedure
+    .input(createFundPoolSchema)
+    .mutation(async ({ ctx, input }) => {
+      const maxOrder = await ctx.db.fundPool.aggregate({
+        _max: { order: true },
+      });
+      const nextOrder = (maxOrder._max.order ?? -1) + 1;
+
+      const totalAmount = new Prisma.Decimal(String(input.amount ?? 0));
+      const newFundPool = await ctx.db.fundPool.create({
+        data: {
+          amount: totalAmount,
+          category: input.category,
+          order: nextOrder,
+        },
+        include: { ...fundPoolInclude },
+      });
+      return newFundPool;
+    }),
+
+  update: bookkeeperProcedure
     .input(updateFundPoolSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, ...updateFields } = input;
@@ -87,8 +89,7 @@ export const fundPoolRouter = createTRPCRouter({
       return updateFundPool;
     }),
 
-  // delete fund pool and convert linked distributions to 'uncategorized'
-  delete: protectedProcedure
+  delete: bookkeeperProcedure
     .input(
       z.object({
         id: z.coerce
@@ -99,8 +100,6 @@ export const fundPoolRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       await ctx.db.$transaction([
-        // tran for atomicity
-        // convert linked distributions to 'uncategorized'
         ctx.db.grantDistribution.updateMany({
           where: { fundPoolId: input.id },
           data: { fundPoolId: null },
@@ -113,7 +112,7 @@ export const fundPoolRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  reorder: protectedProcedure
+  reorder: bookkeeperProcedure
     .input(
       z.object({
         orderedIds: z.array(z.number().int().positive()),
@@ -132,7 +131,7 @@ export const fundPoolRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  getTotalFunding: protectedProcedure.query(async ({ ctx }) => {
+  getTotalFunding: fundPoolReadProcedure.query(async ({ ctx }) => {
     const fundPools = await ctx.db.fundPool.findMany({
       include: { fundAllocations: true },
     });
@@ -145,7 +144,6 @@ export const fundPoolRouter = createTRPCRouter({
       return sum + poolAmount;
     }, 0);
 
-    // uncatted grants total
     const uncategorizedDistributions = await ctx.db.grantDistribution.findMany({
       where: { fundPoolId: null },
     });
@@ -158,7 +156,7 @@ export const fundPoolRouter = createTRPCRouter({
     return { total: categorizedTotal + uncategorizedTotal };
   }),
 
-  getUncategorized: protectedProcedure.query(async ({ ctx }) => {
+  getUncategorized: fundPoolReadProcedure.query(async ({ ctx }) => {
     const distributions = await ctx.db.grantDistribution.findMany({
       where: { fundPoolId: null },
       include: { grant: true },
@@ -175,70 +173,4 @@ export const fundPoolRouter = createTRPCRouter({
       distributions,
     };
   }),
-
-  // old (TEMPTORARILY MOVED)
-  createFundPool: protectedProcedure
-    .input(createFundPoolSchema)
-    .mutation(async ({ ctx, input }) => {
-      const totalAmount = new Prisma.Decimal(String(input.amount ?? 0));
-      const newFundPool = await ctx.db.fundPool.create({
-        data: {
-          amount: totalAmount,
-          category: input.category,
-        },
-        include: { ...fundPoolInclude },
-      });
-      return newFundPool;
-    }),
-
-  /* Endpoint to update a fundpool by ID
-  POST http://localhost:3000/api/trpc/fundPool.updateFundPoolById?batch=1
-  body:
-  {
-    "0": {
-      "json": {
-        "id": 1,
-        "category": "Operations"
-      }
-    }
-  }
-  */
-  updateFundPoolById: bookkeeperProcedure
-    .input(updateFundPoolSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { id, ...updateFields } = input;
-      const updateFundPool = await ctx.db.fundPool.update({
-        where: { id },
-        data: { ...updateFields },
-      });
-
-      return updateFundPool;
-    }),
-
-  /* Endpoint to delete a fundpool by ID
-  POST http://localhost:3000/api/trpc/fundPool.deleteFundPoolById?batch=1
-  body: 
-  {
-    "0": {
-      "json": {
-        "id": 1
-      }
-    }
-  }
-  */
-  deleteFundPoolById: bookkeeperProcedure
-    .input(
-      z.object({
-        id: z.coerce
-          .number()
-          .int()
-          .positive("FundPoolID must be a positive integer"),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const deletedFundPool = await ctx.db.fundPool.delete({
-        where: { id: input.id },
-      });
-      return deletedFundPool;
-    }),
 });

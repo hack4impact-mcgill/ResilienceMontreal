@@ -61,7 +61,7 @@ export function AppSidebar() {
   const canEdit =
     currentUser?.role === "Admin" || currentUser?.role === "Bookkeeper";
 
-  const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
+  const { data: fundPools } = api.fundPool.getAll.useQuery(undefined, {
     enabled: canViewFundPools,
   });
 

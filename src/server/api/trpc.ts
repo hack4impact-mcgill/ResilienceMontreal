@@ -79,6 +79,59 @@ export const protectedProcedure = t.procedure
     });
   });
 
+// fundPoolReadProcedure requires the user to be an Admin, Bookkeeper, or InterventionTeam member
+// used for protecting fund pool read operations
+export const fundPoolReadProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { email: ctx.user.email ?? undefined },
+    });
+
+    if (
+      !user ||
+      (user.role !== "Admin" &&
+        user.role !== "Bookkeeper" &&
+        user.role !== "InterventionTeam")
+    ) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You do not have permission to view fund pools",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        userRole: user.role,
+      },
+    });
+  },
+);
+
+// bookkeeperProcedure requires the user to be a Bookkeeper or Admin
+// used for protecting fund pool mutation operations
+export const bookkeeperProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { email: ctx.user.email ?? undefined },
+    });
+
+    if (!user || (user.role !== "Bookkeeper" && user.role !== "Admin")) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only Bookkeepers and Admins can modify fund pools",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        userRole: user.role,
+      },
+    });
+  },
+);
+
 // interventionTeamProcedure requires the user to be an InterventionTeam member or Admin
 // used for protecting client-related operations
 export const interventionTeamProcedure = protectedProcedure.use(

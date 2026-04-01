@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { z } from "zod";
-import { RoleName } from "@prisma/client";
+import { RoleName } from "~/generated/prisma/client";
 
 const bodySchema = z.object({ role: z.nativeEnum(RoleName) });
 

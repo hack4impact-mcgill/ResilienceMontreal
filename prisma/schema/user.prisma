@@ -1,7 +1,8 @@
 model User {
-  supabaseId    String   @id
-  name          String
-  email         String   @unique
-  role          RoleName @default(Unassigned)
-  isConfirmed   Boolean  @default(false)
+  name        String
+  email       String   @unique
+  isConfirmed Boolean  @default(false)
+  supabaseId  String   @id
+  role        RoleName @default(Unassigned)
+  clients     Client[]
 }

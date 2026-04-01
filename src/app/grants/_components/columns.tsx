@@ -56,7 +56,11 @@ export const columns: ColumnDef<Grant>[] = [
       const expired = row.original.isExpired;
       return (
         <div className="flex flex-wrap items-center gap-2">
-          <span className={expired ? "text-muted-foreground line-through" : undefined}>
+          <span
+            className={
+              expired ? "text-muted-foreground line-through" : undefined
+            }
+          >
             {date.toLocaleDateString()}
           </span>
           {expired ? (

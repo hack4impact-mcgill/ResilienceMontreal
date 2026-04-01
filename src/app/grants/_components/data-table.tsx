@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { flexRender, getCoreRowModel, useReactTable, VisibilityState } from "@tanstack/react-table";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  VisibilityState,
+} from "@tanstack/react-table";
 
 import { CirclePlus, ListFilter, MoreHorizontal } from "lucide-react";
 
@@ -154,10 +159,8 @@ export const GrantsTable = () => {
       sortBy,
       sortOrder,
       title: debouncedTitle.trim() || undefined,
-      minAmount:
-        Number.isFinite(minN) && minN > 0 ? minN : undefined,
-      maxAmount:
-        Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
+      minAmount: Number.isFinite(minN) && minN > 0 ? minN : undefined,
+      maxAmount: Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
       startDate: dueFromInput
         ? new Date(`${dueFromInput}T12:00:00`)
         : undefined,
@@ -367,9 +370,10 @@ export const GrantsTable = () => {
       <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
-            <label className="text-xs text-muted-foreground" htmlFor="grant-search">
-          
-            </label>
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="grant-search"
+            ></label>
             <div className="flex items-center gap-2">
               <Input
                 id="grant-search"
@@ -398,7 +402,11 @@ export const GrantsTable = () => {
                     ) : null}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="start" side="bottom">
+                <PopoverContent
+                  className="w-80 p-0"
+                  align="start"
+                  side="bottom"
+                >
                   <div className="border-b px-3 py-2">
                     <p className="text-sm font-semibold">Filters</p>
                     <p className="text-xs text-muted-foreground">
@@ -492,7 +500,10 @@ export const GrantsTable = () => {
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground" htmlFor="grant-sort-by">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="grant-sort-by"
+            >
               Sort by
             </label>
             <select
@@ -501,7 +512,11 @@ export const GrantsTable = () => {
               value={sortBy}
               onChange={(e) =>
                 setSortBy(
-                  e.target.value as "totalAmount" | "endDate" | "createdAt" | "title",
+                  e.target.value as
+                    | "totalAmount"
+                    | "endDate"
+                    | "createdAt"
+                    | "title",
                 )
               }
             >
@@ -512,7 +527,10 @@ export const GrantsTable = () => {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground" htmlFor="grant-sort-order">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="grant-sort-order"
+            >
               Order
             </label>
             <select
@@ -526,7 +544,10 @@ export const GrantsTable = () => {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground" htmlFor="grant-page-size">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="grant-page-size"
+            >
               Rows per page
             </label>
             <select
@@ -791,9 +812,7 @@ export const GrantsTable = () => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.original.id}
-                  className={
-                    row.original.isExpired ? "bg-muted/30" : undefined
-                  }
+                  className={row.original.isExpired ? "bg-muted/30" : undefined}
                 >
                   {row.getVisibleCells().map((cell) => {
                     // render actions column manually so we can inject delete handler

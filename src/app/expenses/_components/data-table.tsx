@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { flexRender, getCoreRowModel, useReactTable, VisibilityState } from "@tanstack/react-table";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  VisibilityState,
+} from "@tanstack/react-table";
 
 import { CirclePlus, ListFilter } from "lucide-react";
 
@@ -215,10 +220,8 @@ export const ExpensesTable = () => {
       sortBy,
       sortOrder,
       description: debouncedDescription.trim() || undefined,
-      minAmount:
-        Number.isFinite(minN) && minN > 0 ? minN : undefined,
-      maxAmount:
-        Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
+      minAmount: Number.isFinite(minN) && minN > 0 ? minN : undefined,
+      maxAmount: Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
       startDate: dateFromInput
         ? new Date(`${dateFromInput}T12:00:00`)
         : undefined,
@@ -415,7 +418,11 @@ export const ExpensesTable = () => {
                     ) : null}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="start" side="bottom">
+                <PopoverContent
+                  className="w-80 p-0"
+                  align="start"
+                  side="bottom"
+                >
                   <div className="border-b px-3 py-2">
                     <p className="text-sm font-semibold">Filters</p>
                     <p className="text-xs text-muted-foreground">
@@ -521,7 +528,11 @@ export const ExpensesTable = () => {
               value={sortBy}
               onChange={(e) =>
                 setSortBy(
-                  e.target.value as "date" | "totalAmount" | "description" | "id",
+                  e.target.value as
+                    | "date"
+                    | "totalAmount"
+                    | "description"
+                    | "id",
                 )
               }
             >

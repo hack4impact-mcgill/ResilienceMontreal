@@ -56,7 +56,8 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith("/signup") &&
     !request.nextUrl.pathname.startsWith("/auth") &&
     !request.nextUrl.pathname.startsWith("/error") &&
-    !request.nextUrl.pathname.startsWith("/clients") // revert back after table UI is modified
+    !request.nextUrl.pathname.startsWith("/clients") && // revert back after table UI is modified
+    !request.nextUrl.pathname.startsWith("/forgot-password")
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();

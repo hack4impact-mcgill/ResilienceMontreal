@@ -17,6 +17,8 @@ export type Expense = {
   date: Date;
   totalAmount: number;
   invoiceUrl: string | null;
+  /** True when the expense date is after today (local calendar day). */
+  isFutureDated: boolean;
 };
 
 export const columns: ColumnDef<Expense>[] = [
@@ -30,7 +32,19 @@ export const columns: ColumnDef<Expense>[] = [
     header: "DATE",
     cell: ({ row }) => {
       const date: Date = row.original.date;
-      return <div>{date.toLocaleDateString()}</div>;
+      const future = row.original.isFutureDated;
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={future ? "text-muted-foreground" : undefined}>
+            {date.toLocaleDateString()}
+          </span>
+          {future ? (
+            <span className="inline-flex rounded border border-amber-600/40 bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200">
+              Future
+            </span>
+          ) : null}
+        </div>
+      );
     },
   },
   {

@@ -1,27 +1,16 @@
 "use client";
 
 import * as React from "react";
-import {
-  ColumnFiltersState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-  VisibilityState,
-} from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable, VisibilityState } from "@tanstack/react-table";
 
-import { ListFilter, Check, CirclePlus } from "lucide-react";
+import { CirclePlus, ListFilter } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -38,6 +27,7 @@ import { columns, Expense } from "./columns";
 import { api } from "~/trpc/react";
 import { TRPCClientError } from "@trpc/client";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 
 // Friendly error messages for tRPC/zod (same as original expenses page)
 type TRPCErrorDataShape = {
@@ -102,6 +92,14 @@ const expenseSchema = z.object({
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
 
+function isExpenseFutureDated(date: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d > today;
+}
+
 // Map tRPC/Prisma list item to table row (Decimal may come as number or string)
 function mapExpenseRow(e: {
   id: number;
@@ -114,12 +112,14 @@ function mapExpenseRow(e: {
     typeof e.totalAmount === "number"
       ? e.totalAmount
       : Number(e.totalAmount ?? 0);
+  const expenseDate = new Date(e.date);
   return {
     id: e.id,
     description: e.description,
-    date: new Date(e.date),
+    date: expenseDate,
     totalAmount: amount,
     invoiceUrl: e.invoiceUrl,
+    isFutureDated: isExpenseFutureDated(expenseDate),
   };
 }
 
@@ -155,18 +155,86 @@ const exportToCSV = (expenses: Expense[]) => {
 // MAIN TABLE COMPONENT
 // ------------------------------------------------------------
 export const ExpensesTable = () => {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const [filterColumn, setFilterColumn] = React.useState<
-    "description" | "totalAmount"
-  >("description");
-  const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState<30 | 50 | 100>(30);
+  const [sortBy, setSortBy] = React.useState<
+    "date" | "totalAmount" | "description" | "id"
+  >("date");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  const [searchDescription, setSearchDescription] = React.useState("");
+  const [debouncedDescription, setDebouncedDescription] = React.useState("");
+  const [minAmountInput, setMinAmountInput] = React.useState("");
+  const [maxAmountInput, setMaxAmountInput] = React.useState("");
+  const [dateFromInput, setDateFromInput] = React.useState("");
+  const [dateToInput, setDateToInput] = React.useState("");
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedDescription(searchDescription), 300);
+    return () => clearTimeout(t);
+  }, [searchDescription]);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [
+    debouncedDescription,
+    minAmountInput,
+    maxAmountInput,
+    dateFromInput,
+    dateToInput,
+    sortBy,
+    sortOrder,
+    limit,
+  ]);
+
+  const hasAdvancedFilters = Boolean(
+    minAmountInput.trim() ||
+      maxAmountInput.trim() ||
+      dateFromInput ||
+      dateToInput,
+  );
+
+  const clearAdvancedFilters = () => {
+    setMinAmountInput("");
+    setMaxAmountInput("");
+    setDateFromInput("");
+    setDateToInput("");
+  };
+
+  const queryInput = React.useMemo(() => {
+    const minRaw = minAmountInput.trim();
+    const maxRaw = maxAmountInput.trim();
+    const minN = minRaw === "" ? NaN : Number(minRaw);
+    const maxN = maxRaw === "" ? NaN : Number(maxRaw);
+    return {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      description: debouncedDescription.trim() || undefined,
+      minAmount:
+        Number.isFinite(minN) && minN > 0 ? minN : undefined,
+      maxAmount:
+        Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
+      startDate: dateFromInput
+        ? new Date(`${dateFromInput}T12:00:00`)
+        : undefined,
+      endDate: dateToInput ? new Date(`${dateToInput}T12:00:00`) : undefined,
+    };
+  }, [
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    debouncedDescription,
+    minAmountInput,
+    maxAmountInput,
+    dateFromInput,
+    dateToInput,
+  ]);
 
   const [isAdding, setIsAdding] = React.useState(false);
   const [formData, setFormData] = React.useState<ExpenseFormData>({
@@ -182,16 +250,30 @@ export const ExpensesTable = () => {
     null,
   );
 
+  const utils = api.useContext();
   const {
     data: listData,
     isLoading,
     isError,
+    isFetching,
     refetch,
     isRefetching,
-  } = api.expenses.list.useQuery({ page: 1, limit: 100 });
+  } = api.expenses.list.useQuery(queryInput, {
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  });
+
+  const pagination = listData?.pagination;
+
+  React.useEffect(() => {
+    if (!pagination || pagination.totalPages <= 0) return;
+    if (page > pagination.totalPages) setPage(pagination.totalPages);
+  }, [pagination, page]);
+
   const createExpense = api.expenses.create.useMutation({
     onSuccess: () => {
-      refetch();
+      void utils.expenses.list.invalidate();
       setSuccessMessage("Expense created");
       setTimeout(() => setSuccessMessage(null), 4000);
     },
@@ -205,27 +287,14 @@ export const ExpensesTable = () => {
   const table = useReactTable<Expense>({
     data: localExpenses,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
-      sorting,
-      columnFilters,
       columnVisibility,
       rowSelection,
     },
   });
-
-  const prettyLabel = (col: string) => {
-    if (col === "description") return "Description";
-    if (col === "totalAmount") return "Amount";
-    return col;
-  };
 
   const resetForm = () => {
     setFormData({
@@ -268,15 +337,13 @@ export const ExpensesTable = () => {
       },
       {
         onSuccess: () => {
+          setPage(1);
           if (saveAndAddMore) {
             resetForm();
           } else {
             resetForm();
             setIsAdding(false);
           }
-          setTimeout(() => {
-            table.setPageIndex(Math.max(0, table.getPageCount() - 1));
-          }, 10);
         },
       },
     );
@@ -299,93 +366,243 @@ export const ExpensesTable = () => {
     });
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading && !listData) return <div>Loading...</div>;
   if (isError) return <div>Error loading data.</div>;
 
-  type FilterColumn = "description" | "totalAmount";
   return (
-    <div className="w-full">
-      {/* Filter Row */}
-      <div className="border-t border-border -mx-8 px-8 flex items-center py-4">
-        <Input
-          placeholder={`Search by ${prettyLabel(filterColumn)}...`}
-          value={
-            (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""
-          }
-          onChange={(e) =>
-            table.getColumn(filterColumn)?.setFilterValue(e.target.value)
-          }
-          className="max-w-sm bg-white border-[#3FA9A9]"
+    <div className="relative w-full">
+      {isFetching ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-10 bg-background/40"
+          aria-hidden
         />
-
-        <DropdownMenu open={filterMenuOpen} onOpenChange={setFilterMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="ml-2 flex items-center gap-2 px-2 py-1 h-auto hover:bg-transparent"
+      ) : null}
+      {/* Search & filters */}
+      <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="expense-search"
             >
-              <ListFilter
-                className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`}
+              Description
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="expense-search"
+                placeholder="Search by description…"
+                value={searchDescription}
+                onChange={(e) => setSearchDescription(e.target.value)}
+                className="min-w-0 flex-1 bg-white border-[#3FA9A9]"
               />
-              <span>Filter</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {["description", "totalAmount"].map((col) => (
-              <DropdownMenuItem
-                key={col}
-                onClick={() => {
-                  table.getColumn(filterColumn)?.setFilterValue("");
-                  setFilterColumn(col as FilterColumn);
-                  setFilterMenuOpen(false);
-                }}
-                className="flex items-center gap-2"
-              >
-                {filterColumn === col ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <span className="h-4 w-4 opacity-0" />
-                )}
-                {prettyLabel(col)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "shrink-0 gap-2",
+                      hasAdvancedFilters && "border-[#45BAB8] bg-[#45BAB8]/10",
+                    )}
+                  >
+                    <ListFilter className="h-4 w-4" aria-hidden />
+                    Filter
+                    {hasAdvancedFilters ? (
+                      <span
+                        className="flex h-2 w-2 rounded-full bg-[#45BAB8]"
+                        aria-hidden
+                      />
+                    ) : null}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="start" side="bottom">
+                  <div className="border-b px-3 py-2">
+                    <p className="text-sm font-semibold">Filters</p>
+                    <p className="text-xs text-muted-foreground">
+                      Amount range and expense date range
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-3 p-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor="expense-min-amt"
+                        >
+                          Min amount
+                        </label>
+                        <Input
+                          id="expense-min-amt"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="Min"
+                          value={minAmountInput}
+                          onChange={(e) => setMinAmountInput(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor="expense-max-amt"
+                        >
+                          Max amount
+                        </label>
+                        <Input
+                          id="expense-max-amt"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="Max"
+                          value={maxAmountInput}
+                          onChange={(e) => setMaxAmountInput(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor="expense-date-from"
+                        >
+                          Date from
+                        </label>
+                        <Input
+                          id="expense-date-from"
+                          type="date"
+                          className="w-full min-w-0"
+                          value={dateFromInput}
+                          onChange={(e) => setDateFromInput(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor="expense-date-to"
+                        >
+                          Date to
+                        </label>
+                        <Input
+                          id="expense-date-to"
+                          type="date"
+                          className="w-full min-w-0"
+                          value={dateToInput}
+                          onChange={(e) => setDateToInput(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="self-start text-muted-foreground"
+                      onClick={clearAdvancedFilters}
+                      disabled={!hasAdvancedFilters}
+                    >
+                      Clear filters
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="expense-sort-by"
+            >
+              Sort by
+            </label>
+            <select
+              id="expense-sort-by"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(
+                  e.target.value as "date" | "totalAmount" | "description" | "id",
+                )
+              }
+            >
+              <option value="date">Date</option>
+              <option value="totalAmount">Amount</option>
+              <option value="description">Description</option>
+              <option value="id">ID</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="expense-sort-order"
+            >
+              Order
+            </label>
+            <select
+              id="expense-sort-order"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="expense-page-size"
+            >
+              Rows per page
+            </label>
+            <select
+              id="expense-page-size"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={limit}
+              onChange={(e) =>
+                setLimit(Number(e.target.value) as 30 | 50 | 100)
+              }
+            >
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <Button
+            variant="ghost"
+            className="ml-auto text-black hover:bg-transparent"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+          >
+            {isRefetching ? "Refreshing..." : "Refresh"}
+          </Button>
 
-        <Button
-          variant="ghost"
-          className="ml-auto text-black hover:bg-transparent"
-          onClick={() => refetch()}
-          disabled={isRefetching}
-        >
-          {isRefetching ? "Refreshing..." : "Refresh"}
-        </Button>
+          <Button
+            variant="ghost"
+            className="text-black hover:bg-transparent"
+            onClick={() => exportToCSV(localExpenses)}
+          >
+            Export page
+          </Button>
 
-        <Button
-          variant="ghost"
-          className="text-black hover:bg-transparent"
-          onClick={() => exportToCSV(localExpenses)}
-        >
-          Export
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={createSample}
+            disabled={createExpense.isPending}
+            className="border px-4 py-2"
+          >
+            Quick sample
+          </Button>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={createSample}
-          disabled={createExpense.isPending}
-          className="border px-4 py-2"
-        >
-          Quick sample
-        </Button>
-
-        <Button
-          variant="outline"
-          className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-          onClick={() => setIsAdding(true)}
-        >
-          <CirclePlus /> Add Expense
-        </Button>
+          <Button
+            variant="outline"
+            className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+            onClick={() => setIsAdding(true)}
+          >
+            <CirclePlus /> Add Expense
+          </Button>
+        </div>
       </div>
 
       {successMessage && (
@@ -525,7 +742,13 @@ export const ExpensesTable = () => {
             )}
             {table.getRowModel().rows.length > 0
               ? table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="hover:bg-transparent">
+                  <TableRow
+                    key={row.id}
+                    className={cn(
+                      "hover:bg-transparent",
+                      row.original.isFutureDated && "bg-muted/30",
+                    )}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(
@@ -552,23 +775,42 @@ export const ExpensesTable = () => {
         </Table>
       </div>
 
-      <div className="flex items-center justify-end space-x-2 py-4 px-8">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2 py-4 px-8">
+        <p className="text-sm text-muted-foreground">
+          {pagination ? (
+            <>
+              Showing{" "}
+              {pagination.totalCount === 0
+                ? 0
+                : (pagination.currentPage - 1) * pagination.pageSize + 1}
+              –
+              {(pagination.currentPage - 1) * pagination.pageSize +
+                pagination.returnedCount}{" "}
+              of {pagination.totalCount} expenses
+              {pagination.totalPages > 0
+                ? ` · Page ${pagination.currentPage} of ${pagination.totalPages}`
+                : null}
+            </>
+          ) : null}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={!pagination?.hasPreviousPage}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!pagination?.hasNextPage}
+          >
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );

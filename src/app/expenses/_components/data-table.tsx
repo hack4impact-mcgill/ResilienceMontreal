@@ -3,7 +3,7 @@
 import * as React from "react";
 import { flexRender, getCoreRowModel, useReactTable, VisibilityState } from "@tanstack/react-table";
 
-import { CirclePlus, ListFilter } from "lucide-react";
+import { CirclePlus, ListFilter, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -165,22 +165,23 @@ export const ExpensesTable = () => {
     "date" | "totalAmount" | "description" | "id"
   >("date");
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  /** Draft text in the search field (does not hit the API until Enter). */
   const [searchDescription, setSearchDescription] = React.useState("");
-  const [debouncedDescription, setDebouncedDescription] = React.useState("");
+  /** Committed filter sent to `expenses.list` (set when user presses Enter). */
+  const [appliedDescription, setAppliedDescription] = React.useState("");
   const [minAmountInput, setMinAmountInput] = React.useState("");
   const [maxAmountInput, setMaxAmountInput] = React.useState("");
   const [dateFromInput, setDateFromInput] = React.useState("");
   const [dateToInput, setDateToInput] = React.useState("");
 
-  React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedDescription(searchDescription), 300);
-    return () => clearTimeout(t);
+  const commitDescriptionSearch = React.useCallback(() => {
+    setAppliedDescription(searchDescription.trim());
   }, [searchDescription]);
 
   React.useEffect(() => {
     setPage(1);
   }, [
-    debouncedDescription,
+    appliedDescription,
     minAmountInput,
     maxAmountInput,
     dateFromInput,
@@ -214,7 +215,7 @@ export const ExpensesTable = () => {
       limit,
       sortBy,
       sortOrder,
-      description: debouncedDescription.trim() || undefined,
+      description: appliedDescription || undefined,
       minAmount:
         Number.isFinite(minN) && minN > 0 ? minN : undefined,
       maxAmount:
@@ -229,7 +230,7 @@ export const ExpensesTable = () => {
     limit,
     sortBy,
     sortOrder,
-    debouncedDescription,
+    appliedDescription,
     minAmountInput,
     maxAmountInput,
     dateFromInput,
@@ -393,8 +394,23 @@ export const ExpensesTable = () => {
                 placeholder="Search by description…"
                 value={searchDescription}
                 onChange={(e) => setSearchDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitDescriptionSearch();
+                  }
+                }}
                 className="min-w-0 flex-1 bg-white border-[#3FA9A9]"
               />
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 gap-2 border-[#3FA9A9] bg-white hover:bg-[#3FA9A9]/10"
+                onClick={commitDescriptionSearch}
+              >
+                <Search className="h-4 w-4" aria-hidden />
+                Search
+              </Button>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button

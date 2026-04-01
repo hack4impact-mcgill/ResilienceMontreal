@@ -221,10 +221,8 @@ export const ExpensesTable = () => {
       sortBy,
       sortOrder,
       description: appliedDescription || undefined,
-      minAmount:
-        Number.isFinite(minN) && minN > 0 ? minN : undefined,
-      maxAmount:
-        Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
+      minAmount: Number.isFinite(minN) && minN > 0 ? minN : undefined,
+      maxAmount: Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
       startDate: dateFromInput
         ? new Date(`${dateFromInput}T12:00:00`)
         : undefined,

@@ -1,17 +1,23 @@
 model Grant {
-    id            Int     @id @default(autoincrement())
-    title         String
-    description   String 
-    totalAmount   Decimal    @db.Decimal(10, 2)
-    unassignedAmount  Decimal  @db.Decimal(10, 2)
-    createdAt     DateTime @default(now())
-    updatedAt     DateTime @updatedAt
-    endDate       DateTime?
-    status        Status
-    distributions   GrantDistribution[]
+  id               Int                 @id @default(autoincrement())
+  title            String
+  description      String
+  totalAmount      Decimal             @db.Decimal(10, 2)
+  unassignedAmount Decimal             @db.Decimal(10, 2)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  endDate          DateTime?
+  status           Status
+  distributions    GrantDistribution[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([totalAmount])
+  @@index([endDate])
+  @@index([status])
+  @@index([title])
 }
 
 enum Status {
-    PENDING 
-    APPROVED
+  PENDING
+  APPROVED
 }

@@ -4,7 +4,7 @@ import {
   fundPoolReadProcedure,
   bookkeeperProcedure,
 } from "~/server/api/trpc";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "~/generated/prisma/client";
 import {
   createFundPoolSchema,
   updateFundPoolSchema,

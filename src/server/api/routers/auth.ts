@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
+import { env } from "~/env";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 import { createClient } from "~/utils/supabase/server";
 import { getServerAuthSession } from "~/server/auth";
 import { prisma } from "@/lib/prisma";
@@ -15,15 +20,34 @@ export const authRouter = createTRPCRouter({
         const supabase = await createClient();
         const result = await supabase.auth.signInWithPassword(input);
         if (result.error) {
+          // Provide more specific error messages
+          let errorMessage = result.error.message;
+
+          if (
+            errorMessage.toLowerCase().includes("invalid login credentials")
+          ) {
+            errorMessage =
+              "Invalid email or password. Please check your credentials and try again.";
+          } else if (
+            errorMessage.toLowerCase().includes("email not confirmed")
+          ) {
+            errorMessage = "Please confirm your email before logging in.";
+          } else if (errorMessage.toLowerCase().includes("user not found")) {
+            errorMessage = "No account found with this email address.";
+          }
+
           throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: result.error.message,
+            code: "UNAUTHORIZED",
+            message: errorMessage,
           });
         }
         // return the session so the client can ask the server to persist
         // the Supabase session cookies (Set-Cookie) in a separate route
         return { ok: true, session: result.data.session ?? null };
       } catch (err: unknown) {
+        if (err instanceof TRPCError) {
+          throw err;
+        }
         const message = err instanceof Error ? err.message : String(err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -33,19 +57,65 @@ export const authRouter = createTRPCRouter({
     }),
 
   signUp: publicProcedure
-    .input(z.object({ email: z.email(), password: z.string().min(6) }))
+    .input(z.object({ email: z.string(), password: z.string() }))
     .mutation(async ({ input }) => {
       try {
         const { email, password } = input;
         const supabase = await createClient();
         console.log("Signing up user:", email);
 
+        // Validate email format first
+        const emailSchema = z.string().email();
+        const emailValidation = emailSchema.safeParse(email);
+        if (!emailValidation.success) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Please provide a valid email address.",
+          });
+        }
+
+        // Check if user already exists in Prisma BEFORE validating password
+        const existingUser = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (existingUser) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "An account with this email already exists. Please log in instead.",
+          });
+        }
+
+        // Now validate password
+        if (password.length < 6) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Password must be at least 6 characters long.",
+          });
+        }
+
         const result = await supabase.auth.signUp({ email, password });
         console.log("signUp result:", result);
         if (result.error) {
+          // Provide more specific error messages
+          let errorMessage = result.error.message;
+
+          if (errorMessage.toLowerCase().includes("password")) {
+            errorMessage =
+              "Password must be at least 6 characters long and contain a mix of letters and numbers.";
+          } else if (errorMessage.toLowerCase().includes("email")) {
+            if (errorMessage.toLowerCase().includes("already registered")) {
+              errorMessage =
+                "This email is already registered. Please log in instead.";
+            } else {
+              errorMessage = "Please provide a valid email address.";
+            }
+          }
+
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: result.error.message,
+            message: errorMessage,
           });
         }
 
@@ -73,6 +143,9 @@ export const authRouter = createTRPCRouter({
 
         return { ok: true };
       } catch (err: unknown) {
+        if (err instanceof TRPCError) {
+          throw err;
+        }
         const message = err instanceof Error ? err.message : String(err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -144,6 +217,96 @@ export const authRouter = createTRPCRouter({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: message ?? "Failed to confirm email",
+        });
+      }
+    }),
+
+  forgotPassword: publicProcedure
+    .input(z.object({ email: z.email() }))
+    .mutation(async ({ input }) => {
+      try {
+        const supabase = await createClient();
+
+        const redirectTo = `${env.NEXT_PUBLIC_APP_URL}/update-password`;
+
+        const { error } = await supabase.auth.resetPasswordForEmail(
+          input.email,
+          { redirectTo },
+        );
+
+        if (error) {
+          console.error("resetPasswordForEmail error (tRPC):", error);
+        }
+
+        return {
+          ok: true,
+          message:
+            "If an account exists for this email, we’ve sent a password reset link.",
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: message ?? "Failed to start password reset",
+        });
+      }
+    }),
+
+  updatePassword: protectedProcedure
+    .input(z.object({ password: z.string().min(6) }))
+    .mutation(async ({ input }) => {
+      try {
+        const supabase = await createClient();
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("getUser error in tRPC updatePassword:", userError);
+        }
+
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message:
+              "This link is invalid or has expired. Please request a new one.",
+          });
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: input.password,
+        });
+
+        if (updateError) {
+          console.error(
+            "updateUser error in tRPC updatePassword:",
+            updateError,
+          );
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              updateError.message ??
+              "Failed to update password. Please try again.",
+          });
+        }
+
+        // Sign out the user to clear the session and redirect to login page
+        await supabase.auth.signOut();
+
+        return {
+          ok: true,
+          message: "Your password has been updated successfully.",
+        };
+      } catch (err: unknown) {
+        if (err instanceof TRPCError) {
+          throw err;
+        }
+        const message = err instanceof Error ? err.message : String(err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: message ?? "Failed to update password",
         });
       }
     }),

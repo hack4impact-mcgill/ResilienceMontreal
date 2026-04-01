@@ -1,6 +1,7 @@
 import { testRouter } from "~/server/api/routers/test";
 import { authRouter } from "~/server/api/routers/auth";
 import { usersRouter } from "~/server/api/routers/users";
+import { clientRouter } from "~/server/api/routers/client";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { fundPoolRouter } from "./routers/fundPool";
 import { grantRouter } from "./routers/grant";
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   fundPool: fundPoolRouter,
   grant: grantRouter,
   grantDistribution: grantDistributionRouter,
+  clients: clientRouter, // collision with 'client' -> erenamed
 });
 
 // export type definition of API

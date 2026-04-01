@@ -1,6 +1,10 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { Prisma } from "@prisma/client";
+import {
+  createTRPCRouter,
+  fundPoolReadProcedure,
+  bookkeeperProcedure,
+} from "~/server/api/trpc";
+import { Prisma } from "~/generated/prisma/client";
 import {
   createFundPoolSchema,
   updateFundPoolSchema,
@@ -13,34 +17,22 @@ const fundPoolInclude = {
 } as const;
 
 export const fundPoolRouter = createTRPCRouter({
-  // Endpoint to create a new fundpool using given category and amount
-  // Example: POST http://localhost:3000/api/trpc/fundPool.createFundPool with body {"json": {"category": "example", "amount": 100}}
-  createFundPool: protectedProcedure
-    .input(createFundPoolSchema)
-    .mutation(async ({ ctx, input }) => {
-      const totalAmount = new Prisma.Decimal(String(input.amount));
-      const newFundPool = await ctx.db.fundPool.create({
-        data: {
-          amount: totalAmount,
-          category: input.category,
-        },
-        include: { ...fundPoolInclude },
-      });
-      return newFundPool;
-    }),
-
-  // Endpoint to fetch all fundPools
-  // Example: GET http://localhost:3000/api/trpc/fundPool.getFundPools?input={}
-  getFundPools: protectedProcedure.query(async ({ ctx }) => {
+  getAll: fundPoolReadProcedure.query(async ({ ctx }) => {
     const fundPools = await ctx.db.fundPool.findMany({
       include: { ...fundPoolInclude },
+      orderBy: { order: "asc" },
     });
-    return fundPools;
+
+    return fundPools.map((pool) => ({
+      ...pool,
+      calculatedAmount: pool.fundAllocations.reduce(
+        (sum, allocation) => sum + allocation.amount.toNumber(),
+        0,
+      ),
+    }));
   }),
 
-  // Endpoint to fetch a fundPool by ID
-  // Example: GET http://localhost:3000/api/trpc/fundPool.getFundPoolById?batch=1&input={"0":{"json": {"id": 1}}}
-  getFundPoolById: protectedProcedure
+  getFundPoolById: fundPoolReadProcedure
     .input(
       z.object({
         id: z.coerce
@@ -65,19 +57,27 @@ export const fundPoolRouter = createTRPCRouter({
       return fundPool;
     }),
 
-  /* Endpoint to update a fundpool by ID
-  POST http://localhost:3000/api/trpc/fundPool.updateFundPoolById?batch=1
-  body:
-  {
-    "0": {
-      "json": {
-        "id": 1,
-        "category": "Operations"
-      }
-    }
-  }
-  */
-  updateFundPoolById: protectedProcedure
+  create: bookkeeperProcedure
+    .input(createFundPoolSchema)
+    .mutation(async ({ ctx, input }) => {
+      const maxOrder = await ctx.db.fundPool.aggregate({
+        _max: { order: true },
+      });
+      const nextOrder = (maxOrder._max.order ?? -1) + 1;
+
+      const totalAmount = new Prisma.Decimal(String(input.amount ?? 0));
+      const newFundPool = await ctx.db.fundPool.create({
+        data: {
+          amount: totalAmount,
+          category: input.category,
+          order: nextOrder,
+        },
+        include: { ...fundPoolInclude },
+      });
+      return newFundPool;
+    }),
+
+  update: bookkeeperProcedure
     .input(updateFundPoolSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, ...updateFields } = input;
@@ -89,18 +89,7 @@ export const fundPoolRouter = createTRPCRouter({
       return updateFundPool;
     }),
 
-  /* Endpoint to delete a fundpool by ID
-  POST http://localhost:3000/api/trpc/fundPool.deleteFundPoolById?batch=1
-  body: 
-  {
-    "0": {
-      "json": {
-        "id": 1
-      }
-    }
-  }
-  */
-  deleteFundPoolById: protectedProcedure
+  delete: bookkeeperProcedure
     .input(
       z.object({
         id: z.coerce
@@ -110,9 +99,78 @@ export const fundPoolRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const deletedFundPool = await ctx.db.fundPool.delete({
-        where: { id: input.id },
-      });
-      return deletedFundPool;
+      await ctx.db.$transaction([
+        ctx.db.grantDistribution.updateMany({
+          where: { fundPoolId: input.id },
+          data: { fundPoolId: null },
+        }),
+        ctx.db.fundPool.delete({
+          where: { id: input.id },
+        }),
+      ]);
+
+      return { success: true };
     }),
+
+  reorder: bookkeeperProcedure
+    .input(
+      z.object({
+        orderedIds: z.array(z.number().int().positive()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.$transaction(
+        input.orderedIds.map((id, index) =>
+          ctx.db.fundPool.update({
+            where: { id },
+            data: { order: index },
+          }),
+        ),
+      );
+
+      return { success: true };
+    }),
+
+  getTotalFunding: fundPoolReadProcedure.query(async ({ ctx }) => {
+    const fundPools = await ctx.db.fundPool.findMany({
+      include: { fundAllocations: true },
+    });
+
+    const categorizedTotal = fundPools.reduce((sum, pool) => {
+      const poolAmount = pool.fundAllocations.reduce(
+        (poolSum, allocation) => poolSum + allocation.amount.toNumber(),
+        0,
+      );
+      return sum + poolAmount;
+    }, 0);
+
+    const uncategorizedDistributions = await ctx.db.grantDistribution.findMany({
+      where: { fundPoolId: null },
+    });
+
+    const uncategorizedTotal = uncategorizedDistributions.reduce(
+      (sum, dist) => sum + dist.amount.toNumber(),
+      0,
+    );
+
+    return { total: categorizedTotal + uncategorizedTotal };
+  }),
+
+  getUncategorized: fundPoolReadProcedure.query(async ({ ctx }) => {
+    const distributions = await ctx.db.grantDistribution.findMany({
+      where: { fundPoolId: null },
+      include: { grant: true },
+    });
+
+    const totalAmount = distributions.reduce(
+      (sum, dist) => sum + dist.amount.toNumber(),
+      0,
+    );
+
+    return {
+      count: distributions.length,
+      totalAmount,
+      distributions,
+    };
+  }),
 });

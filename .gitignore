@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+/playwright/.auth/
 
 # next.js
 /.next/
@@ -39,6 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prisma generated client
+/src/generated/
 
 # webstorm
 .idea/

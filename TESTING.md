@@ -5,6 +5,7 @@ This project uses [Playwright](https://playwright.dev/) for end-to-end testing. 
 ## 🚀 Setup
 
 ### 1. Install Playwright
+
 If you haven't already, install the Playwright browsers:
 
 ```bash
@@ -12,7 +13,8 @@ npx playwright install
 ```
 
 ### 2. Environment Variables
-You'll need specific environment variables to run the tests. These should be added to your `.env.local` file. 
+
+You'll need specific environment variables to run the tests. These should be added to your `.env.local` file.
 
 **Note: You can find these values in the Notion file for this project.**
 
@@ -35,16 +37,19 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ## 🧪 Running Tests
 
 ### Run all tests
+
 ```bash
 npx playwright test
 ```
 
 ### Run tests in UI mode (Best for development)
+
 ```bash
 npx playwright test --ui
 ```
 
 ### Run a specific test file
+
 ```bash
 npx playwright test tests/admin/permissions.spec.ts
 ```
@@ -56,17 +61,19 @@ npx playwright test tests/admin/permissions.spec.ts
 3. If your test requires a specific role, ensure you are using the correct setup or storage state.
 
 ### Example Test Structure
-```typescript
-import { test, expect } from '@playwright/test';
 
-test.describe('Feature Name', () => {
-  test('should perform a specific action', async ({ page }) => {
-    await page.goto('/dashboard');
+```typescript
+import { test, expect } from "@playwright/test";
+
+test.describe("Feature Name", () => {
+  test("should perform a specific action", async ({ page }) => {
+    await page.goto("/dashboard");
     // Your test logic here
-    await expect(page.getByText('Welcome')).toBeVisible();
+    await expect(page.getByText("Welcome")).toBeVisible();
   });
 });
 ```
 
 ## 🔒 Authentication Storage
+
 Authentication states (cookies/sessions) are stored in `playwright/.auth/`. These files are **ignored by git** for security. When you run tests locally, Playwright will generate these files to speed up subsequent test runs.

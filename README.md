@@ -32,6 +32,11 @@ Finally, run `npx prisma db push` to match your database with the prisma schema.
 
 Now you should be all ready to run the project!
 
+## 🧪 Testing
+
+This project uses **Playwright** for end-to-end testing. For setup instructions and a guide on adding new tests, please refer to the [Testing Guide](TESTING.md).
+
+
 ## � TanStack Query & Data Hooks
 
 This project uses [TanStack Query (React Query)](https://tanstack.com/query/latest) for efficient data fetching, caching, and synchronization. Data is managed using hooks:

@@ -43,7 +43,9 @@ export default async function LocaleLayout({
     <NextIntlClientProvider locale={locale} messages={messages ?? {}}>
       <TRPCReactProvider>
         <SidebarProvider>
-          <AppSidebarWrapper isLoggedIn={isLoggedIn}>{children}</AppSidebarWrapper>
+          <AppSidebarWrapper isLoggedIn={isLoggedIn}>
+            {children}
+          </AppSidebarWrapper>
         </SidebarProvider>
         <Toaster
           position="top-center"

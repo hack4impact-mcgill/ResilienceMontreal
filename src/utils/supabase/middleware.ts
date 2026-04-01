@@ -13,8 +13,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   const segment0 = pathname.split("/").filter(Boolean)[0];
-  const locale =
-    segment0 === "en" || segment0 === "fr" ? segment0 : "en";
+  const locale = segment0 === "en" || segment0 === "fr" ? segment0 : "en";
   const isLogin = pathname.includes("/login");
   const isSignup = pathname.includes("/signup");
   const isAuthRoute = pathname.includes("/auth");

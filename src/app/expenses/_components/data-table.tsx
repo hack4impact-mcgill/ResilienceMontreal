@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { flexRender, getCoreRowModel, useReactTable, VisibilityState } from "@tanstack/react-table";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  VisibilityState,
+} from "@tanstack/react-table";
 
 import { CirclePlus, ListFilter, Search } from "lucide-react";
 
@@ -431,7 +436,11 @@ export const ExpensesTable = () => {
                     ) : null}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="start" side="bottom">
+                <PopoverContent
+                  className="w-80 p-0"
+                  align="start"
+                  side="bottom"
+                >
                   <div className="border-b px-3 py-2">
                     <p className="text-sm font-semibold">Filters</p>
                     <p className="text-xs text-muted-foreground">
@@ -537,7 +546,11 @@ export const ExpensesTable = () => {
               value={sortBy}
               onChange={(e) =>
                 setSortBy(
-                  e.target.value as "date" | "totalAmount" | "description" | "id",
+                  e.target.value as
+                    | "date"
+                    | "totalAmount"
+                    | "description"
+                    | "id",
                 )
               }
             >

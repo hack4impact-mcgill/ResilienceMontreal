@@ -4,9 +4,7 @@ export const expenseListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(30),
 
-  sortBy: z
-    .enum(["date", "totalAmount", "description", "id"])
-    .default("date"),
+  sortBy: z.enum(["date", "totalAmount", "description", "id"]).default("date"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 
   description: z.string().optional(),

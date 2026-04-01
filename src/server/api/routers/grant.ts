@@ -61,6 +61,7 @@ export const grantRouter = createTRPCRouter({
             totalAmount: amount,
             unassignedAmount: amount,
             status: "PENDING",
+            endDate: input.toBeUsedBy,
           },
         });
 
@@ -148,7 +149,12 @@ export const grantRouter = createTRPCRouter({
         if (didMeta) {
           await ctx.db.grant.update({
             where: { id },
-            data: { description: JSON.stringify(descriptionObj) },
+            data: {
+              description: JSON.stringify(descriptionObj),
+              ...(rest.toBeUsedBy !== undefined
+                ? { endDate: rest.toBeUsedBy }
+                : {}),
+            },
           });
         }
 
@@ -350,18 +356,26 @@ export const grantRouter = createTRPCRouter({
             if (fieldsToMap[k] !== undefined)
               descriptionObj[k] = fieldsToMap[k];
           }
+          const endDatePatch =
+            rest.toBeUsedBy !== undefined
+              ? { endDate: rest.toBeUsedBy as Date }
+              : {};
           if (rest.organization !== undefined) {
             await tx.grant.update({
               where: { id },
               data: {
                 title: rest.organization,
                 description: JSON.stringify(descriptionObj),
+                ...endDatePatch,
               },
             });
           } else {
             await tx.grant.update({
               where: { id },
-              data: { description: JSON.stringify(descriptionObj) },
+              data: {
+                description: JSON.stringify(descriptionObj),
+                ...endDatePatch,
+              },
             });
           }
         }
@@ -430,13 +444,13 @@ export const grantRouter = createTRPCRouter({
     }),
 
   // Endpoint to fetch grants with filtering, sorting, and pagination
-  // Example: GET http://localhost:3000/api/trpc/grant.getGrants?input={"json":{"page":1,"limit":10,"sortBy":"createdAt","sortOrder":"desc"}}
-  getGrants: protectedProcedure
+  // Example: GET http://localhost:3000/api/trpc/grant.getGrants?input={"json":{"page":1,"limit":30,"sortBy":"createdAt","sortOrder":"desc"}}
+  getGrants: publicProcedure
     .input(grantQuerySchema.optional())
     .query(async ({ ctx, input }) => {
       const {
         page = 1,
-        limit = 10,
+        limit = 30,
         sortBy = "createdAt",
         sortOrder = "desc",
         title,

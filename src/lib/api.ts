@@ -301,6 +301,7 @@ export async function fetchGrants(): Promise<Grant[]> {
           phoneNumber: "514-555-1234",
           notes: "Support for emergency housing placement.",
           amount: 3000,
+          isExpired: true,
         },
         {
           id: "g2",
@@ -312,6 +313,7 @@ export async function fetchGrants(): Promise<Grant[]> {
           phoneNumber: "514-555-9876",
           notes: "Operational funding for food programs.",
           amount: 2000,
+          isExpired: true,
         },
       ]);
     }, 600);

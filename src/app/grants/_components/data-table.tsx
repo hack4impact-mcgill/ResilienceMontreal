@@ -1,21 +1,16 @@
 "use client";
 
 import * as React from "react";
-import {
-  ColumnFiltersState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-  VisibilityState,
-} from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable, VisibilityState } from "@tanstack/react-table";
 
-import { ListFilter, Check, CirclePlus, MoreHorizontal } from "lucide-react";
+import { CirclePlus, ListFilter, MoreHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +32,7 @@ import {
 
 import { columns, Grant } from "./columns";
 import { api } from "@/trpc/react";
+import { cn } from "@/lib/utils";
 
 // Inline add form is rendered directly inside GrantsTable; modal removed in favor of inline UX.
 
@@ -84,42 +80,123 @@ const exportToCSV = (grants: Grant[]) => {
   document.body.removeChild(link);
 };
 
+function isGrantExpired(toBeUsedBy: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(toBeUsedBy);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
+}
+
 // ------------------------------------------------------------
 // MAIN TABLE COMPONENT
 // ------------------------------------------------------------
 export const GrantsTable = () => {
   const [localGrants, setLocalGrants] = React.useState<Grant[]>([]);
 
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const [filterColumn, setFilterColumn] = React.useState<
-    "organization" | "category" | "email"
-  >("organization");
-  const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState<30 | 50 | 100>(30);
+  const [sortBy, setSortBy] = React.useState<
+    "totalAmount" | "endDate" | "createdAt" | "title"
+  >("createdAt");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  const [searchTitle, setSearchTitle] = React.useState("");
+  const [debouncedTitle, setDebouncedTitle] = React.useState("");
+  const [minAmountInput, setMinAmountInput] = React.useState("");
+  const [maxAmountInput, setMaxAmountInput] = React.useState("");
+  const [dueFromInput, setDueFromInput] = React.useState("");
+  const [dueToInput, setDueToInput] = React.useState("");
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedTitle(searchTitle), 300);
+    return () => clearTimeout(t);
+  }, [searchTitle]);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [
+    debouncedTitle,
+    minAmountInput,
+    maxAmountInput,
+    dueFromInput,
+    dueToInput,
+    sortBy,
+    sortOrder,
+    limit,
+  ]);
+
+  const hasAdvancedFilters = Boolean(
+    minAmountInput.trim() ||
+      maxAmountInput.trim() ||
+      dueFromInput ||
+      dueToInput,
+  );
+
+  const clearAdvancedFilters = () => {
+    setMinAmountInput("");
+    setMaxAmountInput("");
+    setDueFromInput("");
+    setDueToInput("");
+  };
+
+  const queryInput = React.useMemo(() => {
+    const minRaw = minAmountInput.trim();
+    const maxRaw = maxAmountInput.trim();
+    const minN = minRaw === "" ? NaN : Number(minRaw);
+    const maxN = maxRaw === "" ? NaN : Number(maxRaw);
+    return {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      title: debouncedTitle.trim() || undefined,
+      minAmount:
+        Number.isFinite(minN) && minN > 0 ? minN : undefined,
+      maxAmount:
+        Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
+      startDate: dueFromInput
+        ? new Date(`${dueFromInput}T12:00:00`)
+        : undefined,
+      endDate: dueToInput ? new Date(`${dueToInput}T12:00:00`) : undefined,
+    };
+  }, [
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    debouncedTitle,
+    minAmountInput,
+    maxAmountInput,
+    dueFromInput,
+    dueToInput,
+  ]);
 
   const [addModalOpen, setAddModalOpen] = React.useState(false);
 
   const utils = api.useContext();
   const { data: session } = api.auth.getSession.useQuery();
   const {
-    data: dbGrants,
+    data: grantListResult,
     isLoading,
     isError,
-  } = api.grant.getAll.useQuery(undefined, {
+    isFetching,
+  } = api.grant.getGrants.useQuery(queryInput, {
     retry: false,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
     staleTime: 60_000,
-    // grant.getAll is a public procedure on the server; remove session gating so
-    // the table can load consistently (no intermediate signed-out template).
-    enabled: true,
   });
+
+  const pagination = grantListResult?.pagination;
+  const dbGrants = grantListResult?.grants;
+
+  React.useEffect(() => {
+    if (!pagination || pagination.totalPages <= 0) return;
+    if (page > pagination.totalPages) setPage(pagination.totalPages);
+  }, [pagination, page]);
 
   const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
     retry: false,
@@ -171,7 +248,7 @@ export const GrantsTable = () => {
 
   const createMutation = api.grant.create.useMutation({
     onSuccess: async () => {
-      await (utils as any).grant.getAll.invalidate();
+      await utils.grant.getGrants.invalidate();
     },
     onError: (err: any) => {
       console.error("Create grant error:", err);
@@ -181,13 +258,13 @@ export const GrantsTable = () => {
 
   const updateMutation = api.grant.update.useMutation({
     onSuccess: async () => {
-      await (utils as any).grant.getAll.invalidate();
+      await utils.grant.getGrants.invalidate();
     },
   });
 
   const deleteMutation = api.grant.delete.useMutation({
     onSuccess: async () => {
-      await (utils as any).grant.getAll.invalidate();
+      await utils.grant.getGrants.invalidate();
     },
   });
 
@@ -209,6 +286,10 @@ export const GrantsTable = () => {
         meta = { notes: g.description };
       }
 
+      const toBeUsedBy = meta.toBeUsedBy
+        ? new Date(meta.toBeUsedBy)
+        : new Date(g.endDate || g.createdAt);
+
       return {
         id: String(g.id),
         dbId: g.id,
@@ -218,13 +299,12 @@ export const GrantsTable = () => {
         dateReceived: meta.dateReceived
           ? new Date(meta.dateReceived)
           : new Date(g.createdAt),
-        toBeUsedBy: meta.toBeUsedBy
-          ? new Date(meta.toBeUsedBy)
-          : new Date(g.endDate || g.createdAt),
+        toBeUsedBy,
         email: meta.email ?? "",
         phoneNumber: meta.phoneNumber ?? "",
         notes: meta.notes ?? "",
         amount: Number(g.totalAmount?.toString?.() ?? g.totalAmount ?? 0),
+        isExpired: isGrantExpired(toBeUsedBy),
       } as Grant;
     });
 
@@ -240,35 +320,33 @@ export const GrantsTable = () => {
   const table = useReactTable<Grant>({
     data: localGrants,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
-      sorting,
-      columnFilters,
       columnVisibility,
       rowSelection,
     },
   });
 
-  const prettyLabel = (col: string) => {
-    if (col === "organization") return "Organization";
-    if (col === "category") return "Category";
-    if (col === "email") return "Email";
-    return col;
-  };
+  if (isLoading && !grantListResult) return <div>Loading...</div>;
 
-  if (isLoading) return <div>Loading...</div>;
-
-  type FilterColumn = "organization" | "category" | "email";
+  if (isError) {
+    return (
+      <div className="text-destructive">
+        Could not load grants. Please try again.
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full">
+    <div className="relative w-full">
+      {isFetching ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-10 bg-background/40"
+          aria-hidden
+        />
+      ) : null}
       {/* Top Messages (placeholder - mirrors clients) */}
       <div className="border-t border-border -mx-8 px-8 py-4">
         <div className="flex flex-row items-start gap-10">
@@ -285,70 +363,202 @@ export const GrantsTable = () => {
         </div>
       </div>
 
-      {/* Filter Row */}
-      <div className="border-t border-border -mx-8 px-8 flex items-center py-4">
-        <Input
-          placeholder={`Search by ${prettyLabel(filterColumn)}...`}
-          value={
-            (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""
-          }
-          onChange={(e) =>
-            table.getColumn(filterColumn)?.setFilterValue(e.target.value)
-          }
-          className="max-w-sm"
-        />
-
-        <DropdownMenu open={filterMenuOpen} onOpenChange={setFilterMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="ml-2 flex items-center gap-2 px-2 py-1 h-auto hover:bg-transparent"
-            >
-              <ListFilter
-                className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`}
+      {/* Filter & sort */}
+      <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
+            <label className="text-xs text-muted-foreground" htmlFor="grant-search">
+          
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="grant-search"
+                placeholder="Search (only searches organization name right now)"
+                value={searchTitle}
+                onChange={(e) => setSearchTitle(e.target.value)}
+                className="min-w-0 flex-1"
               />
-              <span>Filter</span>
-            </Button>
-          </DropdownMenuTrigger>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      "shrink-0 gap-2 border-none",
+                      hasAdvancedFilters && "border-[#45BAB8] bg-[#45BAB8]/10",
+                    )}
+                  >
+                    <ListFilter className="h-4 w-4" aria-hidden />
+                    Filter
+                    {hasAdvancedFilters ? (
+                      <span
+                        className="flex h-2 w-2 rounded-full bg-[#45BAB8]"
+                        aria-hidden
+                      />
+                    ) : null}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="start" side="bottom">
+                  <div className="border-b px-3 py-2">
+                    <p className="text-sm font-semibold">Filters</p>
+                    <p className="text-xs text-muted-foreground">
+                      Amount range and due date range
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-3 p-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor="grant-min-amt"
+                        >
+                          Min amount
+                        </label>
+                        <Input
+                          id="grant-min-amt"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="Min"
+                          value={minAmountInput}
+                          onChange={(e) => setMinAmountInput(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor="grant-max-amt"
+                        >
+                          Max amount
+                        </label>
+                        <Input
+                          id="grant-max-amt"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="Max"
+                          value={maxAmountInput}
+                          onChange={(e) => setMaxAmountInput(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor="grant-due-from"
+                        >
+                          Due from
+                        </label>
+                        <Input
+                          id="grant-due-from"
+                          type="date"
+                          className="w-full min-w-0"
+                          value={dueFromInput}
+                          onChange={(e) => setDueFromInput(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor="grant-due-to"
+                        >
+                          Due to
+                        </label>
+                        <Input
+                          id="grant-due-to"
+                          type="date"
+                          className="w-full min-w-0"
+                          value={dueToInput}
+                          onChange={(e) => setDueToInput(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="self-start text-muted-foreground"
+                      onClick={clearAdvancedFilters}
+                      disabled={!hasAdvancedFilters}
+                    >
+                      Clear filters
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground" htmlFor="grant-sort-by">
+              Sort by
+            </label>
+            <select
+              id="grant-sort-by"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(
+                  e.target.value as "totalAmount" | "endDate" | "createdAt" | "title",
+                )
+              }
+            >
+              <option value="createdAt">Date created</option>
+              <option value="endDate">Due date</option>
+              <option value="totalAmount">Amount</option>
+              <option value="title">Organization (A–Z)</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground" htmlFor="grant-sort-order">
+              Order
+            </label>
+            <select
+              id="grant-sort-order"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground" htmlFor="grant-page-size">
+              Rows per page
+            </label>
+            <select
+              id="grant-page-size"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={limit}
+              onChange={(e) =>
+                setLimit(Number(e.target.value) as 30 | 50 | 100)
+              }
+            >
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <Button
+            variant="ghost"
+            className="ml-auto text-black hover:bg-transparent"
+            onClick={() => exportToCSV(localGrants)}
+          >
+            Export page
+          </Button>
 
-          <DropdownMenuContent align="start">
-            {["organization", "category", "email"].map((col) => (
-              <DropdownMenuItem
-                key={col}
-                onClick={() => {
-                  table.getColumn(filterColumn)?.setFilterValue("");
-                  setFilterColumn(col as FilterColumn);
-                  setFilterMenuOpen(false);
-                }}
-                className="flex items-center gap-2"
-              >
-                {filterColumn === col ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <span className="h-4 w-4 opacity-0" />
-                )}
-                {prettyLabel(col)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Button
-          variant="ghost"
-          className="ml-auto text-black hover:bg-transparent"
-          onClick={() => exportToCSV(localGrants)}
-        >
-          Export
-        </Button>
-
-        <Button
-          variant="outline"
-          className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-          onClick={() => setAddModalOpen(true)}
-          disabled={!session?.user}
-        >
-          <CirclePlus /> Add Grant
-        </Button>
+          <Button
+            variant="outline"
+            className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+            onClick={() => setAddModalOpen(true)}
+            disabled={!session?.user}
+          >
+            <CirclePlus /> Add Grant
+          </Button>
+        </div>
       </div>
 
       {/* Inline add row will be rendered inside the table body to align under headers */}
@@ -579,7 +789,12 @@ export const GrantsTable = () => {
 
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.original.id}>
+                <TableRow
+                  key={row.original.id}
+                  className={
+                    row.original.isExpired ? "bg-muted/30" : undefined
+                  }
+                >
                   {row.getVisibleCells().map((cell) => {
                     // render actions column manually so we can inject delete handler
                     if (cell.column.id === "actions") {
@@ -949,23 +1164,42 @@ export const GrantsTable = () => {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4 px-8">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2 py-4 px-8">
+        <p className="text-sm text-muted-foreground">
+          {pagination ? (
+            <>
+              Showing{" "}
+              {pagination.totalCount === 0
+                ? 0
+                : (pagination.currentPage - 1) * pagination.pageSize + 1}
+              –
+              {(pagination.currentPage - 1) * pagination.pageSize +
+                pagination.returnedCount}{" "}
+              of {pagination.totalCount} grants
+              {pagination.totalPages > 0
+                ? ` · Page ${pagination.currentPage} of ${pagination.totalPages}`
+                : null}
+            </>
+          ) : null}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={!pagination?.hasPreviousPage}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!pagination?.hasNextPage}
+          >
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );

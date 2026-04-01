@@ -25,6 +25,8 @@ export type Grant = {
   phoneNumber?: string;
   notes?: string;
   amount: number;
+  /** True when the grant's use-by date is before today (local calendar day). */
+  isExpired: boolean;
 };
 
 export const columns: ColumnDef<Grant>[] = [
@@ -51,7 +53,19 @@ export const columns: ColumnDef<Grant>[] = [
     header: "TO BE USED BY",
     cell: ({ row }) => {
       const date: Date = row.original.toBeUsedBy;
-      return <div>{date.toLocaleDateString()}</div>;
+      const expired = row.original.isExpired;
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={expired ? "text-muted-foreground line-through" : undefined}>
+            {date.toLocaleDateString()}
+          </span>
+          {expired ? (
+            <span className="inline-flex rounded border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
+              Expired
+            </span>
+          ) : null}
+        </div>
+      );
     },
   },
   {

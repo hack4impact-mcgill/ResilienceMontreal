@@ -5,7 +5,6 @@ model GrantDistribution {
   amount     Decimal   @db.Decimal(10, 2)
   spentAmount Decimal   @db.Decimal(10, 2)
   grant      Grant     @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  fundPool   FundPool? @relation(fields: [fundPoolId], references: [id], onDelete: SetNull)
 
   @@unique([grantId, fundPoolId])
   @@index([grantId])

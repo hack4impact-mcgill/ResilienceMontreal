@@ -1,13 +1,13 @@
 model Expense {
     id            Int                @id @default(autoincrement())
-    fundAllocations ExpenseFundAllocation[]
+    distributions ExpenseDistribution[]
     totalAmount   Decimal            @db.Decimal(10, 2)
     description   String
     date          DateTime           @default(now())
     invoiceUrl    String?
 }
 
-model ExpenseFundAllocation {
+model ExpenseDistribution {
     id         Int      @id @default(autoincrement())
     expenseId  Int
     fundPoolId Int

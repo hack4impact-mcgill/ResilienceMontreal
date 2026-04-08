@@ -4,7 +4,6 @@ model FundPool {
   category        String
   order           Int                     @default(0)
   distributions   GrantDistribution[]
-  fundAllocations ExpenseFundAllocation[]
 
   @@unique([category])
 }

@@ -1,10 +1,10 @@
 model Expense {
-  id            Int                @id @default(autoincrement())
+  id              Int                     @id @default(autoincrement())
+  totalAmount     Decimal                 @db.Decimal(10, 2)
+  description     String
+  date            DateTime                @default(now())
+  invoiceUrl      String?
   distributions ExpenseDistribution[]
-  totalAmount   Decimal            @db.Decimal(10, 2)
-  description   String
-  date          DateTime           @default(now())
-  invoiceUrl    String?
 }
 
 model ExpenseDistribution {
@@ -12,7 +12,6 @@ model ExpenseDistribution {
   expenseId  Int
   fundPoolId Int
   amount     Decimal  @db.Decimal(10, 2)  // Amount taken from this specific fund pool
-  
   expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   fundPool   FundPool @relation(fields: [fundPoolId], references: [id])
   

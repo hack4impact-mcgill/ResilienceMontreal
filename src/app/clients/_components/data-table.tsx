@@ -103,14 +103,18 @@ export const ClientsTable = () => {
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
   // search: appliedSearch is sent to backend only when Enter is pressed.
   const [draftSearch, setDraftSearch] = React.useState("");
-  const [appliedSearch, setAppliedSearch] = React.useState<string | undefined>(undefined);
+  const [appliedSearch, setAppliedSearch] = React.useState<string | undefined>(
+    undefined,
+  );
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState<number>(30); // default page size 30
   const [sortBy, setSortBy] = React.useState<SortByField>("createdAt");
 
   // search-by selector (local mode only) - does not trigger backend queries
-  const [searchBy, setSearchBy] = React.useState<"firstName" | "lastName" | "email" | "workerName" | "leaseEndDate">("firstName");
+  const [searchBy, setSearchBy] = React.useState<
+    "firstName" | "lastName" | "email" | "workerName" | "leaseEndDate"
+  >("firstName");
 
   // local sorting state for react-table (client-side only)
   const [localSorting, setLocalSorting] = React.useState<SortingState>([]);
@@ -189,7 +193,8 @@ export const ClientsTable = () => {
     if (col === "email") return "Email";
     if (col === "createdAt") return "Created at";
     if (col === "leaseEnd" || col === "leaseEndDate") return "Lease end date";
-    if (col === "workerId" || col === "workerName" || col === "worker") return "Worker";
+    if (col === "workerId" || col === "workerName" || col === "worker")
+      return "Worker";
     return col;
   };
 
@@ -422,16 +427,26 @@ export const ClientsTable = () => {
         <DropdownMenu open={filterMenuOpen} onOpenChange={setFilterMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="ghost" 
+              variant="ghost"
               className="ml-2 flex items-center gap-2 px-2 py-1 h-auto hover:bg-transparent"
             >
-              <ListFilter className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`} />
+              <ListFilter
+                className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`}
+              />
               <span>Filter</span>
-            </Button> 
+            </Button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="start">
-            {(["firstName", "lastName", "email", "workerName", "leaseEndDate"] as const).map((col) => (
+            {(
+              [
+                "firstName",
+                "lastName",
+                "email",
+                "workerName",
+                "leaseEndDate",
+              ] as const
+            ).map((col) => (
               <DropdownMenuItem
                 key={col}
                 onClick={() => {
@@ -469,14 +484,22 @@ export const ClientsTable = () => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="ghost" 
+              variant="ghost"
               className="ml-2 text-black hover:bg-transparent"
             >
               A-Z / 0-9
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {(["firstName", "lastName", "email", "workerName", "leaseEndDate"] as const).map((col) => (
+            {(
+              [
+                "firstName",
+                "lastName",
+                "email",
+                "workerName",
+                "leaseEndDate",
+              ] as const
+            ).map((col) => (
               <DropdownMenuItem
                 key={col}
                 onClick={() => {

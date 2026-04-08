@@ -10,10 +10,11 @@ model Expense {
 model ExpenseDistribution {
   id         Int      @id @default(autoincrement())
   expenseId  Int
-  fundPoolId Int
-  amount     Decimal  @db.Decimal(10, 2)  // Amount taken from this specific fund pool
+  grantDistributionId Int
+  amount     Decimal  @db.Decimal(10, 2)
   expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  fundPool   FundPool @relation(fields: [fundPoolId], references: [id])
-  
-  @@unique([expenseId, fundPoolId])
+  grantDistribution   GrantDistribution @relation(fields: [grantDistributionId], references: [id])
+
+  @@unique([expenseId, grantDistributionId])
+  @@index([grantDistributionId])
 }

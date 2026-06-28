@@ -174,29 +174,55 @@ export const ExpensesTable = () => {
   const [searchDescription, setSearchDescription] = React.useState("");
   /** Committed filter sent to `expenses.list` (set when user presses Enter). */
   const [appliedDescription, setAppliedDescription] = React.useState("");
+  /** Draft advanced filters (popover inputs; not sent until Apply). */
   const [minAmountInput, setMinAmountInput] = React.useState("");
   const [maxAmountInput, setMaxAmountInput] = React.useState("");
   const [dateFromInput, setDateFromInput] = React.useState("");
   const [dateToInput, setDateToInput] = React.useState("");
+  /** Committed advanced filters sent to `expenses.list`. */
+  const [appliedMinAmount, setAppliedMinAmount] = React.useState("");
+  const [appliedMaxAmount, setAppliedMaxAmount] = React.useState("");
+  const [appliedDateFrom, setAppliedDateFrom] = React.useState("");
+  const [appliedDateTo, setAppliedDateTo] = React.useState("");
 
   const commitDescriptionSearch = React.useCallback(() => {
     setAppliedDescription(searchDescription.trim());
   }, [searchDescription]);
 
+  const commitAdvancedFilters = React.useCallback(() => {
+    setAppliedMinAmount(minAmountInput.trim());
+    setAppliedMaxAmount(maxAmountInput.trim());
+    setAppliedDateFrom(dateFromInput);
+    setAppliedDateTo(dateToInput);
+  }, [minAmountInput, maxAmountInput, dateFromInput, dateToInput]);
+
   React.useEffect(() => {
     setPage(1);
   }, [
     appliedDescription,
-    minAmountInput,
-    maxAmountInput,
-    dateFromInput,
-    dateToInput,
+    appliedMinAmount,
+    appliedMaxAmount,
+    appliedDateFrom,
+    appliedDateTo,
     sortBy,
     sortOrder,
     limit,
   ]);
 
-  const hasAdvancedFilters = Boolean(
+  const hasAppliedAdvancedFilters = Boolean(
+    appliedMinAmount ||
+      appliedMaxAmount ||
+      appliedDateFrom ||
+      appliedDateTo,
+  );
+
+  const hasPendingAdvancedFilters =
+    minAmountInput.trim() !== appliedMinAmount ||
+    maxAmountInput.trim() !== appliedMaxAmount ||
+    dateFromInput !== appliedDateFrom ||
+    dateToInput !== appliedDateTo;
+
+  const hasDraftAdvancedFilters = Boolean(
     minAmountInput.trim() ||
       maxAmountInput.trim() ||
       dateFromInput ||
@@ -208,11 +234,15 @@ export const ExpensesTable = () => {
     setMaxAmountInput("");
     setDateFromInput("");
     setDateToInput("");
+    setAppliedMinAmount("");
+    setAppliedMaxAmount("");
+    setAppliedDateFrom("");
+    setAppliedDateTo("");
   };
 
   const queryInput = React.useMemo(() => {
-    const minRaw = minAmountInput.trim();
-    const maxRaw = maxAmountInput.trim();
+    const minRaw = appliedMinAmount.trim();
+    const maxRaw = appliedMaxAmount.trim();
     const minN = minRaw === "" ? NaN : Number(minRaw);
     const maxN = maxRaw === "" ? NaN : Number(maxRaw);
     return {
@@ -223,10 +253,12 @@ export const ExpensesTable = () => {
       description: appliedDescription || undefined,
       minAmount: Number.isFinite(minN) && minN > 0 ? minN : undefined,
       maxAmount: Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
-      startDate: dateFromInput
-        ? new Date(`${dateFromInput}T12:00:00`)
+      startDate: appliedDateFrom
+        ? new Date(`${appliedDateFrom}T12:00:00`)
         : undefined,
-      endDate: dateToInput ? new Date(`${dateToInput}T12:00:00`) : undefined,
+      endDate: appliedDateTo
+        ? new Date(`${appliedDateTo}T12:00:00`)
+        : undefined,
     };
   }, [
     page,
@@ -234,10 +266,10 @@ export const ExpensesTable = () => {
     sortBy,
     sortOrder,
     appliedDescription,
-    minAmountInput,
-    maxAmountInput,
-    dateFromInput,
-    dateToInput,
+    appliedMinAmount,
+    appliedMaxAmount,
+    appliedDateFrom,
+    appliedDateTo,
   ]);
 
   const [isAdding, setIsAdding] = React.useState(false);
@@ -421,12 +453,13 @@ export const ExpensesTable = () => {
                     variant="outline"
                     className={cn(
                       "shrink-0 gap-2",
-                      hasAdvancedFilters && "border-[#45BAB8] bg-[#45BAB8]/10",
+                      hasAppliedAdvancedFilters &&
+                        "border-[#45BAB8] bg-[#45BAB8]/10",
                     )}
                   >
                     <ListFilter className="h-4 w-4" aria-hidden />
                     Filter
-                    {hasAdvancedFilters ? (
+                    {hasAppliedAdvancedFilters ? (
                       <span
                         className="flex h-2 w-2 rounded-full bg-[#45BAB8]"
                         aria-hidden
@@ -442,7 +475,8 @@ export const ExpensesTable = () => {
                   <div className="border-b px-3 py-2">
                     <p className="text-sm font-semibold">Filters</p>
                     <p className="text-xs text-muted-foreground">
-                      Amount range and expense date range
+                      Amount range and expense date range. Click Apply to
+                      update results.
                     </p>
                   </div>
                   <div className="flex flex-col gap-3 p-3">
@@ -514,16 +548,29 @@ export const ExpensesTable = () => {
                         />
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="self-start text-muted-foreground"
-                      onClick={clearAdvancedFilters}
-                      disabled={!hasAdvancedFilters}
-                    >
-                      Clear filters
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="gap-2 bg-[#45BAB8] hover:bg-[#45BAB8]/90"
+                        onClick={commitAdvancedFilters}
+                        disabled={!hasPendingAdvancedFilters}
+                      >
+                        Apply filters
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={clearAdvancedFilters}
+                        disabled={
+                          !hasDraftAdvancedFilters && !hasAppliedAdvancedFilters
+                        }
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>

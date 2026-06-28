@@ -11,9 +11,13 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - run: npm ci
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
-      - run: npm run format
+      - run: bun install --frozen-lockfile
+
+      - run: bun run format
 
       - name: Commit changes
         run: |

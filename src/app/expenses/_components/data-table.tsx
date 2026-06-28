@@ -210,10 +210,7 @@ export const ExpensesTable = () => {
   ]);
 
   const hasAppliedAdvancedFilters = Boolean(
-    appliedMinAmount ||
-      appliedMaxAmount ||
-      appliedDateFrom ||
-      appliedDateTo,
+    appliedMinAmount || appliedMaxAmount || appliedDateFrom || appliedDateTo,
   );
 
   const hasPendingAdvancedFilters =
@@ -475,8 +472,8 @@ export const ExpensesTable = () => {
                   <div className="border-b px-3 py-2">
                     <p className="text-sm font-semibold">Filters</p>
                     <p className="text-xs text-muted-foreground">
-                      Amount range and expense date range. Click Apply to
-                      update results.
+                      Amount range and expense date range. Click Apply to update
+                      results.
                     </p>
                   </div>
                   <div className="flex flex-col gap-3 p-3">

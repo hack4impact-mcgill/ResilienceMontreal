@@ -9,6 +9,7 @@ import {
   validateCustomAllocations,
 } from "~/server/api/lib/expense-allocation";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { expenseListQuerySchema } from "~/lib/schemas/expense";
 
 const customDistributionSchema = z.object({
   grantDistributionId: z.number().int().positive(),
@@ -72,36 +73,80 @@ export const expensesRouter = createTRPCRouter({
     }),
 
   list: protectedProcedure
-    .input(
-      z
-        .object({
-          page: z.coerce.number().int().min(1).default(1),
-          limit: z.coerce.number().int().min(1).max(100).default(10),
-        })
-        .default({ page: 1, limit: 10 }),
-    )
+    .input(expenseListQuerySchema.optional())
     .query(async ({ ctx, input }) => {
-      const page = input.page ?? 1;
-      const limit = input.limit ?? 10;
+      const {
+        page = 1,
+        limit = 30,
+        sortBy = "date",
+        sortOrder = "desc",
+        description,
+        minAmount,
+        maxAmount,
+        startDate,
+        endDate,
+      } = input ?? {};
+
+      const where: Prisma.ExpenseWhereInput = {};
+
+      if (description?.trim()) {
+        where.description = {
+          contains: description.trim(),
+          mode: "insensitive",
+        };
+      }
+
+      if (minAmount !== undefined || maxAmount !== undefined) {
+        where.totalAmount = {};
+        if (minAmount !== undefined) {
+          where.totalAmount.gte = new Prisma.Decimal(minAmount);
+        }
+        if (maxAmount !== undefined) {
+          where.totalAmount.lte = new Prisma.Decimal(maxAmount);
+        }
+      }
+
+      if (startDate !== undefined || endDate !== undefined) {
+        where.date = {};
+        if (startDate !== undefined) {
+          where.date.gte = startDate;
+        }
+        if (endDate !== undefined) {
+          where.date.lte = endDate;
+        }
+      }
+
       const skip = (page - 1) * limit;
 
-      const [expenses, total] = await Promise.all([
+      const orderBy: Prisma.ExpenseOrderByWithRelationInput = {
+        [sortBy]: sortOrder,
+      };
+
+      const [expenses, totalCount] = await Promise.all([
         ctx.db.expense.findMany({
+          where,
+          orderBy,
           skip,
           take: limit,
-          orderBy: { date: "desc" },
           include: expenseListInclude,
         }),
-        ctx.db.expense.count(),
+        ctx.db.expense.count({ where }),
       ]);
+
+      const totalPages = Math.ceil(totalCount / limit) || 0;
+      const hasNextPage = page < totalPages;
+      const hasPreviousPage = page > 1;
 
       return {
         expenses,
         pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
+          currentPage: page,
+          pageSize: limit,
+          totalCount,
+          totalPages,
+          hasNextPage,
+          hasPreviousPage,
+          returnedCount: expenses.length,
         },
       };
     }),

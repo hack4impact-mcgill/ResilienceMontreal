@@ -357,12 +357,7 @@ export const ExpensesTable = () => {
   };
 
   React.useEffect(() => {
-    if (
-      isAdding &&
-      fundPools &&
-      fundPools.length > 0 &&
-      !formData.fundPoolId
-    ) {
+    if (isAdding && fundPools && fundPools.length > 0 && !formData.fundPoolId) {
       setFormData((prev) => ({
         ...prev,
         fundPoolId: String(fundPools[0]!.id),
@@ -812,7 +807,10 @@ export const ExpensesTable = () => {
                       <select
                         value={formData.fundPoolId}
                         onChange={(e) =>
-                          setFormData({ ...formData, fundPoolId: e.target.value })
+                          setFormData({
+                            ...formData,
+                            fundPoolId: e.target.value,
+                          })
                         }
                         className={`w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9] ${formErrors.fundPoolId ? "border-red-500" : ""}`}
                       >

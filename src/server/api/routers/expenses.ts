@@ -28,7 +28,9 @@ const createExpenseInputSchema = z
   .refine(
     (data) => {
       if (!data.customDistributions?.length) return true;
-      const ids = data.customDistributions.map((row) => row.grantDistributionId);
+      const ids = data.customDistributions.map(
+        (row) => row.grantDistributionId,
+      );
       return ids.length === new Set(ids).size;
     },
     {

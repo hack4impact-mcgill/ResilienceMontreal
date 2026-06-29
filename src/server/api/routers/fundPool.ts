@@ -22,16 +22,26 @@ export const fundPoolRouter = createTRPCRouter({
       orderBy: { order: "asc" },
     });
 
-    return fundPools.map((pool) => ({
-      ...pool,
-      calculatedAmount: pool.distributions.reduce(
-        (sum, distribution) =>
-          sum +
-          distribution.amount.toNumber() -
-          distribution.spentAmount.toNumber(),
-        0,
-      ),
-    }));
+    return fundPools.map((pool) => {
+      const totals = pool.distributions.reduce(
+        (acc, distribution) => {
+          const allocated = distribution.amount.toNumber();
+          const spent = distribution.spentAmount.toNumber();
+          acc.totalAllocated += allocated;
+          acc.totalSpent += spent;
+          acc.remaining += allocated - spent;
+          return acc;
+        },
+        { totalAllocated: 0, totalSpent: 0, remaining: 0 },
+      );
+
+      return {
+        ...pool,
+        totalAllocated: totals.totalAllocated,
+        totalSpent: totals.totalSpent,
+        calculatedAmount: totals.remaining,
+      };
+    });
   }),
 
   getFundPoolById: fundPoolReadProcedure

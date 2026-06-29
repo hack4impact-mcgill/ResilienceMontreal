@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     const { title, description, totalAmount, endDate, status } =
       await request.json();
 
-    if (!title || !description || !status || totalAmount == null) {
+    if (!title || !description || totalAmount == null) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
         totalAmount: amount,
         unassignedAmount: amount,
         endDate: endDate ? new Date(endDate) : null,
-        status,
+        status: status ?? "APPROVED",
       },
     });
 

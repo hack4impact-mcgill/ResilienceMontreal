@@ -24,8 +24,16 @@ export type Grant = {
   email: string;
   phoneNumber?: string;
   notes?: string;
-  amount: number;
+  originalAmount: number;
+  spentAmount: number;
+  remainingAmount: number;
 };
+
+const formatMoney = (amount: number) =>
+  `$${amount.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 export const columns: ColumnDef<Grant>[] = [
   {
@@ -75,12 +83,19 @@ export const columns: ColumnDef<Grant>[] = [
     },
   },
   {
-    accessorKey: "amount",
-    header: "AMOUNT",
-    cell: ({ row }) => {
-      const amount: number = row.original.amount;
-      return <div>${amount.toLocaleString()}</div>;
-    },
+    accessorKey: "originalAmount",
+    header: "ORIGINAL",
+    cell: ({ row }) => formatMoney(row.original.originalAmount),
+  },
+  {
+    accessorKey: "spentAmount",
+    header: "SPENT",
+    cell: ({ row }) => formatMoney(row.original.spentAmount),
+  },
+  {
+    accessorKey: "remainingAmount",
+    header: "REMAINING",
+    cell: ({ row }) => formatMoney(row.original.remainingAmount),
   },
   {
     id: "actions",

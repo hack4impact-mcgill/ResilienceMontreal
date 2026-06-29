@@ -13,7 +13,7 @@ model ExpenseDistribution {
   grantDistributionId Int
   amount     Decimal  @db.Decimal(10, 2)
   expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  grantDistribution   GrantDistribution @relation(fields: [grantDistributionId], references: [id])
+  grantDistribution   GrantDistribution @relation(fields: [grantDistributionId], references: [id], onDelete: Restrict)
 
   @@unique([expenseId, grantDistributionId])
   @@index([grantDistributionId])

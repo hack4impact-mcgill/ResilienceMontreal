@@ -48,11 +48,7 @@ const clientSchema = z.object({
 
 type ClientFormData = z.infer<typeof clientSchema>;
 type SortByField =
-  | "firstName"
-  | "lastName"
-  | "createdAt"
-  | "leaseEnd"
-  | "workerId";
+  "firstName" | "lastName" | "createdAt" | "leaseEnd" | "workerId";
 
 // ------------------------------------------------------------
 // EXPORT CLIENTS TO CSV

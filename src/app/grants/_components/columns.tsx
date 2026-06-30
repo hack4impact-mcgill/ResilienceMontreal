@@ -11,6 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 
+function isGrantExpired(toBeUsedBy: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(toBeUsedBy);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
+}
+
 export type Grant = {
   id: string;
   // dbId is optional and present for grants persisted in the database
@@ -59,7 +67,23 @@ export const columns: ColumnDef<Grant>[] = [
     header: "TO BE USED BY",
     cell: ({ row }) => {
       const date: Date = row.original.toBeUsedBy;
-      return <div>{date.toLocaleDateString()}</div>;
+      const expired = isGrantExpired(date);
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={
+              expired ? "text-muted-foreground line-through" : undefined
+            }
+          >
+            {date.toLocaleDateString()}
+          </span>
+          {expired ? (
+            <span className="inline-flex rounded border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
+              Expired
+            </span>
+          ) : null}
+        </div>
+      );
     },
   },
   {

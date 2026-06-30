@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
+import { api } from "~/trpc/react";
 import { createClient } from "@/utils/supabase/client";
 
 import {
@@ -34,17 +36,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { api } from "@/trpc/react";
 import Image from "next/image";
 
-const items = [
-  { title: "Dashboard", url: "/" },
-  { title: "Grants", url: "grants" },
-  { title: "Expenses", url: "expenses" },
-  { title: "Clients", url: "clients" },
+const navItems: {
+  titleKey: "dashboard" | "grants" | "expenses" | "clients";
+  url: string;
+}[] = [
+  { titleKey: "dashboard", url: "/" },
+  { titleKey: "grants", url: "/grants" },
+  { titleKey: "expenses", url: "/expenses" },
+  { titleKey: "clients", url: "/clients" },
 ];
 
 export function AppSidebar() {
+  const t = useTranslations("navigation");
   const router = useRouter();
   const [showUnauthorized, setShowUnauthorized] = React.useState(false);
 
@@ -79,7 +84,6 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          {/* USER PROFILE + DROPDOWN */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -105,7 +109,6 @@ export function AppSidebar() {
               </button>
             </DropdownMenuTrigger>
 
-            {/* DROPDOWN */}
             <DropdownMenuContent
               side="bottom"
               align="start"
@@ -126,20 +129,20 @@ export function AppSidebar() {
                 asChild
                 className="cursor-pointer flex items-center gap-2 px-3 py-1"
               >
-                <a href="/admin/users">
+                <Link href="/admin/users">
                   <UserRound size={16} />
                   <span>People &amp; Permissions</span>
-                </a>
+                </Link>
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 asChild
                 className="cursor-pointer flex items-center gap-2 px-3 py-1"
               >
-                <a href="/update-password">
+                <Link href="/update-password">
                   <UserRound size={16} />
                   <span>Change password</span>
-                </a>
+                </Link>
               </DropdownMenuItem>
 
               <div className="h-px bg-border mx-3 my-1" />
@@ -154,18 +157,16 @@ export function AppSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* PUSH NAV DOWN */}
           <div className="mt-10" />
 
-          {/* NAVIGATION */}
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.titleKey}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <span>{item.title}</span>
-                    </a>
+                    <Link href={item.url}>
+                      <span>{t(item.titleKey)}</span>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -211,7 +212,6 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      {/* FOOTER */}
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>

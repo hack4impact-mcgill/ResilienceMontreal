@@ -1,15 +1,15 @@
 "use client";
+
 import React from "react";
+import { useTranslations } from "next-intl";
 
 const HomePage: React.FC = () => {
+  const t = useTranslations("home");
   return (
     <div className="p-8">
       <div>
-        <h2 className="text-2xl font-bold">Home page</h2>
-        <p className="mt-2 text-muted-foreground">
-          This is the home page of the Resilience Montreal grant tracking
-          application.
-        </p>
+        <h2 className="text-2xl font-bold">{t("heading")}</h2>
+        <p className="mt-2 text-muted-foreground">{t("description")}</p>
       </div>
     </div>
   );

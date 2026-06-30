@@ -1,4 +1,4 @@
-name: Frontend Successfully Builds
+name: Successfully Builds
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
 jobs:
   compile:
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       - name: Check Out
@@ -16,11 +17,25 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
+          DIRECT_URL: ${{ vars.DIRECT_URL }}
+        run: bunx prisma generate
 
       - name: Build
-        run: npm run build
+        env:
+          DIRECT_URL: ${{ vars.DIRECT_URL }}
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+        run: bun run build

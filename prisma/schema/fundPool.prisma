@@ -1,8 +1,7 @@
 model FundPool {
   id              Int                     @id @default(autoincrement())
-  grantId         Int
-  grant           Grant                   @relation(fields: [grantId], references: [id])
   amount          Decimal                 @db.Decimal(10, 2)
-  category        String
-  fundAllocations ExpenseFundAllocation[]
+  category        String                  @unique
+  order           Int                     @default(0)
+  distributions   GrantDistribution[]
 }

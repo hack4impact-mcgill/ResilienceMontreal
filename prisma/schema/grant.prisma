@@ -7,7 +7,7 @@ model Grant {
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   endDate          DateTime?
-  status           Status
+  status           Status              @default(APPROVED)
   distributions    GrantDistribution[]
 
   @@index([createdAt(sort: Desc)])

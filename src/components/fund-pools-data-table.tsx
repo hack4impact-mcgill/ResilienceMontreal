@@ -32,6 +32,8 @@ import { api } from "~/trpc/react";
 interface FundPoolWithAmount {
   id: number;
   category: string;
+  totalAllocated: number;
+  totalSpent: number;
   calculatedAmount: number;
   order: number;
 }
@@ -271,11 +273,19 @@ export const FundPoolsDataTable = ({
       cell: (info) => info.getValue(),
     },
     {
+      accessorKey: "totalAllocated",
+      header: "ORIGINAL",
+      cell: ({ row }) => formatCurrency(row.original.totalAllocated),
+    },
+    {
+      accessorKey: "totalSpent",
+      header: "SPENT",
+      cell: ({ row }) => formatCurrency(row.original.totalSpent),
+    },
+    {
       accessorKey: "calculatedAmount",
-      header: "AMOUNT",
-      cell: ({ row }) => {
-        return <div>{formatCurrency(row.original.calculatedAmount)}</div>;
-      },
+      header: "REMAINING",
+      cell: ({ row }) => formatCurrency(row.original.calculatedAmount),
     },
     {
       id: "order",

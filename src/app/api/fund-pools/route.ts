@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { Prisma } from "~/generated/prisma/client";
 
+// these routes are no longer used, but not sure what to do with them yet.
+
 // Create a new fund pool
 export async function POST(request: Request) {
   try {
@@ -29,7 +31,6 @@ export async function POST(request: Request) {
       },
       include: {
         distributions: { include: { grant: true } },
-        fundAllocations: true,
       },
     });
 
@@ -49,7 +50,6 @@ export async function GET() {
     const fundPools = await prisma.fundPool.findMany({
       include: {
         distributions: { include: { grant: true } },
-        fundAllocations: true,
       },
     });
     return NextResponse.json({ fundPools }, { status: 200 });

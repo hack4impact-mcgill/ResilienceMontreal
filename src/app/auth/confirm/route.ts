@@ -22,11 +22,7 @@ export async function GET(request: NextRequest) {
       await caller.auth.confirmEmail({
         token_hash,
         type: type as
-          | "signup"
-          | "email"
-          | "recovery"
-          | "email_change"
-          | "invite",
+          "signup" | "email" | "recovery" | "email_change" | "invite",
       });
 
       // redirect user to specified redirect URL or root of app

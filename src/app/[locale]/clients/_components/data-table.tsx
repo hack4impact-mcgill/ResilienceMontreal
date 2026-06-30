@@ -4,6 +4,8 @@ import * as React from "react";
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 
@@ -46,11 +48,7 @@ const clientSchema = z.object({
 
 type ClientFormData = z.infer<typeof clientSchema>;
 type SortByField =
-  | "firstName"
-  | "lastName"
-  | "createdAt"
-  | "leaseEnd"
-  | "workerId";
+  "firstName" | "lastName" | "createdAt" | "leaseEnd" | "workerId";
 
 // ------------------------------------------------------------
 // EXPORT CLIENTS TO CSV
@@ -99,10 +97,23 @@ const exportToCSV = (clients: Client[]) => {
 // ------------------------------------------------------------
 export const ClientsTable = () => {
   const [filterMenuOpen, setFilterMenuOpen] = React.useState(false);
-  const [search, setSearch] = React.useState("");
+  // search: appliedSearch is sent to backend only when Enter is pressed.
+  const [draftSearch, setDraftSearch] = React.useState("");
+  const [appliedSearch, setAppliedSearch] = React.useState<string | undefined>(
+    undefined,
+  );
+
   const [page, setPage] = React.useState(1);
-  const [limit] = React.useState(10);
+  const [limit, setLimit] = React.useState<number>(30); // default page size 30
   const [sortBy, setSortBy] = React.useState<SortByField>("createdAt");
+
+  // search-by selector (local mode only) - does not trigger backend queries
+  const [searchBy, setSearchBy] = React.useState<
+    "firstName" | "lastName" | "email" | "workerName" | "leaseEndDate"
+  >("firstName");
+
+  // local sorting state for react-table (client-side only)
+  const [localSorting, setLocalSorting] = React.useState<SortingState>([]);
 
   const [isAdding, setIsAdding] = React.useState(false);
   const [formData, setFormData] = React.useState({
@@ -147,7 +158,7 @@ export const ClientsTable = () => {
       limit,
       sortBy,
       sortOrder: "desc",
-      search: search.trim() || undefined,
+      search: appliedSearch?.trim() || undefined,
     },
     {
       placeholderData: (previous) => previous,
@@ -173,12 +184,13 @@ export const ClientsTable = () => {
   const metadata = pagedClients?.metadata;
 
   const prettyLabel = (col: string) => {
-    if (col === "firstName") return "First Name";
-    if (col === "lastName") return "Last Name";
+    if (col === "firstName") return "First name";
+    if (col === "lastName") return "Last name";
     if (col === "email") return "Email";
-    if (col === "createdAt") return "Created At";
-    if (col === "leaseEnd") return "Lease End";
-    if (col === "workerId") return "Worker";
+    if (col === "createdAt") return "Created at";
+    if (col === "leaseEnd" || col === "leaseEndDate") return "Lease end date";
+    if (col === "workerId" || col === "workerName" || col === "worker")
+      return "Worker";
     return col;
   };
 
@@ -371,7 +383,10 @@ export const ClientsTable = () => {
   const table = useReactTable<Client>({
     data: mappedClients,
     columns,
+    state: { sorting: localSorting },
+    onSortingChange: setLocalSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   if (isLoading) return <div>Loading...</div>;
@@ -384,15 +399,25 @@ export const ClientsTable = () => {
       {/* Filter Row */}
       <div className="border-border -mx-8 px-8 flex items-center py-4">
         {/* Search Input */}
-        <Input
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="max-w-sm bg-white border-[#3FA9A9]"
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder={`Search by ${prettyLabel(searchBy).toLowerCase()}...`}
+            value={draftSearch}
+            onChange={(e) => {
+              setDraftSearch(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                // apply search to backend
+                setAppliedSearch(draftSearch.trim() || undefined);
+                setPage(1);
+              }
+            }}
+            className="w-80 max-w-full bg-white border-[#3FA9A9]"
+          />
+
+          {/* Search-by is handled in the Filter dropdown (reused) */}
+        </div>
 
         {/* Filter Dropdown */}
         <DropdownMenu open={filterMenuOpen} onOpenChange={setFilterMenuOpen}>
@@ -404,30 +429,82 @@ export const ClientsTable = () => {
               <ListFilter
                 className={`transition-transform ${filterMenuOpen ? "rotate-90" : "rotate-0"}`}
               />
-              <span>Sort</span>
+              <span>Filter</span>
             </Button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="start">
             {(
               [
-                "createdAt",
                 "firstName",
                 "lastName",
-                "leaseEnd",
-                "workerId",
+                "email",
+                "workerName",
+                "leaseEndDate",
               ] as const
             ).map((col) => (
               <DropdownMenuItem
                 key={col}
                 onClick={() => {
-                  setSortBy(col);
-                  setPage(1);
+                  setSearchBy(col as any);
                   setFilterMenuOpen(false);
                 }}
                 className="flex items-center gap-2"
               >
-                {sortBy === col ? (
+                {searchBy === col ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <span className="h-4 w-4 opacity-0" />
+                )}
+                {prettyLabel(col)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Clear Search Button */}
+        <Button
+          variant="ghost"
+          className="ml-2 text-black hover:bg-transparent"
+          onClick={() => {
+            setDraftSearch("");
+            setAppliedSearch(undefined);
+            setSearchBy("firstName");
+            setPage(1);
+          }}
+        >
+          Clear
+        </Button>
+
+        {/* Local Sort dropdown placed to left of Export (bold label) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="ml-2 text-black hover:bg-transparent"
+            >
+              A-Z / 0-9
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {(
+              [
+                "firstName",
+                "lastName",
+                "email",
+                "workerName",
+                "leaseEndDate",
+              ] as const
+            ).map((col) => (
+              <DropdownMenuItem
+                key={col}
+                onClick={() => {
+                  // set local sorting to the chosen column, sensible natural order (asc)
+                  setLocalSorting([{ id: col as any, desc: false }]);
+                }}
+                className="flex items-center gap-2"
+              >
+                {localSorting?.[0]?.id === col ? (
                   <Check className="h-4 w-4" />
                 ) : (
                   <span className="h-4 w-4 opacity-0" />
@@ -446,6 +523,8 @@ export const ClientsTable = () => {
         >
           Export
         </Button>
+
+        {/* (local sort handled via Local Sort dropdown) */}
 
         {/* Add Client Button */}
         <Button
@@ -866,6 +945,23 @@ export const ClientsTable = () => {
           >
             Next
           </Button>
+
+          {/* Rows per page selector moved to pagination (selector only) */}
+          <div className="ml-4">
+            <select
+              value={limit}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setLimit(v);
+                setPage(1);
+              }}
+              className="bg-white border border-gray-200 rounded px-2 py-1 text-sm"
+            >
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>

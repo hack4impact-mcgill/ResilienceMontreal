@@ -13,7 +13,6 @@ import { TRPCError } from "@trpc/server";
 
 const fundPoolInclude = {
   distributions: { include: { grant: true } },
-  fundAllocations: true,
 } as const;
 
 export const fundPoolRouter = createTRPCRouter({
@@ -23,13 +22,26 @@ export const fundPoolRouter = createTRPCRouter({
       orderBy: { order: "asc" },
     });
 
-    return fundPools.map((pool) => ({
-      ...pool,
-      calculatedAmount: pool.fundAllocations.reduce(
-        (sum, allocation) => sum + allocation.amount.toNumber(),
-        0,
-      ),
-    }));
+    return fundPools.map((pool) => {
+      const totals = pool.distributions.reduce(
+        (acc, distribution) => {
+          const allocated = distribution.amount.toNumber();
+          const spent = distribution.spentAmount.toNumber();
+          acc.totalAllocated += allocated;
+          acc.totalSpent += spent;
+          acc.remaining += allocated - spent;
+          return acc;
+        },
+        { totalAllocated: 0, totalSpent: 0, remaining: 0 },
+      );
+
+      return {
+        ...pool,
+        totalAllocated: totals.totalAllocated,
+        totalSpent: totals.totalSpent,
+        calculatedAmount: totals.remaining,
+      };
+    });
   }),
 
   getFundPoolById: fundPoolReadProcedure
@@ -55,6 +67,75 @@ export const fundPoolRouter = createTRPCRouter({
       }
 
       return fundPool;
+    }),
+
+  // This gets the total available balance of a fund pool excluding grants that are expired or have no balance left.
+  getAvailableBalanceByPool: fundPoolReadProcedure
+    .input(
+      z.object({
+        fundPoolId: z.coerce.number().int().positive(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+
+      const fundPool = await ctx.db.fundPool.findUnique({
+        where: { id: input.fundPoolId },
+        select: { id: true, category: true },
+      });
+
+      if (!fundPool) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "FundPool not found",
+        });
+      }
+
+      const activeDistributions = await ctx.db.grantDistribution.findMany({
+        where: {
+          fundPoolId: input.fundPoolId,
+          grant: {
+            status: "APPROVED",
+            OR: [{ endDate: null }, { endDate: { gte: now } }],
+          },
+        },
+        select: {
+          id: true,
+          amount: true,
+          spentAmount: true,
+          grant: {
+            select: {
+              id: true,
+              title: true,
+              endDate: true,
+            },
+          },
+        },
+      });
+
+      const distributions = activeDistributions
+        .map((distribution) => {
+          const availableAmount = new Prisma.Decimal(
+            String(distribution.amount),
+          ).minus(new Prisma.Decimal(String(distribution.spentAmount)));
+          return {
+            id: distribution.id,
+            amount: distribution.amount,
+            spentAmount: distribution.spentAmount,
+            availableAmount,
+            grant: distribution.grant,
+          };
+        })
+        .filter((distribution) => distribution.availableAmount.gt(0));
+
+      const availableBalance = distributions.reduce(
+        (sum, distribution) => sum.plus(distribution.availableAmount),
+        new Prisma.Decimal(0),
+      );
+
+      return {
+        totalAmount: availableBalance.toNumber(),
+      };
     }),
 
   create: bookkeeperProcedure
@@ -133,12 +214,12 @@ export const fundPoolRouter = createTRPCRouter({
 
   getTotalFunding: fundPoolReadProcedure.query(async ({ ctx }) => {
     const fundPools = await ctx.db.fundPool.findMany({
-      include: { fundAllocations: true },
+      include: { distributions: true },
     });
 
     const categorizedTotal = fundPools.reduce((sum, pool) => {
-      const poolAmount = pool.fundAllocations.reduce(
-        (poolSum, allocation) => poolSum + allocation.amount.toNumber(),
+      const poolAmount = pool.distributions.reduce(
+        (poolSum, distribution) => poolSum + distribution.amount.toNumber(),
         0,
       );
       return sum + poolAmount;

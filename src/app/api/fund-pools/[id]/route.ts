@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { Prisma } from "~/generated/prisma/client";
 
+// these routes are no longer used, but not sure what to do with them yet.
+
 // Get a specific fund pool by ID
 export async function GET(
   request: Request,
@@ -13,7 +15,6 @@ export async function GET(
       where: { id },
       include: {
         distributions: { include: { grant: true } },
-        fundAllocations: true,
       },
     });
     if (!fundPool) {

@@ -23,6 +23,8 @@ type ModalMode = "view" | "create" | "edit";
 interface FundPoolWithAmount {
   id: number;
   category: string;
+  totalAllocated: number;
+  totalSpent: number;
   calculatedAmount: number;
   order: number;
 }

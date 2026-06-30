@@ -27,15 +27,9 @@ jobs:
 
       - name: Generate Prisma client
         env:
-<<<<<<< HEAD
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-        run: bunx prisma generate
-=======
           DATABASE_URL: ${{ vars.DATABASE_URL }}
           DIRECT_URL: ${{ vars.DIRECT_URL }}
-        run: npx prisma generate
->>>>>>> origin
+        run: bunx prisma generate
 
       - name: Build
         env:

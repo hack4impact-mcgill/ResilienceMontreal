@@ -300,8 +300,9 @@ export async function fetchGrants(): Promise<Grant[]> {
           email: "contact@orga.example",
           phoneNumber: "514-555-1234",
           notes: "Support for emergency housing placement.",
-          amount: 3000,
-          isExpired: true,
+          originalAmount: 3000,
+          spentAmount: 0,
+          remainingAmount: 3000,
         },
         {
           id: "g2",
@@ -312,8 +313,9 @@ export async function fetchGrants(): Promise<Grant[]> {
           email: "info@groupb.example",
           phoneNumber: "514-555-9876",
           notes: "Operational funding for food programs.",
-          amount: 2000,
-          isExpired: true,
+          originalAmount: 2000,
+          spentAmount: 0,
+          remainingAmount: 2000,
         },
       ]);
     }, 600);

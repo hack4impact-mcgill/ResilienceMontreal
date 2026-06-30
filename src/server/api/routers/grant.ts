@@ -60,7 +60,7 @@ export const grantRouter = createTRPCRouter({
             description: JSON.stringify(descriptionObj),
             totalAmount: amount,
             unassignedAmount: amount,
-            status: "PENDING",
+            status: "APPROVED",
             endDate: input.toBeUsedBy,
           },
         });

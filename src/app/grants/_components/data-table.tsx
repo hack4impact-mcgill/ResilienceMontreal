@@ -55,7 +55,9 @@ const exportToCSV = (grants: Grant[]) => {
     "Email",
     "Phone Number",
     "Notes",
-    "Amount",
+    "Original",
+    "Spent",
+    "Remaining",
   ];
 
   const rows = grants.map((g) => [
@@ -66,7 +68,9 @@ const exportToCSV = (grants: Grant[]) => {
     g.email,
     g.phoneNumber ?? "",
     (g.notes ?? "").replace(/\n/g, " "),
-    g.amount.toString(),
+    g.originalAmount.toString(),
+    g.spentAmount.toString(),
+    g.remainingAmount.toString(),
   ]);
 
   const csvContent = [header, ...rows].map((r) => r.join(",")).join("\n");
@@ -254,7 +258,11 @@ export const GrantsTable = () => {
 
   const createMutation = api.grant.create.useMutation({
     onSuccess: async () => {
-      await utils.grant.getGrants.invalidate();
+      await Promise.all([
+        utils.grant.getGrants.invalidate(),
+        utils.fundPool.getAll.invalidate(),
+        utils.fundPool.getTotalFunding.invalidate(),
+      ]);
     },
     onError: (err: any) => {
       console.error("Create grant error:", err);
@@ -264,13 +272,22 @@ export const GrantsTable = () => {
 
   const updateMutation = api.grant.update.useMutation({
     onSuccess: async () => {
-      await utils.grant.getGrants.invalidate();
+      await Promise.all([
+        utils.grant.getGrants.invalidate(),
+        utils.fundPool.getAll.invalidate(),
+        utils.fundPool.getTotalFunding.invalidate(),
+      ]);
     },
   });
 
   const deleteMutation = api.grant.delete.useMutation({
     onSuccess: async () => {
-      await utils.grant.getGrants.invalidate();
+      await Promise.all([
+        utils.grant.getGrants.invalidate(),
+        utils.fundPool.getAll.invalidate(),
+        utils.fundPool.getTotalFunding.invalidate(),
+        utils.fundPool.getUncategorized.invalidate(),
+      ]);
     },
   });
 
@@ -295,6 +312,19 @@ export const GrantsTable = () => {
       const toBeUsedBy = meta.toBeUsedBy
         ? new Date(meta.toBeUsedBy)
         : new Date(g.endDate || g.createdAt);
+      const distributions = g.distributions ?? [];
+      const originalAmount = distributions.length
+        ? distributions.reduce(
+            (sum: number, d: { amount: { toString(): string } }) =>
+              sum + Number(d.amount?.toString?.() ?? d.amount ?? 0),
+            0,
+          )
+        : Number(g.totalAmount?.toString?.() ?? g.totalAmount ?? 0);
+      const spentAmount = distributions.reduce(
+        (sum: number, d: { spentAmount: { toString(): string } }) =>
+          sum + Number(d.spentAmount?.toString?.() ?? d.spentAmount ?? 0),
+        0,
+      );
 
       return {
         id: String(g.id),
@@ -309,8 +339,9 @@ export const GrantsTable = () => {
         email: meta.email ?? "",
         phoneNumber: meta.phoneNumber ?? "",
         notes: meta.notes ?? "",
-        amount: Number(g.totalAmount?.toString?.() ?? g.totalAmount ?? 0),
-        isExpired: isGrantExpired(toBeUsedBy),
+        originalAmount,
+        spentAmount,
+        remainingAmount: originalAmount - spentAmount,
       } as Grant;
     });
 
@@ -829,7 +860,7 @@ export const GrantsTable = () => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.original.id}
-                  className={row.original.isExpired ? "bg-muted/30" : undefined}
+                  className={isGrantExpired(row.original.toBeUsedBy) ? "bg-muted/30" : undefined}
                 >
                   {row.getVisibleCells().map((cell) => {
                     // render actions column manually so we can inject delete handler
@@ -910,7 +941,7 @@ export const GrantsTable = () => {
                       "email",
                       "phoneNumber",
                       "notes",
-                      "amount",
+                      "originalAmount",
                     ];
                     if (editableColumns.includes(cell.column.id)) {
                       const isEditing =
@@ -953,7 +984,7 @@ export const GrantsTable = () => {
                                   }
                                   className="w-full h-20 p-2 border rounded"
                                 />
-                              ) : cell.column.id === "amount" ? (
+                              ) : cell.column.id === "originalAmount" ? (
                                 <Input
                                   type="number"
                                   value={editing.value ?? 0}
@@ -1057,6 +1088,20 @@ export const GrantsTable = () => {
                                           : r,
                                       ),
                                     );
+                                  } else if (columnId === "originalAmount") {
+                                    const nextOriginal = Number(value) || 0;
+                                    setLocalGrants((curr) =>
+                                      curr.map((r) =>
+                                        r.id === rowId
+                                          ? {
+                                              ...r,
+                                              originalAmount: nextOriginal,
+                                              remainingAmount:
+                                                nextOriginal - r.spentAmount,
+                                            }
+                                          : r,
+                                      ),
+                                    );
                                   } else {
                                     setLocalGrants((curr) =>
                                       curr.map((r) =>
@@ -1117,7 +1162,7 @@ export const GrantsTable = () => {
                                     payload.phoneNumber = value;
                                   else if (columnId === "notes")
                                     payload.notes = value;
-                                  else if (columnId === "amount")
+                                  else if (columnId === "originalAmount")
                                     payload.amount = Number(value) || 0;
 
                                   updateMutation.mutate(payload, {

@@ -11,6 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 
+function isGrantExpired(toBeUsedBy: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(toBeUsedBy);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
+}
+
 export type Grant = {
   id: string;
   // dbId is optional and present for grants persisted in the database
@@ -24,10 +32,16 @@ export type Grant = {
   email: string;
   phoneNumber?: string;
   notes?: string;
-  amount: number;
-  /** True when the grant's use-by date is before today (local calendar day). */
-  isExpired: boolean;
+  originalAmount: number;
+  spentAmount: number;
+  remainingAmount: number;
 };
+
+const formatMoney = (amount: number) =>
+  `$${amount.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 export const columns: ColumnDef<Grant>[] = [
   {
@@ -53,7 +67,7 @@ export const columns: ColumnDef<Grant>[] = [
     header: "TO BE USED BY",
     cell: ({ row }) => {
       const date: Date = row.original.toBeUsedBy;
-      const expired = row.original.isExpired;
+      const expired = isGrantExpired(date);
       return (
         <div className="flex flex-wrap items-center gap-2">
           <span
@@ -93,12 +107,19 @@ export const columns: ColumnDef<Grant>[] = [
     },
   },
   {
-    accessorKey: "amount",
-    header: "AMOUNT",
-    cell: ({ row }) => {
-      const amount: number = row.original.amount;
-      return <div>${amount.toLocaleString()}</div>;
-    },
+    accessorKey: "originalAmount",
+    header: "ORIGINAL",
+    cell: ({ row }) => formatMoney(row.original.originalAmount),
+  },
+  {
+    accessorKey: "spentAmount",
+    header: "SPENT",
+    cell: ({ row }) => formatMoney(row.original.spentAmount),
+  },
+  {
+    accessorKey: "remainingAmount",
+    header: "REMAINING",
+    cell: ({ row }) => formatMoney(row.original.remainingAmount),
   },
   {
     id: "actions",

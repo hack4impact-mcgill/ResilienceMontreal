@@ -3,6 +3,5 @@ model FundPool {
   amount          Decimal                 @db.Decimal(10, 2)
   category        String                  @unique
   order           Int                     @default(0)
-  fundAllocations ExpenseFundAllocation[]
   distributions   GrantDistribution[]
 }

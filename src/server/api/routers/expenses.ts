@@ -2,35 +2,79 @@ import { z } from "zod";
 import { Prisma } from "~/generated/prisma/client";
 
 import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
+  buildGreedyAllocations,
+  expenseListInclude,
+  fetchActiveDistributions,
+  persistExpenseWithAllocations,
+  validateCustomAllocations,
+} from "~/server/api/lib/expense-allocation";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { expenseListQuerySchema } from "~/lib/schemas/expense";
+
+const customDistributionSchema = z.object({
+  grantDistributionId: z.number().int().positive(),
+  amount: z.coerce.number().positive(),
+});
+
+const createExpenseInputSchema = z
+  .object({
+    fundPoolId: z.coerce.number().int().positive(),
+    totalAmount: z.coerce.number().positive(),
+    description: z.string().min(1),
+    date: z.coerce.date(),
+    invoiceUrl: z.string().url().optional(),
+    customDistributions: z.array(customDistributionSchema).optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.customDistributions?.length) return true;
+      const ids = data.customDistributions.map(
+        (row) => row.grantDistributionId,
+      );
+      return ids.length === new Set(ids).size;
+    },
+    {
+      message: "Duplicate grantDistributionId in customDistributions",
+      path: ["customDistributions"],
+    },
+  );
 
 export const expensesRouter = createTRPCRouter({
   create: protectedProcedure
-    .input(
-      z.object({
-        totalAmount: z.coerce.number(),
-        description: z.string().min(1),
-        date: z.coerce.date(),
-        invoiceUrl: z.string().url().optional(),
-      }),
-    )
+    .input(createExpenseInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const expense = await ctx.db.expense.create({
-        data: {
-          totalAmount: input.totalAmount,
-          description: input.description,
-          date: input.date,
-          invoiceUrl: input.invoiceUrl ?? undefined,
-        },
-      });
+      const totalAmount = new Prisma.Decimal(String(input.totalAmount));
+      const now = new Date();
+
+      const allocations = input.customDistributions?.length
+        ? await validateCustomAllocations(ctx.db, {
+            fundPoolId: input.fundPoolId,
+            totalAmount,
+            customDistributions: input.customDistributions,
+            now,
+          })
+        : buildGreedyAllocations(
+            await fetchActiveDistributions(ctx.db, input.fundPoolId, now),
+            totalAmount,
+          );
+
+      const expense = await ctx.db.$transaction(async (tx) =>
+        persistExpenseWithAllocations(
+          tx,
+          {
+            totalAmount,
+            description: input.description,
+            date: input.date,
+            invoiceUrl: input.invoiceUrl,
+          },
+          allocations,
+        ),
+      );
+
       return { expense };
     }),
 
-  list: publicProcedure
+  list: protectedProcedure
     .input(expenseListQuerySchema.optional())
     .query(async ({ ctx, input }) => {
       const {
@@ -86,6 +130,7 @@ export const expensesRouter = createTRPCRouter({
           orderBy,
           skip,
           take: limit,
+          include: expenseListInclude,
         }),
         ctx.db.expense.count({ where }),
       ]);

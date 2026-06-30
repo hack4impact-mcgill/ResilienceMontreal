@@ -23,7 +23,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarFundPools } from "./sidebar-fund-pools";
 
 import {
   AlertDialog,
@@ -65,8 +64,8 @@ export function AppSidebar() {
     enabled: canViewFundPools,
   });
 
-  const totalAmount = fundPools?.reduce(
-    (sum, pool) => sum + Number(pool.amount),
+  const totalRemaining = fundPools?.reduce(
+    (sum, pool) => sum + Number(pool.calculatedAmount),
     0,
   );
 
@@ -180,8 +179,8 @@ export function AppSidebar() {
             <div className="flex items-center justify-between mb-2 font-medium text-muted-foreground">
               <span className="-ml-2">FUNDING POOLS</span>
               <span className="tabular-nums px-2">
-                {totalAmount !== undefined
-                  ? `$${totalAmount.toLocaleString()}`
+                {totalRemaining !== undefined
+                  ? `$${totalRemaining.toLocaleString()}`
                   : "..."}
               </span>
             </div>
@@ -194,7 +193,7 @@ export function AppSidebar() {
                 >
                   <span>{pool.category}</span>
                   <span className="tabular-nums text-muted-foreground">
-                    ${Number(pool.amount).toLocaleString()}
+                    ${Number(pool.calculatedAmount).toLocaleString()}
                   </span>
                 </div>
               ))}

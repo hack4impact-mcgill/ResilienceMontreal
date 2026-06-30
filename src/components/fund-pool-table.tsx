@@ -15,6 +15,8 @@ import { Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 interface FundPoolWithAmount {
   id: number;
   category: string;
+  totalAllocated: number;
+  totalSpent: number;
   calculatedAmount: number;
   order: number;
 }
@@ -84,7 +86,9 @@ export function FundPoolTable({
         <TableHeader>
           <TableRow>
             <TableHead>Category</TableHead>
-            <TableHead>Amount</TableHead>
+            <TableHead>Original</TableHead>
+            <TableHead>Spent</TableHead>
+            <TableHead>Remaining</TableHead>
             <TableHead>Order</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -93,6 +97,8 @@ export function FundPoolTable({
           {filteredItems.map((fundPool, index) => (
             <TableRow key={fundPool.id}>
               <TableCell>{fundPool.category}</TableCell>
+              <TableCell>{formatCurrency(fundPool.totalAllocated)}</TableCell>
+              <TableCell>{formatCurrency(fundPool.totalSpent)}</TableCell>
               <TableCell>{formatCurrency(fundPool.calculatedAmount)}</TableCell>
               <TableCell>
                 <div className="flex space-x-1">

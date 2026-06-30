@@ -1,0 +1,28 @@
+FROM oven/bun:1-alpine
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY prisma ./prisma/
+
+RUN bun install --frozen-lockfile
+
+COPY . .
+
+# Build-time env vars — NEXT_PUBLIC_* are baked into the bundle by Next.js
+ARG DATABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_APP_URL
+ENV DATABASE_URL=$DATABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
+RUN bunx prisma generate
+
+RUN bun run build
+
+EXPOSE 3000
+
+CMD ["bun", "run", "start"]

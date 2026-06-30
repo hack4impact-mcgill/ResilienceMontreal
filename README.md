@@ -19,6 +19,15 @@ npx prisma generate
 
 # start the development server
 npm run dev
+
+# start the development server inside the docker container
+npm run docker:up
+
+# sync db inside container with local
+docker exec -it resiliencemontreal-app-1 npx prisma db push
+
+# tear down the containers
+npm run docker:down
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

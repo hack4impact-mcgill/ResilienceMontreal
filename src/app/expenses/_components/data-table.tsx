@@ -60,11 +60,17 @@ const getFriendlyError = (err: unknown): string => {
           case "invoiceUrl":
             messages.push("Invalid input: invoiceUrl must be a valid URL");
             break;
+          case "fundPoolId":
+            messages.push("Fund pool is required");
+            break;
           default:
             messages.push(first);
         }
       }
       if (messages.length > 0) return messages.join(". ");
+    }
+    if (err.message?.includes("Insufficient available funds")) {
+      return "Not enough available balance in the selected fund pool to cover this expense.";
     }
     return err.message ?? "Something went wrong";
   }
@@ -87,6 +93,7 @@ const expenseSchema = z.object({
     const num = parseFloat(val);
     return !isNaN(num) && num > 0;
   }, "Amount must be a positive number"),
+  fundPoolId: z.string().min(1, "Fund pool is required"),
   invoiceUrl: z
     .string()
     .optional()
@@ -274,6 +281,7 @@ export const ExpensesTable = () => {
     description: "",
     date: "",
     totalAmount: "",
+    fundPoolId: "",
     invoiceUrl: "",
   });
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>(
@@ -283,7 +291,7 @@ export const ExpensesTable = () => {
     null,
   );
 
-  const utils = api.useContext();
+  const utils = api.useUtils();
   const {
     data: listData,
     isLoading,
@@ -304,9 +312,17 @@ export const ExpensesTable = () => {
     if (page > pagination.totalPages) setPage(pagination.totalPages);
   }, [pagination, page]);
 
+  const { data: fundPools } = api.fundPool.getAll.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
   const createExpense = api.expenses.create.useMutation({
-    onSuccess: () => {
-      void utils.expenses.list.invalidate();
+    onSuccess: async () => {
+      await Promise.all([
+        utils.expenses.list.invalidate(),
+        utils.fundPool.getAll.invalidate(),
+        utils.grant.getAll.invalidate(),
+      ]);
       setSuccessMessage("Expense created");
       setTimeout(() => setSuccessMessage(null), 4000);
     },
@@ -334,10 +350,20 @@ export const ExpensesTable = () => {
       description: "",
       date: "",
       totalAmount: "",
+      fundPoolId: fundPools?.[0] ? String(fundPools[0].id) : "",
       invoiceUrl: "",
     });
     setFormErrors({});
   };
+
+  React.useEffect(() => {
+    if (isAdding && fundPools && fundPools.length > 0 && !formData.fundPoolId) {
+      setFormData((prev) => ({
+        ...prev,
+        fundPoolId: String(fundPools[0]!.id),
+      }));
+    }
+  }, [isAdding, fundPools, formData.fundPoolId]);
 
   const validateForm = (): boolean => {
     const result = expenseSchema.safeParse({
@@ -366,6 +392,7 @@ export const ExpensesTable = () => {
         description: formData.description,
         date: formData.date,
         totalAmount: parseFloat(formData.totalAmount),
+        fundPoolId: Number(formData.fundPoolId),
         invoiceUrl: formData.invoiceUrl?.trim() || undefined,
       },
       {
@@ -388,10 +415,14 @@ export const ExpensesTable = () => {
   };
 
   const createSample = () => {
+    const poolId = fundPools?.[0]?.id;
+    if (!poolId) return;
+
     const sampleAmount = "12.34";
     const sampleDescription = "Sample expense";
     const sampleDateStr = new Date().toISOString().slice(0, 10);
     createExpense.mutate({
+      fundPoolId: poolId,
       totalAmount: parseFloat(sampleAmount),
       description: sampleDescription,
       date: sampleDateStr,
@@ -770,7 +801,40 @@ export const ExpensesTable = () => {
                     </p>
                   )}
                 </TableCell>
-                <TableCell />
+                <TableCell>
+                  {fundPools && fundPools.length > 0 ? (
+                    <>
+                      <select
+                        value={formData.fundPoolId}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            fundPoolId: e.target.value,
+                          })
+                        }
+                        className={`w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9] ${formErrors.fundPoolId ? "border-red-500" : ""}`}
+                      >
+                        <option value="" disabled>
+                          Select fund pool
+                        </option>
+                        {fundPools.map((pool) => (
+                          <option key={pool.id} value={pool.id}>
+                            {pool.category}
+                          </option>
+                        ))}
+                      </select>
+                      {formErrors.fundPoolId && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {formErrors.fundPoolId}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No fund pools available
+                    </p>
+                  )}
+                </TableCell>
               </TableRow>
             )}
             {isAdding && createExpense.error && (

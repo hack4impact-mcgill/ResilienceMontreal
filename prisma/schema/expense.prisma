@@ -4,16 +4,17 @@ model Expense {
   description     String
   date            DateTime                @default(now())
   invoiceUrl      String?
-  fundAllocations ExpenseFundAllocation[]
+  distributions ExpenseDistribution[]
 }
 
-model ExpenseFundAllocation {
+model ExpenseDistribution {
   id         Int      @id @default(autoincrement())
   expenseId  Int
-  fundPoolId Int
+  grantDistributionId Int
   amount     Decimal  @db.Decimal(10, 2)
   expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  fundPool   FundPool @relation(fields: [fundPoolId], references: [id])
+  grantDistribution   GrantDistribution @relation(fields: [grantDistributionId], references: [id], onDelete: Restrict)
 
-  @@unique([expenseId, fundPoolId])
+  @@unique([expenseId, grantDistributionId])
+  @@index([grantDistributionId])
 }

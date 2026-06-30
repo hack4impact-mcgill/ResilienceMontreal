@@ -121,29 +121,41 @@ export const GrantsTable = () => {
   const [maxAmountInput, setMaxAmountInput] = React.useState("");
   const [dueFromInput, setDueFromInput] = React.useState("");
   const [dueToInput, setDueToInput] = React.useState("");
+  /** Committed filter values sent to the API — only updated on "Apply filters". */
+  const [appliedMinAmount, setAppliedMinAmount] = React.useState("");
+  const [appliedMaxAmount, setAppliedMaxAmount] = React.useState("");
+  const [appliedDueFrom, setAppliedDueFrom] = React.useState("");
+  const [appliedDueTo, setAppliedDueTo] = React.useState("");
 
   const commitOrganizationSearch = React.useCallback(() => {
     setAppliedTitle(searchTitle.trim());
   }, [searchTitle]);
 
+  const applyFilters = React.useCallback(() => {
+    setAppliedMinAmount(minAmountInput);
+    setAppliedMaxAmount(maxAmountInput);
+    setAppliedDueFrom(dueFromInput);
+    setAppliedDueTo(dueToInput);
+  }, [minAmountInput, maxAmountInput, dueFromInput, dueToInput]);
+
   React.useEffect(() => {
     setPage(1);
   }, [
     appliedTitle,
-    minAmountInput,
-    maxAmountInput,
-    dueFromInput,
-    dueToInput,
+    appliedMinAmount,
+    appliedMaxAmount,
+    appliedDueFrom,
+    appliedDueTo,
     sortBy,
     sortOrder,
     limit,
   ]);
 
   const hasAdvancedFilters = Boolean(
-    minAmountInput.trim() ||
-      maxAmountInput.trim() ||
-      dueFromInput ||
-      dueToInput,
+    appliedMinAmount.trim() ||
+      appliedMaxAmount.trim() ||
+      appliedDueFrom ||
+      appliedDueTo,
   );
 
   const clearAdvancedFilters = () => {
@@ -151,11 +163,15 @@ export const GrantsTable = () => {
     setMaxAmountInput("");
     setDueFromInput("");
     setDueToInput("");
+    setAppliedMinAmount("");
+    setAppliedMaxAmount("");
+    setAppliedDueFrom("");
+    setAppliedDueTo("");
   };
 
   const queryInput = React.useMemo(() => {
-    const minRaw = minAmountInput.trim();
-    const maxRaw = maxAmountInput.trim();
+    const minRaw = appliedMinAmount.trim();
+    const maxRaw = appliedMaxAmount.trim();
     const minN = minRaw === "" ? NaN : Number(minRaw);
     const maxN = maxRaw === "" ? NaN : Number(maxRaw);
     return {
@@ -168,10 +184,10 @@ export const GrantsTable = () => {
         Number.isFinite(minN) && minN > 0 ? minN : undefined,
       maxAmount:
         Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
-      startDate: dueFromInput
-        ? new Date(`${dueFromInput}T12:00:00`)
+      startDate: appliedDueFrom
+        ? new Date(`${appliedDueFrom}T12:00:00`)
         : undefined,
-      endDate: dueToInput ? new Date(`${dueToInput}T12:00:00`) : undefined,
+      endDate: appliedDueTo ? new Date(`${appliedDueTo}T12:00:00`) : undefined,
     };
   }, [
     page,
@@ -179,10 +195,10 @@ export const GrantsTable = () => {
     sortBy,
     sortOrder,
     appliedTitle,
-    minAmountInput,
-    maxAmountInput,
-    dueFromInput,
-    dueToInput,
+    appliedMinAmount,
+    appliedMaxAmount,
+    appliedDueFrom,
+    appliedDueTo,
   ]);
 
   const [addModalOpen, setAddModalOpen] = React.useState(false);
@@ -530,16 +546,32 @@ export const GrantsTable = () => {
                         />
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="self-start text-muted-foreground"
-                      onClick={clearAdvancedFilters}
-                      disabled={!hasAdvancedFilters}
-                    >
-                      Clear filters
-                    </Button>
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={clearAdvancedFilters}
+                        disabled={
+                          !hasAdvancedFilters &&
+                          !minAmountInput &&
+                          !maxAmountInput &&
+                          !dueFromInput &&
+                          !dueToInput
+                        }
+                      >
+                        Clear filters
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+                        onClick={applyFilters}
+                      >
+                        Apply filters
+                      </Button>
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>

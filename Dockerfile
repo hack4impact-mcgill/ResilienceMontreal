@@ -1,25 +1,28 @@
-FROM node:18-alpine
+FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+COPY package.json bun.lock ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci
+RUN bun install --frozen-lockfile
 
-# Copy source code
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
+# Build-time env vars — NEXT_PUBLIC_* are baked into the bundle by Next.js
+ARG DATABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_APP_URL
+ENV DATABASE_URL=$DATABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
-# Build the app
-RUN npm run build
+RUN bunx prisma generate
 
-# Expose port
+RUN bun run build
+
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+CMD ["bun", "run", "start"]

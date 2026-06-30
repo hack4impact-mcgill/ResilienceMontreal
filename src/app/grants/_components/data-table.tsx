@@ -153,9 +153,9 @@ export const GrantsTable = () => {
 
   const hasAdvancedFilters = Boolean(
     appliedMinAmount.trim() ||
-      appliedMaxAmount.trim() ||
-      appliedDueFrom ||
-      appliedDueTo,
+    appliedMaxAmount.trim() ||
+    appliedDueFrom ||
+    appliedDueTo,
   );
 
   const clearAdvancedFilters = () => {
@@ -180,10 +180,8 @@ export const GrantsTable = () => {
       sortBy,
       sortOrder,
       title: appliedTitle || undefined,
-      minAmount:
-        Number.isFinite(minN) && minN > 0 ? minN : undefined,
-      maxAmount:
-        Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
+      minAmount: Number.isFinite(minN) && minN > 0 ? minN : undefined,
+      maxAmount: Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
       startDate: appliedDueFrom
         ? new Date(`${appliedDueFrom}T12:00:00`)
         : undefined,
@@ -420,7 +418,10 @@ export const GrantsTable = () => {
       <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
-            <label className="text-xs text-muted-foreground" htmlFor="grant-search">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="grant-search"
+            >
               Organization
             </label>
             <div className="flex items-center gap-2">
@@ -593,10 +594,7 @@ export const GrantsTable = () => {
               onChange={(e) =>
                 setSortBy(
                   e.target.value as
-                    | "totalAmount"
-                    | "endDate"
-                    | "createdAt"
-                    | "title",
+                    "totalAmount" | "endDate" | "createdAt" | "title",
                 )
               }
             >
@@ -892,7 +890,11 @@ export const GrantsTable = () => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.original.id}
-                  className={isGrantExpired(row.original.toBeUsedBy) ? "bg-muted/30" : undefined}
+                  className={
+                    isGrantExpired(row.original.toBeUsedBy)
+                      ? "bg-muted/30"
+                      : undefined
+                  }
                 >
                   {row.getVisibleCells().map((cell) => {
                     // render actions column manually so we can inject delete handler

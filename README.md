@@ -14,6 +14,9 @@ cd ResilienceMontreal
 # install dependencies
 npm i
 
+# generate the Prisma client
+npx prisma generate
+
 # start the development server
 npm run dev
 ```
@@ -28,9 +31,21 @@ When you're assigned a ticket, create a branch to your work on, and push your co
 
 Create a file called `.env` in the root of the project. Create another file called `.env.local`. Copy the two files from Notion.
 
-Finally, run `npx prisma db push` to match your database with the prisma schema.
+Then run these Prisma commands:
+
+```bash
+# Sync your database with the schema
+npx prisma db push
+
+# Generate the Prisma client (required before running the app)
+npx prisma generate
+```
 
 Now you should be all ready to run the project!
+
+## 🧪 Testing
+
+This project uses **Playwright** for end-to-end testing. For setup instructions and a guide on adding new tests, please refer to the [Testing Guide](TESTING.md).
 
 ## � TanStack Query & Data Hooks
 

@@ -204,10 +204,10 @@ export const GrantsTable = () => {
     if (page > pagination.totalPages) setPage(pagination.totalPages);
   }, [pagination, page]);
 
-  const { data: fundPools } = api.fundPool.getFundPools.useQuery(undefined, {
+  const { data: fundPools } = api.fundPool.getAll.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
-    // fundPool.getFundPools requires auth on the server. When unauthenticated
+    // fundPool.getAll requires auth on the server. When unauthenticated
     // this will be undefined; keep the default behavior but don't gate the
     // grants table itself on session presence.
   });

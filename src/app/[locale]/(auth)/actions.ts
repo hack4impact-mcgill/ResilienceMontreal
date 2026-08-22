@@ -15,11 +15,10 @@ export async function login(formData: FormData) {
     password: formData.get("password") as string,
   };
 
-  // console.log(data);
   const { error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
-    console.log(error);
+    console.error(error);
     redirect("/error");
   }
 
@@ -65,8 +64,6 @@ export async function signup(formData: FormData) {
         isConfirmed: !!supabaseUser?.email_confirmed_at,
       },
     });
-
-    console.log(`Created Prisma user for ${email} with Unassigned role`);
   } catch (dbError) {
     console.error("Failed to create Prisma user:", dbError);
     // Note: Supabase user already created - might want to handle this edge case

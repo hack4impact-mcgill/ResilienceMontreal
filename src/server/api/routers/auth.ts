@@ -62,7 +62,6 @@ export const authRouter = createTRPCRouter({
       try {
         const { email, password } = input;
         const supabase = await createClient();
-        console.log("Signing up user:", email);
 
         // Validate email format first
         const emailSchema = z.string().email();
@@ -96,7 +95,6 @@ export const authRouter = createTRPCRouter({
         }
 
         const result = await supabase.auth.signUp({ email, password });
-        console.log("signUp result:", result);
         if (result.error) {
           // Provide more specific error messages
           let errorMessage = result.error.message;

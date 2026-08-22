@@ -1,4 +1,3 @@
-import { testRouter } from "~/server/api/routers/test";
 import { authRouter } from "~/server/api/routers/auth";
 import { usersRouter } from "~/server/api/routers/users";
 import { clientRouter } from "~/server/api/routers/client";
@@ -10,7 +9,6 @@ import { expensesRouter } from "~/server/api/routers/expenses";
 
 // primary router for your server -- all routers added in /api/routers should be manually added here
 export const appRouter = createTRPCRouter({
-  test: testRouter,
   auth: authRouter,
   expenses: expensesRouter,
   users: usersRouter,

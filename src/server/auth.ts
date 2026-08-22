@@ -19,8 +19,6 @@ export async function getServerAuthSession() {
       } as const;
     }
 
-    console.log("Fetching server auth session for user:", user.email);
-
     return {
       user,
     } as const;

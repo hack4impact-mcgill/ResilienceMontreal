@@ -228,9 +228,9 @@ export const ExpensesTable = () => {
 
   const hasDraftAdvancedFilters = Boolean(
     minAmountInput.trim() ||
-    maxAmountInput.trim() ||
-    dateFromInput ||
-    dateToInput,
+      maxAmountInput.trim() ||
+      dateFromInput ||
+      dateToInput,
   );
 
   const clearAdvancedFilters = () => {
@@ -620,7 +620,10 @@ export const ExpensesTable = () => {
               onChange={(e) =>
                 setSortBy(
                   e.target.value as
-                    "date" | "totalAmount" | "description" | "id",
+                    | "date"
+                    | "totalAmount"
+                    | "description"
+                    | "id",
                 )
               }
             >

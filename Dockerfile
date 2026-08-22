@@ -1,15 +1,16 @@
-FROM oven/bun:1-alpine
+# syntax=docker/dockerfile:1
 
+FROM oven/bun:1.3-alpine AS deps
 WORKDIR /app
-
 COPY package.json bun.lock ./
 COPY prisma ./prisma/
-
 RUN bun install --frozen-lockfile
 
+FROM oven/bun:1.3-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build-time env vars — NEXT_PUBLIC_* are baked into the bundle by Next.js
 ARG DATABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -20,9 +21,16 @@ ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 RUN bunx prisma generate
-
 RUN bun run build
 
-EXPOSE 3000
+FROM oven/bun:1.3-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
 
-CMD ["bun", "run", "start"]
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+ENV PORT=3000 HOSTNAME=0.0.0.0
+CMD ["bun", "server.js"]

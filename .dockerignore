@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.env
+.env.*
+src/generated
+Dockerfile
+.dockerignore
+docker-compose.yml
+*.log
+tsconfig.tsbuildinfo
+README.md
+TESTING.md

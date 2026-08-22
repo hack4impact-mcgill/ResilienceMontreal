@@ -18,15 +18,9 @@ export async function updateSession(request: NextRequest) {
   const isSignup = pathname.includes("/signup");
   const isAuthRoute = pathname.includes("/auth");
   const isErrorRoute = pathname.includes("/error");
-  const isClientsRoute = pathname.includes("/clients");
   const isForgotPassword = pathname.includes("/forgot-password");
   const isPublic =
-    isLogin ||
-    isSignup ||
-    isAuthRoute ||
-    isErrorRoute ||
-    isClientsRoute ||
-    isForgotPassword;
+    isLogin || isSignup || isAuthRoute || isErrorRoute || isForgotPassword;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -61,11 +55,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // if (user?.email) {
-  //   console.log("User:", user.email);
-  // } else {
-  //   console.log("No user logged in");
-  // }
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}/login`;

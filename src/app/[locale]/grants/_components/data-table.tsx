@@ -153,9 +153,9 @@ export const GrantsTable = () => {
 
   const hasAdvancedFilters = Boolean(
     appliedMinAmount.trim() ||
-    appliedMaxAmount.trim() ||
-    appliedDueFrom ||
-    appliedDueTo,
+      appliedMaxAmount.trim() ||
+      appliedDueFrom ||
+      appliedDueTo,
   );
 
   const clearAdvancedFilters = () => {
@@ -594,7 +594,10 @@ export const GrantsTable = () => {
               onChange={(e) =>
                 setSortBy(
                   e.target.value as
-                    "totalAmount" | "endDate" | "createdAt" | "title",
+                    | "totalAmount"
+                    | "endDate"
+                    | "createdAt"
+                    | "title",
                 )
               }
             >

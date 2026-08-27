@@ -21,7 +21,7 @@
     "test:api": "playwright test"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.5.0",
+    "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.5.0",
     "@prisma/driver-adapter-utils": "^7.5.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",

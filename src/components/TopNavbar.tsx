@@ -20,6 +20,7 @@ export function TopNavbar({
           alt="Logo"
           width={300}
           height={300}
+          style={{ height: "auto" }}
         />
       </span>
     </nav>

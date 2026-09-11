@@ -19,6 +19,8 @@
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "db:seed:uat": "bun prisma/seed-uat.ts",
+    "db:reset:uat": "bun prisma/reset-uat.ts",
     "test:api": "playwright test"
   },
   "dependencies": {

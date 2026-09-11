@@ -27,6 +27,7 @@ import { api } from "~/trpc/react";
 import { cn } from "@/lib/utils";
 
 import { useServerTableState } from "@/hooks/use-server-table-state";
+import { groupRows } from "@/lib/data-table/group-rows";
 import { useAdvancedFilters } from "@/hooks/use-advanced-filters";
 import { useTableForm } from "@/hooks/use-table-form";
 import { exportToCSV } from "@/lib/data-table/export-csv";
@@ -114,12 +115,17 @@ function mapExpenseRow(e: {
   date: Date;
   totalAmount: unknown;
   invoiceUrl: string | null;
+  distributions?: Array<{
+    grantDistribution: { fundPool: { category: string } | null } | null;
+  }>;
 }): Expense {
   const amount =
     typeof e.totalAmount === "number"
       ? e.totalAmount
       : Number(e.totalAmount ?? 0);
   const expenseDate = new Date(e.date);
+  const fundPoolCategory =
+    e.distributions?.[0]?.grantDistribution?.fundPool?.category ?? "";
   return {
     id: e.id,
     description: e.description,
@@ -127,6 +133,7 @@ function mapExpenseRow(e: {
     totalAmount: amount,
     invoiceUrl: e.invoiceUrl,
     isFutureDated: isExpenseFutureDated(expenseDate),
+    fundPoolCategory,
   };
 }
 
@@ -163,6 +170,7 @@ export const ExpensesTable = () => {
   const [successMessage, setSuccessMessage] = React.useState<string | null>(
     null,
   );
+  const [groupByPool, setGroupByPool] = React.useState(false);
 
   // Reset page when filters change
   React.useEffect(() => {
@@ -452,6 +460,14 @@ export const ExpensesTable = () => {
           </Button>
 
           <Button
+            variant={groupByPool ? "outline" : "ghost"}
+            className="text-black hover:bg-transparent"
+            onClick={() => setGroupByPool((v) => !v)}
+          >
+            {groupByPool ? "Ungroup" : "Group by pool"}
+          </Button>
+
+          <Button
             variant="ghost"
             className="text-black hover:bg-transparent"
             onClick={() =>
@@ -617,24 +633,58 @@ export const ExpensesTable = () => {
             )}
 
             {table.getRowModel().rows.length > 0
-              ? table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className={cn(
-                      "hover:bg-transparent",
-                      row.original.isFutureDated && "bg-muted/30",
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+              ? groupByPool
+                ? groupRows(
+                    table.getRowModel().rows,
+                    (r) => r.original.fundPoolCategory || "Unassigned",
+                  ).map(({ key, rows: grouped }) => (
+                    <React.Fragment key={key}>
+                      <TableRow className="bg-muted/50">
+                        <TableCell
+                          colSpan={columns.length}
+                          className="py-1 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                        >
+                          {key}
+                        </TableCell>
+                      </TableRow>
+                      {grouped.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          className={cn(
+                            "hover:bg-transparent",
+                            row.original.isFutureDated && "bg-muted/30",
+                          )}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id}>
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
+                  ))
+                : table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className={cn(
+                        "hover:bg-transparent",
+                        row.original.isFutureDated && "bg-muted/30",
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
               : !form.isAdding && <TableEmptyRow colCount={columns.length} />}
           </TableBody>
 

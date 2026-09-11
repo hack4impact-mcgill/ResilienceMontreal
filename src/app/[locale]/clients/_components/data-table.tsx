@@ -186,7 +186,7 @@ export const ClientsTable = () => {
     [pagedClients],
   );
 
-  const metadata = pagedClients?.metadata;
+  const pagination = pagedClients?.pagination;
 
   const prettyLabel = (col: string) => {
     if (col === "firstName") return "First name";
@@ -919,8 +919,8 @@ export const ClientsTable = () => {
       {/* Pagination */}
       <div className="flex items-center justify-between space-x-2 py-4 px-8">
         <div className="text-sm text-muted-foreground">
-          {metadata
-            ? `Page ${metadata.page} of ${metadata.totalPages} • ${metadata.total} total clients`
+          {pagination
+            ? `Page ${pagination.currentPage} of ${pagination.totalPages} • ${pagination.totalCount} total clients`
             : ""}
         </div>
         <div className="flex items-center space-x-2">
@@ -929,7 +929,7 @@ export const ClientsTable = () => {
             size="sm"
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             disabled={
-              !metadata?.hasPrevPage ||
+              !pagination?.hasPreviousPage ||
               editingRowId !== null ||
               isAdding ||
               isRefetching
@@ -942,7 +942,7 @@ export const ClientsTable = () => {
             size="sm"
             onClick={() => setPage((prev) => prev + 1)}
             disabled={
-              !metadata?.hasNextPage ||
+              !pagination?.hasNextPage ||
               editingRowId !== null ||
               isAdding ||
               isRefetching
@@ -951,7 +951,6 @@ export const ClientsTable = () => {
             Next
           </Button>
 
-          {/* Rows per page selector moved to pagination (selector only) */}
           <div className="ml-4">
             <select
               value={limit}

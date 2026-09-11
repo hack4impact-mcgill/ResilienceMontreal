@@ -292,15 +292,17 @@ export const clientRouter = createTRPCRouter({
         }),
       ]);
 
+      const totalPages = Math.ceil(total / input.limit);
       return {
         data: clients,
-        metadata: {
-          total,
-          page: input.page,
-          limit: input.limit,
-          totalPages: Math.ceil(total / input.limit),
+        pagination: {
+          currentPage: input.page,
+          pageSize: input.limit,
+          totalCount: total,
+          totalPages,
           hasNextPage: skip + input.limit < total,
-          hasPrevPage: input.page > 1,
+          hasPreviousPage: input.page > 1,
+          returnedCount: clients.length,
         },
       };
     }),

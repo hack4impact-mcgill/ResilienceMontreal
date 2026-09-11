@@ -41,9 +41,7 @@ export function TableSortControls<T extends string>({
         <select
           className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           value={sortOrder}
-          onChange={(e) =>
-            onSortOrderChange(e.target.value as "asc" | "desc")
-          }
+          onChange={(e) => onSortOrderChange(e.target.value as "asc" | "desc")}
         >
           <option value="desc">Descending</option>
           <option value="asc">Ascending</option>

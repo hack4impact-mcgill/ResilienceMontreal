@@ -58,7 +58,9 @@ export function TablePagination({
         </Button>
         <select
           value={limit}
-          onChange={(e) => onLimitChange(Number(e.target.value) as 30 | 50 | 100)}
+          onChange={(e) =>
+            onLimitChange(Number(e.target.value) as 30 | 50 | 100)
+          }
           className="ml-2 h-9 rounded-md border border-input bg-background px-2 text-sm"
         >
           <option value={30}>30</option>

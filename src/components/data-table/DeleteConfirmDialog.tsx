@@ -18,12 +18,19 @@ interface Props {
   onCancel: () => void;
 }
 
-export function DeleteConfirmDialog({ open, entityName, onConfirm, onCancel }: Props) {
+export function DeleteConfirmDialog({
+  open,
+  entityName,
+  onConfirm,
+  onCancel,
+}: Props) {
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {entityName ?? "this item"}?</AlertDialogTitle>
+          <AlertDialogTitle>
+            Delete {entityName ?? "this item"}?
+          </AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone.
           </AlertDialogDescription>

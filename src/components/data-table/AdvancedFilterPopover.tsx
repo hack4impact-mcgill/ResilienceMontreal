@@ -45,7 +45,10 @@ export function AdvancedFilterPopover({
           <ListFilter className="h-4 w-4" aria-hidden />
           Filter
           {hasApplied && (
-            <span className="flex h-2 w-2 rounded-full bg-[#45BAB8]" aria-hidden />
+            <span
+              className="flex h-2 w-2 rounded-full bg-[#45BAB8]"
+              aria-hidden
+            />
           )}
         </Button>
       </PopoverTrigger>

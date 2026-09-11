@@ -24,8 +24,7 @@ export function useAdvancedFilters<TFilters extends Record<string, unknown>>(
     (v) => v !== "" && v !== undefined && v !== null,
   );
 
-  const hasPending =
-    JSON.stringify(draft) !== JSON.stringify(applied);
+  const hasPending = JSON.stringify(draft) !== JSON.stringify(applied);
 
   return { draft, setDraft, applied, apply, clear, hasApplied, hasPending };
 }

@@ -167,7 +167,9 @@ export const ExpensesTable = () => {
   const filters = useAdvancedFilters(EMPTY_FILTERS);
   const form = useTableForm<ExpenseFormData>(EMPTY_FORM);
 
-  const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(
+    null,
+  );
   const [groupByPool, setGroupByPool] = React.useState(false);
 
   // Reset page when filters change
@@ -632,35 +634,39 @@ export const ExpensesTable = () => {
 
             {table.getRowModel().rows.length > 0
               ? groupByPool
-                ? groupRows(table.getRowModel().rows, (r) => r.original.fundPoolCategory || "Unassigned").map(
-                    ({ key, rows: grouped }) => (
-                      <React.Fragment key={key}>
-                        <TableRow className="bg-muted/50">
-                          <TableCell
-                            colSpan={columns.length}
-                            className="py-1 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                          >
-                            {key}
-                          </TableCell>
+                ? groupRows(
+                    table.getRowModel().rows,
+                    (r) => r.original.fundPoolCategory || "Unassigned",
+                  ).map(({ key, rows: grouped }) => (
+                    <React.Fragment key={key}>
+                      <TableRow className="bg-muted/50">
+                        <TableCell
+                          colSpan={columns.length}
+                          className="py-1 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                        >
+                          {key}
+                        </TableCell>
+                      </TableRow>
+                      {grouped.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          className={cn(
+                            "hover:bg-transparent",
+                            row.original.isFutureDated && "bg-muted/30",
+                          )}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id}>
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </TableCell>
+                          ))}
                         </TableRow>
-                        {grouped.map((row) => (
-                          <TableRow
-                            key={row.id}
-                            className={cn(
-                              "hover:bg-transparent",
-                              row.original.isFutureDated && "bg-muted/30",
-                            )}
-                          >
-                            {row.getVisibleCells().map((cell) => (
-                              <TableCell key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </React.Fragment>
-                    ),
-                  )
+                      ))}
+                    </React.Fragment>
+                  ))
                 : table.getRowModel().rows.map((row) => (
                     <TableRow
                       key={row.id}
@@ -671,7 +677,10 @@ export const ExpensesTable = () => {
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>

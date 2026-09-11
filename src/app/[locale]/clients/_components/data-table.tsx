@@ -86,9 +86,14 @@ export const ClientsTable = () => {
   const form = useTableForm<ClientFormData>(EMPTY_FORM);
 
   const [editingRowId, setEditingRowId] = React.useState<number | null>(null);
-  const [editFormData, setEditFormDataRaw] = React.useState<ClientFormData>(EMPTY_FORM);
-  const [editFormErrors, setEditFormErrors] = React.useState<Record<string, string>>({});
-  const [deleteTargetId, setDeleteTargetId] = React.useState<number | null>(null);
+  const [editFormData, setEditFormDataRaw] =
+    React.useState<ClientFormData>(EMPTY_FORM);
+  const [editFormErrors, setEditFormErrors] = React.useState<
+    Record<string, string>
+  >({});
+  const [deleteTargetId, setDeleteTargetId] = React.useState<number | null>(
+    null,
+  );
   const [groupByWorker, setGroupByWorker] = React.useState(false);
 
   const setEditFormData = (update: Partial<ClientFormData>) =>
@@ -634,7 +639,10 @@ export const ClientsTable = () => {
 
             {table.getRowModel().rows.length > 0
               ? (groupByWorker
-                  ? groupRows(table.getRowModel().rows, (r) => r.original.workerName || "Unassigned")
+                  ? groupRows(
+                      table.getRowModel().rows,
+                      (r) => r.original.workerName || "Unassigned",
+                    )
                   : [{ key: "", rows: table.getRowModel().rows }]
                 ).map(({ key, rows: groupedRows }) => (
                   <React.Fragment key={key || "flat"}>
@@ -649,131 +657,137 @@ export const ClientsTable = () => {
                       </TableRow>
                     )}
                     {groupedRows.map((row) => (
-                  <React.Fragment key={row.id}>
-                    {editingRowId === row.original.id ? (
-                      <InlineFormRow
-                        colCount={columns.length}
-                        onSave={handleEditSave}
-                        onCancel={cancelEdit}
-                        isSaving={editClient.isPending}
-                      >
-                        <TableCell>
-                          <Input
-                            value={editFormData.firstName}
-                            onChange={(e) =>
-                              setEditFormData({ firstName: e.target.value })
-                            }
-                            placeholder="First Name"
-                            className={`bg-white border-[#3FA9A9] ${editFormErrors.firstName ? "border-red-500" : ""}`}
-                          />
-                          {editFormErrors.firstName && (
-                            <p className="text-xs text-red-500 mt-1">
-                              {editFormErrors.firstName}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={editFormData.lastName}
-                            onChange={(e) =>
-                              setEditFormData({ lastName: e.target.value })
-                            }
-                            placeholder="Last Name"
-                            className={`bg-white border-[#3FA9A9] ${editFormErrors.lastName ? "border-red-500" : ""}`}
-                          />
-                          {editFormErrors.lastName && (
-                            <p className="text-xs text-red-500 mt-1">
-                              {editFormErrors.lastName}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="email"
-                            value={editFormData.email}
-                            onChange={(e) =>
-                              setEditFormData({ email: e.target.value })
-                            }
-                            placeholder="Email"
-                            className={`bg-white border-[#3FA9A9] ${editFormErrors.email ? "border-red-500" : ""}`}
-                          />
-                          {editFormErrors.email && (
-                            <p className="text-xs text-red-500 mt-1">
-                              {editFormErrors.email}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="date"
-                            value={editFormData.dateOfBirth}
-                            onChange={(e) =>
-                              setEditFormData({ dateOfBirth: e.target.value })
-                            }
-                            className={`bg-white border-[#3FA9A9] ${editFormErrors.dateOfBirth ? "border-red-500" : ""}`}
-                          />
-                          {editFormErrors.dateOfBirth && (
-                            <p className="text-xs text-red-500 mt-1">
-                              {editFormErrors.dateOfBirth}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="date"
-                            value={editFormData.leaseStart}
-                            onChange={(e) =>
-                              setEditFormData({ leaseStart: e.target.value })
-                            }
-                            className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
-                          />
-                          {editFormErrors.leaseStart && (
-                            <p className="text-xs text-red-500 mt-1">
-                              {editFormErrors.leaseStart}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="date"
-                            value={editFormData.leaseEnd}
-                            onChange={(e) =>
-                              setEditFormData({ leaseEnd: e.target.value })
-                            }
-                            className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseEnd ? "border-red-500" : ""}`}
-                          />
-                          {editFormErrors.leaseEnd && (
-                            <p className="text-xs text-red-500 mt-1">
-                              {editFormErrors.leaseEnd}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <WorkerSelect
-                            value={editFormData.workerId}
-                            onChange={(v) => setEditFormData({ workerId: v })}
-                          />
-                          {editFormErrors.workerId && (
-                            <p className="text-xs text-red-500 mt-1">
-                              {editFormErrors.workerId}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell />
-                      </InlineFormRow>
-                    ) : (
-                      <TableRow className="hover:bg-transparent">
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    )}
-                  </React.Fragment>
+                      <React.Fragment key={row.id}>
+                        {editingRowId === row.original.id ? (
+                          <InlineFormRow
+                            colCount={columns.length}
+                            onSave={handleEditSave}
+                            onCancel={cancelEdit}
+                            isSaving={editClient.isPending}
+                          >
+                            <TableCell>
+                              <Input
+                                value={editFormData.firstName}
+                                onChange={(e) =>
+                                  setEditFormData({ firstName: e.target.value })
+                                }
+                                placeholder="First Name"
+                                className={`bg-white border-[#3FA9A9] ${editFormErrors.firstName ? "border-red-500" : ""}`}
+                              />
+                              {editFormErrors.firstName && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {editFormErrors.firstName}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={editFormData.lastName}
+                                onChange={(e) =>
+                                  setEditFormData({ lastName: e.target.value })
+                                }
+                                placeholder="Last Name"
+                                className={`bg-white border-[#3FA9A9] ${editFormErrors.lastName ? "border-red-500" : ""}`}
+                              />
+                              {editFormErrors.lastName && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {editFormErrors.lastName}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="email"
+                                value={editFormData.email}
+                                onChange={(e) =>
+                                  setEditFormData({ email: e.target.value })
+                                }
+                                placeholder="Email"
+                                className={`bg-white border-[#3FA9A9] ${editFormErrors.email ? "border-red-500" : ""}`}
+                              />
+                              {editFormErrors.email && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {editFormErrors.email}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={editFormData.dateOfBirth}
+                                onChange={(e) =>
+                                  setEditFormData({
+                                    dateOfBirth: e.target.value,
+                                  })
+                                }
+                                className={`bg-white border-[#3FA9A9] ${editFormErrors.dateOfBirth ? "border-red-500" : ""}`}
+                              />
+                              {editFormErrors.dateOfBirth && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {editFormErrors.dateOfBirth}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={editFormData.leaseStart}
+                                onChange={(e) =>
+                                  setEditFormData({
+                                    leaseStart: e.target.value,
+                                  })
+                                }
+                                className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
+                              />
+                              {editFormErrors.leaseStart && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {editFormErrors.leaseStart}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={editFormData.leaseEnd}
+                                onChange={(e) =>
+                                  setEditFormData({ leaseEnd: e.target.value })
+                                }
+                                className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseEnd ? "border-red-500" : ""}`}
+                              />
+                              {editFormErrors.leaseEnd && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {editFormErrors.leaseEnd}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <WorkerSelect
+                                value={editFormData.workerId}
+                                onChange={(v) =>
+                                  setEditFormData({ workerId: v })
+                                }
+                              />
+                              {editFormErrors.workerId && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {editFormErrors.workerId}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell />
+                          </InlineFormRow>
+                        ) : (
+                          <TableRow className="hover:bg-transparent">
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     ))}
                   </React.Fragment>
                 ))

@@ -19,6 +19,7 @@ import {
   TableFooter,
 } from "@/components/ui/table";
 import type { PaginationMeta } from "@/lib/data-table/types";
+import { groupRows } from "@/lib/data-table/group-rows";
 import { FetchingOverlay } from "./FetchingOverlay";
 import { TableEmptyRow } from "./TableEmptyRow";
 import { TablePagination } from "./TablePagination";
@@ -37,6 +38,7 @@ interface Props<TRow> {
   emptyMessage?: string;
   columnVisibility?: VisibilityState;
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+  groupBy?: (row: TRow) => string;
 }
 
 export function DataTable<TRow>({
@@ -53,6 +55,7 @@ export function DataTable<TRow>({
   emptyMessage,
   columnVisibility,
   onColumnVisibilityChange,
+  groupBy,
 }: Props<TRow>) {
   const table = useReactTable<TRow>({
     data,
@@ -94,21 +97,45 @@ export function DataTable<TRow>({
           <TableBody>
             {inlineFormRows}
             {table.getRowModel().rows.length > 0
-              ? table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className={rowClassName?.(row.original)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+              ? groupBy
+                ? groupRows(table.getRowModel().rows, (r) => groupBy(r.original)).map(
+                    ({ key, rows: groupedRows }) => (
+                      <React.Fragment key={key}>
+                        <TableRow className="bg-muted/50">
+                          <TableCell
+                            colSpan={columns.length}
+                            className="py-1 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                          >
+                            {key}
+                          </TableCell>
+                        </TableRow>
+                        {groupedRows.map((row) => (
+                          <TableRow key={row.id} className={rowClassName?.(row.original)}>
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </React.Fragment>
+                    ),
+                  )
+                : table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className={rowClassName?.(row.original)}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
               : !inlineFormRows && (
                   <TableEmptyRow
                     colCount={columns.length}

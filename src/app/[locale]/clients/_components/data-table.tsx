@@ -27,6 +27,7 @@ import { Client, createColumns } from "./columns";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 import { useServerTableState } from "@/hooks/use-server-table-state";
+import { groupRows } from "@/lib/data-table/group-rows";
 import { useAdvancedFilters } from "@/hooks/use-advanced-filters";
 import { useTableForm } from "@/hooks/use-table-form";
 import { exportToCSV } from "@/lib/data-table/export-csv";
@@ -85,14 +86,10 @@ export const ClientsTable = () => {
   const form = useTableForm<ClientFormData>(EMPTY_FORM);
 
   const [editingRowId, setEditingRowId] = React.useState<number | null>(null);
-  const [editFormData, setEditFormDataRaw] =
-    React.useState<ClientFormData>(EMPTY_FORM);
-  const [editFormErrors, setEditFormErrors] = React.useState<
-    Record<string, string>
-  >({});
-  const [deleteTargetId, setDeleteTargetId] = React.useState<number | null>(
-    null,
-  );
+  const [editFormData, setEditFormDataRaw] = React.useState<ClientFormData>(EMPTY_FORM);
+  const [editFormErrors, setEditFormErrors] = React.useState<Record<string, string>>({});
+  const [deleteTargetId, setDeleteTargetId] = React.useState<number | null>(null);
+  const [groupByWorker, setGroupByWorker] = React.useState(false);
 
   const setEditFormData = (update: Partial<ClientFormData>) =>
     setEditFormDataRaw((prev) => ({ ...prev, ...update }));
@@ -454,6 +451,14 @@ export const ClientsTable = () => {
           />
 
           <Button
+            variant={groupByWorker ? "outline" : "ghost"}
+            className="text-black hover:bg-transparent"
+            onClick={() => setGroupByWorker((v) => !v)}
+          >
+            {groupByWorker ? "Ungroup" : "Group by worker"}
+          </Button>
+
+          <Button
             variant="ghost"
             className="ml-auto text-black hover:bg-transparent"
             onClick={() =>
@@ -628,7 +633,22 @@ export const ClientsTable = () => {
             )}
 
             {table.getRowModel().rows.length > 0
-              ? table.getRowModel().rows.map((row) => (
+              ? (groupByWorker
+                  ? groupRows(table.getRowModel().rows, (r) => r.original.workerName || "Unassigned")
+                  : [{ key: "", rows: table.getRowModel().rows }]
+                ).map(({ key, rows: groupedRows }) => (
+                  <React.Fragment key={key || "flat"}>
+                    {groupByWorker && (
+                      <TableRow className="bg-muted/50">
+                        <TableCell
+                          colSpan={columns.length}
+                          className="py-1 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                        >
+                          {key}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {groupedRows.map((row) => (
                   <React.Fragment key={row.id}>
                     {editingRowId === row.original.id ? (
                       <InlineFormRow
@@ -753,6 +773,8 @@ export const ClientsTable = () => {
                         ))}
                       </TableRow>
                     )}
+                  </React.Fragment>
+                    ))}
                   </React.Fragment>
                 ))
               : !form.isAdding && <TableEmptyRow colCount={columns.length} />}

@@ -19,6 +19,8 @@ export type Expense = {
   invoiceUrl: string | null;
   /** True when the expense date is after today (local calendar day). */
   isFutureDated: boolean;
+  /** Fund pool category derived from the first distribution (empty string if none). */
+  fundPoolCategory: string;
 };
 
 export const columns: ColumnDef<Expense>[] = [

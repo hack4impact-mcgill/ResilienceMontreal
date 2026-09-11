@@ -36,6 +36,7 @@ import { TablePagination } from "@/components/data-table/TablePagination";
 import { TableSortControls } from "@/components/data-table/TableSortControls";
 import { AdvancedFilterPopover } from "@/components/data-table/AdvancedFilterPopover";
 import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog";
+import { InlineFormRow } from "@/components/data-table/InlineFormRow";
 
 type ClientSortBy =
   | "firstName"
@@ -513,282 +514,233 @@ export const ClientsTable = () => {
           <TableBody>
             {/* Inline add form */}
             {form.isAdding && (
-              <>
-                <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                  <TableCell>
-                    <Input
-                      value={form.formData.firstName}
-                      onChange={(e) =>
-                        form.setFormData({ firstName: e.target.value })
-                      }
-                      placeholder="First Name"
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.firstName ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.firstName && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.firstName}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={form.formData.lastName}
-                      onChange={(e) =>
-                        form.setFormData({ lastName: e.target.value })
-                      }
-                      placeholder="Last Name"
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.lastName ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.lastName && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.lastName}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="email"
-                      value={form.formData.email}
-                      onChange={(e) =>
-                        form.setFormData({ email: e.target.value })
-                      }
-                      placeholder="Email"
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.email ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.email && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.email}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="date"
-                      value={form.formData.dateOfBirth}
-                      onChange={(e) =>
-                        form.setFormData({ dateOfBirth: e.target.value })
-                      }
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.dateOfBirth ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.dateOfBirth && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.dateOfBirth}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="date"
-                      value={form.formData.leaseStart}
-                      onChange={(e) =>
-                        form.setFormData({ leaseStart: e.target.value })
-                      }
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.leaseStart ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.leaseStart && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.leaseStart}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="date"
-                      value={form.formData.leaseEnd}
-                      onChange={(e) =>
-                        form.setFormData({ leaseEnd: e.target.value })
-                      }
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.leaseEnd ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.leaseEnd && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.leaseEnd}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <WorkerSelect
-                      value={form.formData.workerId}
-                      onChange={(v) => form.setFormData({ workerId: v })}
-                    />
-                    {form.formErrors.workerId && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.workerId}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell />
-                </TableRow>
-                <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                  <TableCell colSpan={columns.length} className="py-4 px-20">
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={form.closeForm}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSave(false)}
-                        className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-                        disabled={addClient.isPending}
-                      >
-                        {addClient.isPending ? "Saving…" : "Save"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSave(true)}
-                        className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-                        disabled={addClient.isPending}
-                      >
-                        {addClient.isPending ? "Saving…" : "Save & Add More"}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              </>
+              <InlineFormRow
+                colCount={columns.length}
+                onSave={() => handleSave(false)}
+                onSaveAndAddMore={() => handleSave(true)}
+                onCancel={form.closeForm}
+                isSaving={addClient.isPending}
+              >
+                <TableCell>
+                  <Input
+                    value={form.formData.firstName}
+                    onChange={(e) =>
+                      form.setFormData({ firstName: e.target.value })
+                    }
+                    placeholder="First Name"
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.firstName ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.firstName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.firstName}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    value={form.formData.lastName}
+                    onChange={(e) =>
+                      form.setFormData({ lastName: e.target.value })
+                    }
+                    placeholder="Last Name"
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.lastName ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.lastName && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.lastName}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="email"
+                    value={form.formData.email}
+                    onChange={(e) =>
+                      form.setFormData({ email: e.target.value })
+                    }
+                    placeholder="Email"
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.email ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.email && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.email}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
+                    value={form.formData.dateOfBirth}
+                    onChange={(e) =>
+                      form.setFormData({ dateOfBirth: e.target.value })
+                    }
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.dateOfBirth ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.dateOfBirth && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.dateOfBirth}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
+                    value={form.formData.leaseStart}
+                    onChange={(e) =>
+                      form.setFormData({ leaseStart: e.target.value })
+                    }
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.leaseStart ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.leaseStart && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.leaseStart}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
+                    value={form.formData.leaseEnd}
+                    onChange={(e) =>
+                      form.setFormData({ leaseEnd: e.target.value })
+                    }
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.leaseEnd ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.leaseEnd && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.leaseEnd}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <WorkerSelect
+                    value={form.formData.workerId}
+                    onChange={(v) => form.setFormData({ workerId: v })}
+                  />
+                  {form.formErrors.workerId && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.workerId}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell />
+              </InlineFormRow>
             )}
 
             {table.getRowModel().rows.length > 0
               ? table.getRowModel().rows.map((row) => (
                   <React.Fragment key={row.id}>
                     {editingRowId === row.original.id ? (
-                      <>
-                        <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                          <TableCell>
-                            <Input
-                              value={editFormData.firstName}
-                              onChange={(e) =>
-                                setEditFormData({ firstName: e.target.value })
-                              }
-                              placeholder="First Name"
-                              className={`bg-white border-[#3FA9A9] ${editFormErrors.firstName ? "border-red-500" : ""}`}
-                            />
-                            {editFormErrors.firstName && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {editFormErrors.firstName}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              value={editFormData.lastName}
-                              onChange={(e) =>
-                                setEditFormData({ lastName: e.target.value })
-                              }
-                              placeholder="Last Name"
-                              className={`bg-white border-[#3FA9A9] ${editFormErrors.lastName ? "border-red-500" : ""}`}
-                            />
-                            {editFormErrors.lastName && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {editFormErrors.lastName}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="email"
-                              value={editFormData.email}
-                              onChange={(e) =>
-                                setEditFormData({ email: e.target.value })
-                              }
-                              placeholder="Email"
-                              className={`bg-white border-[#3FA9A9] ${editFormErrors.email ? "border-red-500" : ""}`}
-                            />
-                            {editFormErrors.email && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {editFormErrors.email}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="date"
-                              value={editFormData.dateOfBirth}
-                              onChange={(e) =>
-                                setEditFormData({ dateOfBirth: e.target.value })
-                              }
-                              className={`bg-white border-[#3FA9A9] ${editFormErrors.dateOfBirth ? "border-red-500" : ""}`}
-                            />
-                            {editFormErrors.dateOfBirth && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {editFormErrors.dateOfBirth}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="date"
-                              value={editFormData.leaseStart}
-                              onChange={(e) =>
-                                setEditFormData({ leaseStart: e.target.value })
-                              }
-                              className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
-                            />
-                            {editFormErrors.leaseStart && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {editFormErrors.leaseStart}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="date"
-                              value={editFormData.leaseEnd}
-                              onChange={(e) =>
-                                setEditFormData({ leaseEnd: e.target.value })
-                              }
-                              className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseEnd ? "border-red-500" : ""}`}
-                            />
-                            {editFormErrors.leaseEnd && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {editFormErrors.leaseEnd}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <WorkerSelect
-                              value={editFormData.workerId}
-                              onChange={(v) => setEditFormData({ workerId: v })}
-                            />
-                            {editFormErrors.workerId && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {editFormErrors.workerId}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell />
-                        </TableRow>
-                        <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                          <TableCell
-                            colSpan={columns.length}
-                            className="py-4 px-20"
-                          >
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={cancelEdit}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleEditSave}
-                                className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-                                disabled={editClient.isPending}
-                              >
-                                {editClient.isPending ? "Saving…" : "Save"}
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      </>
+                      <InlineFormRow
+                        colCount={columns.length}
+                        onSave={handleEditSave}
+                        onCancel={cancelEdit}
+                        isSaving={editClient.isPending}
+                      >
+                        <TableCell>
+                          <Input
+                            value={editFormData.firstName}
+                            onChange={(e) =>
+                              setEditFormData({ firstName: e.target.value })
+                            }
+                            placeholder="First Name"
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.firstName ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.firstName && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {editFormErrors.firstName}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={editFormData.lastName}
+                            onChange={(e) =>
+                              setEditFormData({ lastName: e.target.value })
+                            }
+                            placeholder="Last Name"
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.lastName ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.lastName && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {editFormErrors.lastName}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="email"
+                            value={editFormData.email}
+                            onChange={(e) =>
+                              setEditFormData({ email: e.target.value })
+                            }
+                            placeholder="Email"
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.email ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.email && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {editFormErrors.email}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="date"
+                            value={editFormData.dateOfBirth}
+                            onChange={(e) =>
+                              setEditFormData({ dateOfBirth: e.target.value })
+                            }
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.dateOfBirth ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.dateOfBirth && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {editFormErrors.dateOfBirth}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="date"
+                            value={editFormData.leaseStart}
+                            onChange={(e) =>
+                              setEditFormData({ leaseStart: e.target.value })
+                            }
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.leaseStart && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {editFormErrors.leaseStart}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="date"
+                            value={editFormData.leaseEnd}
+                            onChange={(e) =>
+                              setEditFormData({ leaseEnd: e.target.value })
+                            }
+                            className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseEnd ? "border-red-500" : ""}`}
+                          />
+                          {editFormErrors.leaseEnd && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {editFormErrors.leaseEnd}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <WorkerSelect
+                            value={editFormData.workerId}
+                            onChange={(v) => setEditFormData({ workerId: v })}
+                          />
+                          {editFormErrors.workerId && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {editFormErrors.workerId}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell />
+                      </InlineFormRow>
                     ) : (
                       <TableRow className="hover:bg-transparent">
                         {row.getVisibleCells().map((cell) => (

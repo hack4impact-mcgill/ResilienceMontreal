@@ -35,6 +35,7 @@ import { TableEmptyRow } from "@/components/data-table/TableEmptyRow";
 import { TablePagination } from "@/components/data-table/TablePagination";
 import { TableSortControls } from "@/components/data-table/TableSortControls";
 import { AdvancedFilterPopover } from "@/components/data-table/AdvancedFilterPopover";
+import { InlineFormRow } from "@/components/data-table/InlineFormRow";
 
 type ExpenseSortBy = "date" | "totalAmount" | "description" | "id";
 
@@ -507,147 +508,112 @@ export const ExpensesTable = () => {
 
           <TableBody>
             {form.isAdding && (
-              <>
-                <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                  <TableCell>
-                    <Input
-                      value={form.formData.description}
-                      onChange={(e) =>
-                        form.setFormData({ description: e.target.value })
-                      }
-                      placeholder="Description"
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.description ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.description && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.description}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="date"
-                      value={form.formData.date}
-                      onChange={(e) =>
-                        form.setFormData({ date: e.target.value })
-                      }
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.date ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.date && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.date}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={form.formData.totalAmount}
-                      onChange={(e) =>
-                        form.setFormData({ totalAmount: e.target.value })
-                      }
-                      placeholder="Amount"
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.totalAmount ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.totalAmount && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.totalAmount}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="url"
-                      value={form.formData.invoiceUrl ?? ""}
-                      onChange={(e) =>
-                        form.setFormData({ invoiceUrl: e.target.value })
-                      }
-                      placeholder="Invoice URL (optional)"
-                      className={`bg-white border-[#3FA9A9] ${form.formErrors.invoiceUrl ? "border-red-500" : ""}`}
-                    />
-                    {form.formErrors.invoiceUrl && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {form.formErrors.invoiceUrl}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {fundPools && fundPools.length > 0 ? (
-                      <>
-                        <select
-                          value={form.formData.fundPoolId}
-                          onChange={(e) =>
-                            form.setFormData({ fundPoolId: e.target.value })
-                          }
-                          className={`w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9] ${form.formErrors.fundPoolId ? "border-red-500" : ""}`}
-                        >
-                          <option value="" disabled>
-                            Select fund pool
+              <InlineFormRow
+                colCount={columns.length}
+                onSave={() => handleSave(false)}
+                onSaveAndAddMore={() => handleSave(true)}
+                onCancel={form.closeForm}
+                isSaving={createExpense.isPending}
+                error={
+                  createExpense.error
+                    ? getFriendlyError(createExpense.error)
+                    : null
+                }
+              >
+                <TableCell>
+                  <Input
+                    value={form.formData.description}
+                    onChange={(e) =>
+                      form.setFormData({ description: e.target.value })
+                    }
+                    placeholder="Description"
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.description ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.description && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.description}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="date"
+                    value={form.formData.date}
+                    onChange={(e) => form.setFormData({ date: e.target.value })}
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.date ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.date && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.date}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.formData.totalAmount}
+                    onChange={(e) =>
+                      form.setFormData({ totalAmount: e.target.value })
+                    }
+                    placeholder="Amount"
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.totalAmount ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.totalAmount && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.totalAmount}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="url"
+                    value={form.formData.invoiceUrl ?? ""}
+                    onChange={(e) =>
+                      form.setFormData({ invoiceUrl: e.target.value })
+                    }
+                    placeholder="Invoice URL (optional)"
+                    className={`bg-white border-[#3FA9A9] ${form.formErrors.invoiceUrl ? "border-red-500" : ""}`}
+                  />
+                  {form.formErrors.invoiceUrl && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {form.formErrors.invoiceUrl}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {fundPools && fundPools.length > 0 ? (
+                    <>
+                      <select
+                        value={form.formData.fundPoolId}
+                        onChange={(e) =>
+                          form.setFormData({ fundPoolId: e.target.value })
+                        }
+                        className={`w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9] ${form.formErrors.fundPoolId ? "border-red-500" : ""}`}
+                      >
+                        <option value="" disabled>
+                          Select fund pool
+                        </option>
+                        {fundPools.map((pool) => (
+                          <option key={pool.id} value={pool.id}>
+                            {pool.category}
                           </option>
-                          {fundPools.map((pool) => (
-                            <option key={pool.id} value={pool.id}>
-                              {pool.category}
-                            </option>
-                          ))}
-                        </select>
-                        {form.formErrors.fundPoolId && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {form.formErrors.fundPoolId}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        No fund pools available
-                      </p>
-                    )}
-                  </TableCell>
-                </TableRow>
-
-                {createExpense.error && (
-                  <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                    <TableCell colSpan={columns.length} className="py-2 px-20">
-                      <p className="text-sm text-red-600">
-                        {getFriendlyError(createExpense.error)}
-                      </p>
-                    </TableCell>
-                  </TableRow>
-                )}
-
-                <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
-                  <TableCell colSpan={columns.length} className="py-4 px-20">
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={form.closeForm}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSave(false)}
-                        disabled={createExpense.isPending}
-                        className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSave(true)}
-                        disabled={createExpense.isPending}
-                        className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-                      >
-                        Save & Add More
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              </>
+                        ))}
+                      </select>
+                      {form.formErrors.fundPoolId && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {form.formErrors.fundPoolId}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No fund pools available
+                    </p>
+                  )}
+                </TableCell>
+              </InlineFormRow>
             )}
 
             {table.getRowModel().rows.length > 0

@@ -1,97 +1,89 @@
 # Resilience MTL
 
-## 📝 How to Run
+## Developer checklist
 
-See the setup instructions below. Once you have docker and postgres set up, run the project with:
+- [ ] Get access to [Developer Onboarding](TODO) on Notion
+- [ ] Get Render access from a tech lead
+- [ ] Clone the repo and run `bun install`
+- [ ] Copy `.env` from Notion into the project root (do not commit)
+- [ ] Run `bunx prisma generate` and `bun run db:migrate`
+- [ ] Run `bun run dev` and open [http://localhost:3000](http://localhost:3000)
+- [ ] Read [Data tables](#data-tables) before changing list or table UI
+- [ ] Pick up a ticket, branch off `main`, open a PR, and assign a tech lead
 
-```bash
-# clone the repository
-git clone https://github.com/hack4impact-mcgill/ResilienceMontreal
+Playwright test credentials go in `.env`. See [TESTING.md](TESTING.md).
 
-# navigate to the project directory
-cd ResilienceMontreal
+## Environment
 
-# install dependencies
-npm i
+Copy `.env` from Notion into the project root. Required vars are validated in [`src/env.js`](src/env.js).
 
-# generate the Prisma client
-npx prisma generate
+The default template uses the shared dev Supabase DB. For Docker Postgres, swap `DATABASE_URL` and `DIRECT_URL` per [`docker-compose.yml`](docker-compose.yml).
 
-# start the development server
-npm run dev
-
-# start the development server inside the docker container
-npm run docker:up
-
-# sync db inside container with local
-docker exec -it resiliencemontreal-app-1 npx prisma db push
-
-# tear down the containers
-npm run docker:down
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## ⚒️ Contributing
-
-When you're assigned a ticket, create a branch to your work on, and push your code there. Once you've finished your ticket, create a pull request and assign a tech lead to review it. Prettier will automatically format your code when you create your PR.
-
-## 🧗 Setting Up
-
-Create a file called `.env` in the root of the project. Create another file called `.env.local`. Copy the two files from Notion.
-
-Then run these Prisma commands:
+## Run locally
 
 ```bash
-# Sync your database with the schema
-npx prisma db push
-
-# Generate the Prisma client (required before running the app)
-npx prisma generate
+bun install && bunx prisma generate && bun run dev
 ```
 
-Now you should be all ready to run the project!
+For Docker: `bun run docker:up` (see [`docker-compose.yml`](docker-compose.yml)).
 
-## 🧪 Testing
+## Render
 
-This project uses **Playwright** for end-to-end testing. For setup instructions and a guide on adding new tests, please refer to the [Testing Guide](TESTING.md).
+Deployed dev: [https://resiliencemontreal.onrender.com](https://resiliencemontreal.onrender.com)
 
-## � TanStack Query & Data Hooks
+Auto-deploys on push to `main`. Ask a tech lead for a Render team invite. Env values are in Notion.
 
-This project uses [TanStack Query (React Query)](https://tanstack.com/query/latest) for efficient data fetching, caching, and synchronization. Data is managed using hooks:
+Free tier sleeps after ~15 min idle. First load after idle may take ~30s.
 
-- `useQuery` for fetching and caching data (e.g., client lists)
-- `useMutation` for updating or creating data (e.g., adding a client)
+## Contributing
 
-Example usage:
+When you pick up a ticket, branch off `main`, push your work, and open a PR. Assign a tech lead to review. Prettier runs on PRs.
 
-```tsx
-const { data, isLoading, isError } = useQuery({
-  queryKey: ["clients"],
-  queryFn: fetchClients,
-});
+Schema + feature tickets: use stacked PRs (migration PR first, feature PR second). See [Database schema changes](#database-schema-changes).
 
-const mutation = useMutation({
-  mutationFn: addClient,
-});
-```
+## Database schema changes
 
-Queries and mutations automatically update the UI and keep data in sync with the server.
+Schema changes use Prisma migrations in `prisma/migrations/`. CI runs `migrate-check` on PRs that touch `prisma/**`. Merging to `main` deploys migrations to the shared dev DB.
 
-## 💅 Styling
+### Stacked PRs
 
-Styling is managed globally using [Tailwind CSS](https://tailwindcss.com/) and custom variables in [`src/app/globals.css`](src/app/globals.css). This file defines color schemes, spacing, and theming for both light and dark modes. Use Tailwind utility classes in your components for layout and appearance.
+| PR          | Base             | Contains                                     | Merge  |
+| ----------- | ---------------- | -------------------------------------------- | ------ |
+| 1 Migration | `main`           | `prisma/schema/` + `prisma/migrations/` only | First  |
+| 2 Feature   | migration branch | app code                                     | Second |
 
-## 🧩 shadcn/ui
+**Workflow**
 
-[shadcn/ui](https://ui.shadcn.com/) is used for modern, accessible UI components such as buttons, dropdowns, inputs, and tables. These components are styled with Tailwind and provide a consistent look and feel across the app.
+1. Branch from `main` (e.g. `feat/add-grant-status-migration`).
+2. Run `bun run db:generate`, commit schema + migration, open PR 1 (migration only).
+3. Branch from that branch (e.g. `feat/add-grant-status-ui`).
+4. Implement the feature, open PR 2 with base set to the migration branch.
+5. Merge PR 1, rebase PR 2 onto `main` (or change its base to `main`), then merge PR 2.
 
-## Supabase
+**Rules**
 
-Create a file called `.env.local` and paste the file from Notion.
+- PR 1 must not include feature code. Only Prisma schema and migration SQL.
+- PR 2 should not add new migrations. If the schema needs another tweak, add a follow-up migration in PR 1 or a new migration PR before merging the feature.
+- Title clearly: e.g. `[migration] Add Grant.status` and `[feature] Grant status filter UI`.
+- In PR 2, link PR 1: "Depends on #123."
 
-## �🗨️ Contact
+After PR 1 merges, run `bun run db:migrate` locally on the feature branch after rebasing onto `main`.
 
-If you have any inquiries about the development of this project, you can reach the Hack4Impact McGill chapter at:
+**GitHub tip:** Set PR 2's base to your migration branch so the diff shows only feature changes. Switch the base to `main` after PR 1 merges.
 
-- **Email**: hack4impact@ssmu.ca
+## Data tables
+
+Clients, Grants, and Expenses tables use shared utilities in `src/components/data-table/`. Read [`src/components/data-table/README.md`](src/components/data-table/README.md) before adding or changing a table. Reuse shared hooks and components. Do not copy pagination, sort, filter, or CSV logic. Fund Pools is client-side and is the exception.
+
+## Testing
+
+Playwright E2E. See [TESTING.md](TESTING.md).
+
+## Stack
+
+- Tailwind CSS and tokens in [`src/app/globals.css`](src/app/globals.css)
+- UI primitives from [shadcn/ui](https://ui.shadcn.com/)
+
+## Contact
+
+Reach Hack4Impact McGill at **hack4impact@ssmu.ca**.

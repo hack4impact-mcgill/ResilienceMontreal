@@ -7,7 +7,7 @@ setup("authenticate as admin", async ({ page }) => {
 
   if (!email || !password) {
     throw new Error(
-      "TEST_USER_EMAIL and TEST_USER_PASSWORD must be set in .env.local",
+      "TEST_USER_EMAIL and TEST_USER_PASSWORD must be set in .env",
     );
   }
 

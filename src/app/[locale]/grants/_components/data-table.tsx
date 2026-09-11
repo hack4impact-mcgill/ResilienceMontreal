@@ -706,7 +706,9 @@ export const GrantsTable = () => {
                         onChange={(e) => {
                           const id = Number(e.target.value);
                           setSelectedPoolId(Number.isNaN(id) ? undefined : id);
-                          const pool = fundPools.find((p: FundPool) => p.id === id);
+                          const pool = fundPools.find(
+                            (p: FundPool) => p.id === id,
+                          );
                           setCategoryField(pool?.category ?? "");
                         }}
                         className="w-full h-7 bg-white px-2"

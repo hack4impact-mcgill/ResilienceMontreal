@@ -1,0 +1,53 @@
+name: Migrate Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "prisma/**"
+
+jobs:
+  migrate-check:
+    name: Migrate Check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - run: bun install --frozen-lockfile
+
+      - name: Verify schema matches migrations
+        env:
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/test
+        run: |
+          bunx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema prisma \
+            --exit-code
+
+      - name: Apply migrations to ephemeral DB
+        env:
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+        run: bunx prisma migrate deploy

@@ -10,7 +10,7 @@ export default function UnauthorizedPage() {
     <div className="p-6">
       <h2 className="text-2xl mb-4">Access Denied</h2>
       <p className="mb-4">
-        You don't have permission to access this page. Only Intervention Team
+        You don&apos;t have permission to access this page. Only Intervention Team
         members can access client data.
       </p>
       {user?.role && (

@@ -99,7 +99,7 @@ export const grantRouter = createTRPCRouter({
         amount: newAmountRaw,
         fundPoolId: newFundPoolId,
         ...rest
-      } = input as any;
+      } = input;
       const newAmount =
         newAmountRaw !== undefined
           ? new Prisma.Decimal(String(newAmountRaw))
@@ -114,12 +114,12 @@ export const grantRouter = createTRPCRouter({
             message: "Grant not found",
           });
 
-        let descriptionObj: any = {};
+        let descriptionObj: Record<string, unknown> = {};
         try {
           descriptionObj = grant.description
-            ? JSON.parse(grant.description)
+            ? (JSON.parse(grant.description) as Record<string, unknown>)
             : {};
-        } catch (e) {
+        } catch {
           descriptionObj = { notes: grant.description };
         }
 
@@ -137,11 +137,12 @@ export const grantRouter = createTRPCRouter({
           "email",
           "phoneNumber",
           "notes",
-        ];
+        ] as const;
         let didMeta = false;
         for (const k of allowedMeta) {
-          if (rest[k] !== undefined) {
-            descriptionObj[k] = rest[k];
+          const value = rest[k];
+          if (value !== undefined) {
+            descriptionObj[k] = value;
             didMeta = true;
           }
         }
@@ -336,15 +337,15 @@ export const grantRouter = createTRPCRouter({
           rest.phoneNumber
         ) {
           const current = await tx.grant.findUnique({ where: { id } });
-          let descriptionObj: any = {};
+          let descriptionObj: Record<string, unknown> = {};
           try {
             descriptionObj = current?.description
-              ? JSON.parse(current?.description)
+              ? (JSON.parse(current.description) as Record<string, unknown>)
               : {};
-          } catch (e) {
+          } catch {
             descriptionObj = { notes: current?.description };
           }
-          const fieldsToMap: any = {
+          const fieldsToMap: Record<string, unknown> = {
             category: rest.category,
             dateReceived: rest.dateReceived,
             toBeUsedBy: rest.toBeUsedBy,

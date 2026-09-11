@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table";
 
 import { Client, createColumns } from "./columns";
-import { api } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
 import { z } from "zod";
 import { toast } from "sonner";
 
@@ -47,6 +47,7 @@ const clientSchema = z.object({
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
+type ListedUser = RouterOutputs["users"]["list"][number];
 type SortByField =
   | "firstName"
   | "lastName"
@@ -229,7 +230,8 @@ export const ClientsTable = () => {
   const workers = React.useMemo(
     () =>
       (users ?? []).filter(
-        (u: any) => u.role === "InterventionTeam" || u.role === "Admin",
+        (u: ListedUser) =>
+          u.role === "InterventionTeam" || u.role === "Admin",
       ),
     [users],
   );
@@ -450,7 +452,7 @@ export const ClientsTable = () => {
               <DropdownMenuItem
                 key={col}
                 onClick={() => {
-                  setSearchBy(col as any);
+                  setSearchBy(col);
                   setFilterMenuOpen(false);
                 }}
                 className="flex items-center gap-2"
@@ -504,7 +506,7 @@ export const ClientsTable = () => {
                 key={col}
                 onClick={() => {
                   // set local sorting to the chosen column, sensible natural order (asc)
-                  setLocalSorting([{ id: col as any, desc: false }]);
+                  setLocalSorting([{ id: col, desc: false }]);
                 }}
                 className="flex items-center gap-2"
               >
@@ -666,7 +668,7 @@ export const ClientsTable = () => {
                     disabled={isLoadingUsers}
                   >
                     <option value="">Select Worker</option>
-                    {workers.map((w: any) => (
+                    {workers.map((w: ListedUser) => (
                       <option key={w.supabaseId} value={w.supabaseId}>
                         {w.name}
                       </option>
@@ -842,7 +844,7 @@ export const ClientsTable = () => {
                               disabled={isLoadingUsers}
                             >
                               <option value="">Select Worker</option>
-                              {workers.map((w: any) => (
+                              {workers.map((w: ListedUser) => (
                                 <option key={w.supabaseId} value={w.supabaseId}>
                                   {w.name}
                                 </option>

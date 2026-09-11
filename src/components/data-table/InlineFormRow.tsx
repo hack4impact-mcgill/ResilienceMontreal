@@ -40,7 +40,12 @@ export function InlineFormRow({
       <TableRow className={className}>
         <TableCell colSpan={colCount} className="py-4 px-20">
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" size="sm" onClick={onCancel} disabled={isSaving}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button

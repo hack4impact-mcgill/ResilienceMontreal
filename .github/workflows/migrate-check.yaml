@@ -37,17 +37,17 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - name: Verify schema matches migrations
-        env:
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/test
-        run: |
-          bunx prisma migrate diff \
-            --from-migrations prisma/migrations \
-            --to-schema prisma \
-            --exit-code
-
       - name: Apply migrations to ephemeral DB
         env:
           DIRECT_URL: postgresql://postgres:postgres@localhost:5432/test
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
         run: bunx prisma migrate deploy
+
+      - name: Verify deployed DB matches schema
+        env:
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/test
+        run: |
+          bunx prisma migrate diff \
+            --from-config-datasource \
+            --to-schema prisma \
+            --exit-code

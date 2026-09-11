@@ -52,12 +52,23 @@ const getFriendlyError = (err: unknown): string => {
         const first = fieldErrors[key]?.[0];
         if (!first) continue;
         switch (key) {
-          case "description": messages.push("Missing required fields: description"); break;
-          case "date": messages.push("Invalid input: date must be a valid date"); break;
-          case "totalAmount": messages.push("Invalid input: totalAmount must be a number"); break;
-          case "invoiceUrl": messages.push("Invalid input: invoiceUrl must be a valid URL"); break;
-          case "fundPoolId": messages.push("Fund pool is required"); break;
-          default: messages.push(first);
+          case "description":
+            messages.push("Missing required fields: description");
+            break;
+          case "date":
+            messages.push("Invalid input: date must be a valid date");
+            break;
+          case "totalAmount":
+            messages.push("Invalid input: totalAmount must be a number");
+            break;
+          case "invoiceUrl":
+            messages.push("Invalid input: invoiceUrl must be a valid URL");
+            break;
+          case "fundPoolId":
+            messages.push("Fund pool is required");
+            break;
+          default:
+            messages.push(first);
         }
       }
       if (messages.length > 0) return messages.join(". ");
@@ -104,7 +115,9 @@ function mapExpenseRow(e: {
   invoiceUrl: string | null;
 }): Expense {
   const amount =
-    typeof e.totalAmount === "number" ? e.totalAmount : Number(e.totalAmount ?? 0);
+    typeof e.totalAmount === "number"
+      ? e.totalAmount
+      : Number(e.totalAmount ?? 0);
   const expenseDate = new Date(e.date);
   return {
     id: e.id,
@@ -146,7 +159,9 @@ export const ExpensesTable = () => {
   const filters = useAdvancedFilters(EMPTY_FILTERS);
   const form = useTableForm<ExpenseFormData>(EMPTY_FORM);
 
-  const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(
+    null,
+  );
 
   // Reset page when filters change
   React.useEffect(() => {
@@ -160,8 +175,14 @@ export const ExpensesTable = () => {
   ]);
 
   const queryInput = React.useMemo(() => {
-    const minN = filters.applied.minAmount.trim() === "" ? NaN : Number(filters.applied.minAmount);
-    const maxN = filters.applied.maxAmount.trim() === "" ? NaN : Number(filters.applied.maxAmount);
+    const minN =
+      filters.applied.minAmount.trim() === ""
+        ? NaN
+        : Number(filters.applied.minAmount);
+    const maxN =
+      filters.applied.maxAmount.trim() === ""
+        ? NaN
+        : Number(filters.applied.maxAmount);
     return {
       page: tableState.page,
       limit: tableState.limit,
@@ -177,21 +198,35 @@ export const ExpensesTable = () => {
         ? new Date(`${filters.applied.dateTo}T12:00:00`)
         : undefined,
     };
-  }, [tableState.page, tableState.limit, tableState.sortBy, tableState.sortOrder, tableState.appliedSearch, filters.applied]);
+  }, [
+    tableState.page,
+    tableState.limit,
+    tableState.sortBy,
+    tableState.sortOrder,
+    tableState.appliedSearch,
+    filters.applied,
+  ]);
 
   const utils = api.useUtils();
-  const { data: listData, isLoading, isError, isFetching, refetch, isRefetching } =
-    api.expenses.list.useQuery(queryInput, {
-      retry: false,
-      refetchOnWindowFocus: false,
-      staleTime: 60_000,
-    });
+  const {
+    data: listData,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+    isRefetching,
+  } = api.expenses.list.useQuery(queryInput, {
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  });
 
   const pagination = listData?.pagination;
 
   React.useEffect(() => {
     if (!pagination || pagination.totalPages <= 0) return;
-    if (tableState.page > pagination.totalPages) tableState.setPage(pagination.totalPages);
+    if (tableState.page > pagination.totalPages)
+      tableState.setPage(pagination.totalPages);
   }, [pagination, tableState.page]);
 
   const { data: fundPools } = api.fundPool.getAll.useQuery(undefined, {
@@ -224,7 +259,12 @@ export const ExpensesTable = () => {
 
   // Seed fundPoolId when form opens
   React.useEffect(() => {
-    if (form.isAdding && fundPools && fundPools.length > 0 && !form.formData.fundPoolId) {
+    if (
+      form.isAdding &&
+      fundPools &&
+      fundPools.length > 0 &&
+      !form.formData.fundPoolId
+    ) {
       form.setFormData({ fundPoolId: String(fundPools[0]!.id) });
     }
   }, [form.isAdding, fundPools]);
@@ -257,9 +297,9 @@ export const ExpensesTable = () => {
 
   const hasDraft = Boolean(
     filters.draft.minAmount.trim() ||
-    filters.draft.maxAmount.trim() ||
-    filters.draft.dateFrom ||
-    filters.draft.dateTo,
+      filters.draft.maxAmount.trim() ||
+      filters.draft.dateFrom ||
+      filters.draft.dateTo,
   );
 
   return (
@@ -270,7 +310,10 @@ export const ExpensesTable = () => {
         {/* Search row */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
-            <label className="text-xs text-muted-foreground" htmlFor="expense-search">
+            <label
+              className="text-xs text-muted-foreground"
+              htmlFor="expense-search"
+            >
               Description
             </label>
             <div className="flex items-center gap-2">
@@ -309,7 +352,10 @@ export const ExpensesTable = () => {
               >
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted-foreground" htmlFor="expense-min-amt">
+                    <label
+                      className="text-xs text-muted-foreground"
+                      htmlFor="expense-min-amt"
+                    >
                       Min amount
                     </label>
                     <Input
@@ -319,11 +365,16 @@ export const ExpensesTable = () => {
                       step="0.01"
                       placeholder="Min"
                       value={filters.draft.minAmount}
-                      onChange={(e) => filters.setDraft({ minAmount: e.target.value })}
+                      onChange={(e) =>
+                        filters.setDraft({ minAmount: e.target.value })
+                      }
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted-foreground" htmlFor="expense-max-amt">
+                    <label
+                      className="text-xs text-muted-foreground"
+                      htmlFor="expense-max-amt"
+                    >
                       Max amount
                     </label>
                     <Input
@@ -333,13 +384,18 @@ export const ExpensesTable = () => {
                       step="0.01"
                       placeholder="Max"
                       value={filters.draft.maxAmount}
-                      onChange={(e) => filters.setDraft({ maxAmount: e.target.value })}
+                      onChange={(e) =>
+                        filters.setDraft({ maxAmount: e.target.value })
+                      }
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted-foreground" htmlFor="expense-date-from">
+                    <label
+                      className="text-xs text-muted-foreground"
+                      htmlFor="expense-date-from"
+                    >
                       Date from
                     </label>
                     <Input
@@ -347,11 +403,16 @@ export const ExpensesTable = () => {
                       type="date"
                       className="w-full min-w-0"
                       value={filters.draft.dateFrom}
-                      onChange={(e) => filters.setDraft({ dateFrom: e.target.value })}
+                      onChange={(e) =>
+                        filters.setDraft({ dateFrom: e.target.value })
+                      }
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted-foreground" htmlFor="expense-date-to">
+                    <label
+                      className="text-xs text-muted-foreground"
+                      htmlFor="expense-date-to"
+                    >
                       Date to
                     </label>
                     <Input
@@ -359,7 +420,9 @@ export const ExpensesTable = () => {
                       type="date"
                       className="w-full min-w-0"
                       value={filters.draft.dateTo}
-                      onChange={(e) => filters.setDraft({ dateTo: e.target.value })}
+                      onChange={(e) =>
+                        filters.setDraft({ dateTo: e.target.value })
+                      }
                     />
                   </div>
                 </div>
@@ -432,7 +495,10 @@ export const ExpensesTable = () => {
               <TableRow key={group.id}>
                 {group.headers.map((header) => (
                   <TableHead key={header.id}>
-                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -446,23 +512,31 @@ export const ExpensesTable = () => {
                   <TableCell>
                     <Input
                       value={form.formData.description}
-                      onChange={(e) => form.setFormData({ description: e.target.value })}
+                      onChange={(e) =>
+                        form.setFormData({ description: e.target.value })
+                      }
                       placeholder="Description"
                       className={`bg-white border-[#3FA9A9] ${form.formErrors.description ? "border-red-500" : ""}`}
                     />
                     {form.formErrors.description && (
-                      <p className="text-xs text-red-500 mt-1">{form.formErrors.description}</p>
+                      <p className="text-xs text-red-500 mt-1">
+                        {form.formErrors.description}
+                      </p>
                     )}
                   </TableCell>
                   <TableCell>
                     <Input
                       type="date"
                       value={form.formData.date}
-                      onChange={(e) => form.setFormData({ date: e.target.value })}
+                      onChange={(e) =>
+                        form.setFormData({ date: e.target.value })
+                      }
                       className={`bg-white border-[#3FA9A9] ${form.formErrors.date ? "border-red-500" : ""}`}
                     />
                     {form.formErrors.date && (
-                      <p className="text-xs text-red-500 mt-1">{form.formErrors.date}</p>
+                      <p className="text-xs text-red-500 mt-1">
+                        {form.formErrors.date}
+                      </p>
                     )}
                   </TableCell>
                   <TableCell>
@@ -471,24 +545,32 @@ export const ExpensesTable = () => {
                       step="0.01"
                       min="0"
                       value={form.formData.totalAmount}
-                      onChange={(e) => form.setFormData({ totalAmount: e.target.value })}
+                      onChange={(e) =>
+                        form.setFormData({ totalAmount: e.target.value })
+                      }
                       placeholder="Amount"
                       className={`bg-white border-[#3FA9A9] ${form.formErrors.totalAmount ? "border-red-500" : ""}`}
                     />
                     {form.formErrors.totalAmount && (
-                      <p className="text-xs text-red-500 mt-1">{form.formErrors.totalAmount}</p>
+                      <p className="text-xs text-red-500 mt-1">
+                        {form.formErrors.totalAmount}
+                      </p>
                     )}
                   </TableCell>
                   <TableCell>
                     <Input
                       type="url"
                       value={form.formData.invoiceUrl ?? ""}
-                      onChange={(e) => form.setFormData({ invoiceUrl: e.target.value })}
+                      onChange={(e) =>
+                        form.setFormData({ invoiceUrl: e.target.value })
+                      }
                       placeholder="Invoice URL (optional)"
                       className={`bg-white border-[#3FA9A9] ${form.formErrors.invoiceUrl ? "border-red-500" : ""}`}
                     />
                     {form.formErrors.invoiceUrl && (
-                      <p className="text-xs text-red-500 mt-1">{form.formErrors.invoiceUrl}</p>
+                      <p className="text-xs text-red-500 mt-1">
+                        {form.formErrors.invoiceUrl}
+                      </p>
                     )}
                   </TableCell>
                   <TableCell>
@@ -496,10 +578,14 @@ export const ExpensesTable = () => {
                       <>
                         <select
                           value={form.formData.fundPoolId}
-                          onChange={(e) => form.setFormData({ fundPoolId: e.target.value })}
+                          onChange={(e) =>
+                            form.setFormData({ fundPoolId: e.target.value })
+                          }
                           className={`w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9] ${form.formErrors.fundPoolId ? "border-red-500" : ""}`}
                         >
-                          <option value="" disabled>Select fund pool</option>
+                          <option value="" disabled>
+                            Select fund pool
+                          </option>
                           {fundPools.map((pool) => (
                             <option key={pool.id} value={pool.id}>
                               {pool.category}
@@ -507,11 +593,15 @@ export const ExpensesTable = () => {
                           ))}
                         </select>
                         {form.formErrors.fundPoolId && (
-                          <p className="text-xs text-red-500 mt-1">{form.formErrors.fundPoolId}</p>
+                          <p className="text-xs text-red-500 mt-1">
+                            {form.formErrors.fundPoolId}
+                          </p>
                         )}
                       </>
                     ) : (
-                      <p className="text-xs text-muted-foreground">No fund pools available</p>
+                      <p className="text-xs text-muted-foreground">
+                        No fund pools available
+                      </p>
                     )}
                   </TableCell>
                 </TableRow>
@@ -529,7 +619,11 @@ export const ExpensesTable = () => {
                 <TableRow className="bg-[#D1EDED] hover:bg-[#D1EDED]">
                   <TableCell colSpan={columns.length} className="py-4 px-20">
                     <div className="flex gap-2 justify-end">
-                      <Button variant="outline" size="sm" onClick={form.closeForm}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={form.closeForm}
+                      >
                         Cancel
                       </Button>
                       <Button
@@ -567,7 +661,10 @@ export const ExpensesTable = () => {
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>

@@ -48,6 +48,3 @@ next-env.d.ts
 
 # webstorm
 .idea/
-
-# claude
-.claude/

@@ -1,3 +1,5 @@
+// no-op: trigger Migrate Check on PR
+
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"

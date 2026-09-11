@@ -52,18 +52,30 @@ function FundPoolFormModal({
   fundPool?: FundPoolWithAmount;
   onSubmit: (data: { category: string }) => Promise<void>;
 }) {
+  if (!open) return null;
+
+  return (
+    <FundPoolFormModalContent
+      key={fundPool?.id ?? "new"}
+      fundPool={fundPool}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
+  );
+}
+
+function FundPoolFormModalContent({
+  onClose,
+  fundPool,
+  onSubmit,
+}: {
+  onClose: () => void;
+  fundPool?: FundPoolWithAmount;
+  onSubmit: (data: { category: string }) => Promise<void>;
+}) {
   const [category, setCategory] = React.useState(fundPool?.category ?? "");
   const [error, setError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  React.useEffect(() => {
-    if (fundPool) {
-      setCategory(fundPool.category);
-    } else {
-      setCategory("");
-    }
-    setError("");
-  }, [fundPool, open]);
 
   const resetFields = () => {
     setCategory("");
@@ -90,8 +102,6 @@ function FundPoolFormModal({
       setIsSubmitting(false);
     }
   };
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center">

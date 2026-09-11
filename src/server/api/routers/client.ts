@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { Prisma } from "~/generated/prisma/client";
 
 import {
   createTRPCRouter,
@@ -237,7 +238,7 @@ export const clientRouter = createTRPCRouter({
       const skip = (input.page - 1) * input.limit;
 
       // Build where clause
-      const where = {
+      const where: Prisma.ClientWhereInput = {
         AND: [
           input.search
             ? {
@@ -245,19 +246,19 @@ export const clientRouter = createTRPCRouter({
                   {
                     firstName: {
                       contains: input.search,
-                      mode: "insensitive" as const,
+                      mode: "insensitive",
                     },
                   },
                   {
                     lastName: {
                       contains: input.search,
-                      mode: "insensitive" as const,
+                      mode: "insensitive",
                     },
                   },
                   {
                     email: {
                       contains: input.search,
-                      mode: "insensitive" as const,
+                      mode: "insensitive",
                     },
                   },
                 ],
@@ -273,7 +274,7 @@ export const clientRouter = createTRPCRouter({
               }
             : {},
         ],
-      } as any;
+      };
 
       // Get total count and data
       const [total, clients] = await Promise.all([

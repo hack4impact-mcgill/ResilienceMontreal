@@ -36,7 +36,11 @@ import {
 } from "@/components/ui/table";
 
 import { columns, Grant } from "./columns";
-import { api } from "@/trpc/react";
+
+type FundPool = RouterOutputs["fundPool"]["getAll"][number];
+type DbGrant = RouterOutputs["grant"]["getGrants"]["grants"][number];
+type UpdateGrantPayload = RouterInputs["grant"]["update"];
+import { api, type RouterInputs, type RouterOutputs } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 
 // Inline add form is rendered directly inside GrantsTable; modal removed in favor of inline UX.
@@ -278,9 +282,9 @@ export const GrantsTable = () => {
         utils.fundPool.getTotalFunding.invalidate(),
       ]);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       console.error("Create grant error:", err);
-      setAddModalError(err?.message ?? "Error creating grant");
+      setAddModalError(err.message ?? "Error creating grant");
     },
   });
 
@@ -309,14 +313,14 @@ export const GrantsTable = () => {
   const [editing, setEditing] = React.useState<{
     rowId: string;
     columnId: string;
-    value: any;
+    value: unknown;
   } | null>(null);
   const previousSnapshotRef = React.useRef<Grant[] | null>(null);
   React.useEffect(() => {
     if (!dbGrants) return;
 
-    const mapped = dbGrants.map((g: any) => {
-      let meta: any = {};
+    const mapped = dbGrants.map((g: DbGrant) => {
+      let meta: Record<string, unknown> = {};
       try {
         meta = g.description ? JSON.parse(g.description) : {};
       } catch (e) {
@@ -324,7 +328,7 @@ export const GrantsTable = () => {
       }
 
       const toBeUsedBy = meta.toBeUsedBy
-        ? new Date(meta.toBeUsedBy)
+        ? new Date(meta.toBeUsedBy as string | number | Date)
         : new Date(g.endDate || g.createdAt);
       const distributions = g.distributions ?? [];
       const originalAmount = distributions.length
@@ -345,14 +349,14 @@ export const GrantsTable = () => {
         dbId: g.id,
         fundPoolId: g.distributions?.[0]?.fundPool?.id ?? undefined,
         organization: g.title,
-        category: meta.category ?? "",
+        category: String(meta.category ?? ""),
         dateReceived: meta.dateReceived
-          ? new Date(meta.dateReceived)
+          ? new Date(meta.dateReceived as string | number | Date)
           : new Date(g.createdAt),
         toBeUsedBy,
-        email: meta.email ?? "",
-        phoneNumber: meta.phoneNumber ?? "",
-        notes: meta.notes ?? "",
+        email: String(meta.email ?? ""),
+        phoneNumber: String(meta.phoneNumber ?? ""),
+        notes: String(meta.notes ?? ""),
         originalAmount,
         spentAmount,
         remainingAmount: originalAmount - spentAmount,
@@ -702,12 +706,12 @@ export const GrantsTable = () => {
                         onChange={(e) => {
                           const id = Number(e.target.value);
                           setSelectedPoolId(Number.isNaN(id) ? undefined : id);
-                          const pool = fundPools.find((p: any) => p.id === id);
+                          const pool = fundPools.find((p: FundPool) => p.id === id);
                           setCategoryField(pool?.category ?? "");
                         }}
                         className="w-full h-7 bg-white px-2"
                       >
-                        {fundPools.map((p: any) => (
+                        {fundPools.map((p: FundPool) => (
                           <option key={p.id} value={p.id}>
                             {p.category}
                           </option>
@@ -829,9 +833,11 @@ export const GrantsTable = () => {
                               });
                               resetInlineForm();
                               setAddModalOpen(false);
-                            } catch (e: any) {
+                            } catch (e: unknown) {
                               setAddModalError(
-                                e?.message ?? "Error creating grant",
+                                e instanceof Error
+                                  ? e.message
+                                  : "Error creating grant",
                               );
                             }
                           }}
@@ -870,9 +876,11 @@ export const GrantsTable = () => {
                               });
                               // keep the form open for another entry
                               resetInlineForm();
-                            } catch (e: any) {
+                            } catch (e: unknown) {
                               setAddModalError(
-                                e?.message ?? "Error creating grant",
+                                e instanceof Error
+                                  ? e.message
+                                  : "Error creating grant",
                               );
                             }
                           }}
@@ -943,7 +951,7 @@ export const GrantsTable = () => {
                                     deleteMutation.mutate(
                                       { id: dbId },
                                       {
-                                        onError: (err: any) => {
+                                        onError: (err) => {
                                           // revert
                                           if (previousSnapshotRef.current)
                                             setLocalGrants(
@@ -1012,7 +1020,11 @@ export const GrantsTable = () => {
                             <div className="flex items-center gap-2">
                               {cell.column.id === "notes" ? (
                                 <textarea
-                                  value={editing.value ?? ""}
+                                  value={
+                                    editing.value != null
+                                      ? String(editing.value)
+                                      : ""
+                                  }
                                   onChange={(e) =>
                                     setEditing(
                                       (p) =>
@@ -1024,7 +1036,7 @@ export const GrantsTable = () => {
                               ) : cell.column.id === "originalAmount" ? (
                                 <Input
                                   type="number"
-                                  value={editing.value ?? 0}
+                                  value={Number(editing.value ?? 0)}
                                   onChange={(e) =>
                                     setEditing(
                                       (p) =>
@@ -1041,11 +1053,15 @@ export const GrantsTable = () => {
                                 <Input
                                   type="date"
                                   value={
-                                    editing.value
-                                      ? new Date(editing.value)
-                                          .toISOString()
-                                          .slice(0, 10)
-                                      : ""
+                                    editing.value instanceof Date
+                                      ? editing.value.toISOString().slice(0, 10)
+                                      : editing.value
+                                        ? new Date(
+                                            editing.value as string | number,
+                                          )
+                                            .toISOString()
+                                            .slice(0, 10)
+                                        : ""
                                   }
                                   onChange={(e) =>
                                     setEditing(
@@ -1060,7 +1076,7 @@ export const GrantsTable = () => {
                               ) : cell.column.id === "category" ? (
                                 fundPools && fundPools.length > 0 ? (
                                   <select
-                                    value={editing.value ?? ""}
+                                    value={Number(editing.value ?? 0)}
                                     onChange={(e) =>
                                       setEditing(
                                         (p) =>
@@ -1072,7 +1088,7 @@ export const GrantsTable = () => {
                                     }
                                     className="w-full h-7 bg-white px-2"
                                   >
-                                    {fundPools.map((p: any) => (
+                                    {fundPools.map((p: FundPool) => (
                                       <option key={p.id} value={p.id}>
                                         {p.category}
                                       </option>
@@ -1080,7 +1096,11 @@ export const GrantsTable = () => {
                                   </select>
                                 ) : (
                                   <Input
-                                    value={editing.value ?? ""}
+                                    value={
+                                      editing.value != null
+                                        ? String(editing.value)
+                                        : ""
+                                    }
                                     onChange={(e) =>
                                       setEditing(
                                         (p) =>
@@ -1091,7 +1111,11 @@ export const GrantsTable = () => {
                                 )
                               ) : (
                                 <Input
-                                  value={editing.value ?? ""}
+                                  value={
+                                    editing.value != null
+                                      ? String(editing.value)
+                                      : ""
+                                  }
                                   onChange={(e) =>
                                     setEditing(
                                       (p) =>
@@ -1112,7 +1136,7 @@ export const GrantsTable = () => {
                                   if (columnId === "category") {
                                     const chosenPoolId = Number(value);
                                     const pool = fundPools?.find(
-                                      (p: any) => p.id === chosenPoolId,
+                                      (p: FundPool) => p.id === chosenPoolId,
                                     );
                                     setLocalGrants((curr) =>
                                       curr.map((r) =>
@@ -1165,14 +1189,16 @@ export const GrantsTable = () => {
                                     return;
                                   }
 
-                                  const payload: any = { id: dbId };
+                                  const payload: UpdateGrantPayload = {
+                                    id: dbId,
+                                  };
                                   // map columnId to server fields
                                   if (columnId === "organization")
-                                    payload.organization = value;
+                                    payload.organization = String(value);
                                   else if (columnId === "category") {
                                     const chosenPoolId = Number(value);
                                     const pool = fundPools?.find(
-                                      (p: any) => p.id === chosenPoolId,
+                                      (p: FundPool) => p.id === chosenPoolId,
                                     );
                                     if (!pool) {
                                       // revert
@@ -1190,20 +1216,26 @@ export const GrantsTable = () => {
                                     payload.category = pool.category;
                                     payload.fundPoolId = chosenPoolId;
                                   } else if (columnId === "dateReceived")
-                                    payload.dateReceived = value;
+                                    payload.dateReceived =
+                                      value instanceof Date
+                                        ? value
+                                        : new Date(String(value));
                                   else if (columnId === "toBeUsedBy")
-                                    payload.toBeUsedBy = value;
+                                    payload.toBeUsedBy =
+                                      value instanceof Date
+                                        ? value
+                                        : new Date(String(value));
                                   else if (columnId === "email")
-                                    payload.email = value;
+                                    payload.email = String(value);
                                   else if (columnId === "phoneNumber")
-                                    payload.phoneNumber = value;
+                                    payload.phoneNumber = String(value);
                                   else if (columnId === "notes")
-                                    payload.notes = value;
+                                    payload.notes = String(value);
                                   else if (columnId === "originalAmount")
                                     payload.amount = Number(value) || 0;
 
                                   updateMutation.mutate(payload, {
-                                    onError: (err: any) => {
+                                    onError: (err) => {
                                       // revert
                                       if (previousSnapshotRef.current)
                                         setLocalGrants(

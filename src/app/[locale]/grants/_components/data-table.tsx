@@ -5,25 +5,18 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  VisibilityState,
 } from "@tanstack/react-table";
 
-import { CirclePlus, ListFilter, MoreHorizontal, Search } from "lucide-react";
+import { CirclePlus, MoreHorizontal, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuLabel,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -36,62 +29,21 @@ import {
 } from "@/components/ui/table";
 
 import { columns, Grant } from "./columns";
+import { api, type RouterInputs, type RouterOutputs } from "@/trpc/react";
 
+import { useServerTableState } from "@/hooks/use-server-table-state";
+import { useAdvancedFilters } from "@/hooks/use-advanced-filters";
+import { exportToCSV } from "@/lib/data-table/export-csv";
+import { FetchingOverlay } from "@/components/data-table/FetchingOverlay";
+import { TableEmptyRow } from "@/components/data-table/TableEmptyRow";
+import { TablePagination } from "@/components/data-table/TablePagination";
+import { TableSortControls } from "@/components/data-table/TableSortControls";
+import { AdvancedFilterPopover } from "@/components/data-table/AdvancedFilterPopover";
+
+type GrantSortBy = "totalAmount" | "endDate" | "createdAt" | "title";
 type FundPool = RouterOutputs["fundPool"]["getAll"][number];
 type DbGrant = RouterOutputs["grant"]["getGrants"]["grants"][number];
 type UpdateGrantPayload = RouterInputs["grant"]["update"];
-import { api, type RouterInputs, type RouterOutputs } from "@/trpc/react";
-import { cn } from "@/lib/utils";
-
-// Inline add form is rendered directly inside GrantsTable; modal removed in favor of inline UX.
-
-// ------------------------------------------------------------
-// EXPORT TO CSV
-// ------------------------------------------------------------
-const exportToCSV = (grants: Grant[]) => {
-  if (!grants.length) return;
-
-  const header = [
-    "Organization",
-    "Category",
-    "Date Received",
-    "To Be Used By",
-    "Email",
-    "Phone Number",
-    "Notes",
-    "Original",
-    "Spent",
-    "Remaining",
-  ];
-
-  const rows = grants.map((g) => [
-    g.organization,
-    g.category,
-    g.dateReceived.toLocaleDateString(),
-    g.toBeUsedBy.toLocaleDateString(),
-    g.email,
-    g.phoneNumber ?? "",
-    (g.notes ?? "").replace(/\n/g, " "),
-    g.originalAmount.toString(),
-    g.spentAmount.toString(),
-    g.remainingAmount.toString(),
-  ]);
-
-  const csvContent = [header, ...rows].map((r) => r.join(",")).join("\n");
-
-  const now = new Date();
-  const dateStr = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear().toString().slice(-2)}`;
-  const fileName = `grant_list_${dateStr}.csv`;
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", fileName);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
 
 function isGrantExpired(toBeUsedBy: Date): boolean {
   const today = new Date();
@@ -101,140 +53,71 @@ function isGrantExpired(toBeUsedBy: Date): boolean {
   return due < today;
 }
 
-// ------------------------------------------------------------
-// MAIN TABLE COMPONENT
-// ------------------------------------------------------------
-export const GrantsTable = () => {
-  const [localGrants, setLocalGrants] = React.useState<Grant[]>([]);
-
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-
-  const [page, setPage] = React.useState(1);
-  const [limit, setLimit] = React.useState<30 | 50 | 100>(30);
-  const [sortBy, setSortBy] = React.useState<
-    "totalAmount" | "endDate" | "createdAt" | "title"
-  >("createdAt");
-  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
-  /** Draft text in the search field (does not hit the API until Enter or Search). */
-  const [searchTitle, setSearchTitle] = React.useState("");
-  /** Committed filter sent to `grant.getGrants` as `title` (organization name). */
-  const [appliedTitle, setAppliedTitle] = React.useState("");
-  const [minAmountInput, setMinAmountInput] = React.useState("");
-  const [maxAmountInput, setMaxAmountInput] = React.useState("");
-  const [dueFromInput, setDueFromInput] = React.useState("");
-  const [dueToInput, setDueToInput] = React.useState("");
-  /** Committed filter values sent to the API — only updated on "Apply filters". */
-  const [appliedMinAmount, setAppliedMinAmount] = React.useState("");
-  const [appliedMaxAmount, setAppliedMaxAmount] = React.useState("");
-  const [appliedDueFrom, setAppliedDueFrom] = React.useState("");
-  const [appliedDueTo, setAppliedDueTo] = React.useState("");
-
-  const commitOrganizationSearch = React.useCallback(() => {
-    setAppliedTitle(searchTitle.trim());
-  }, [searchTitle]);
-
-  const applyFilters = React.useCallback(() => {
-    setAppliedMinAmount(minAmountInput);
-    setAppliedMaxAmount(maxAmountInput);
-    setAppliedDueFrom(dueFromInput);
-    setAppliedDueTo(dueToInput);
-  }, [minAmountInput, maxAmountInput, dueFromInput, dueToInput]);
-
-  React.useEffect(() => {
-    setPage(1);
-  }, [
-    appliedTitle,
-    appliedMinAmount,
-    appliedMaxAmount,
-    appliedDueFrom,
-    appliedDueTo,
-    sortBy,
-    sortOrder,
-    limit,
-  ]);
-
-  const hasAdvancedFilters = Boolean(
-    appliedMinAmount.trim() ||
-      appliedMaxAmount.trim() ||
-      appliedDueFrom ||
-      appliedDueTo,
+function mapDbGrant(g: DbGrant): Grant {
+  let meta: Record<string, unknown> = {};
+  try {
+    meta = g.description ? JSON.parse(g.description) : {};
+  } catch {
+    meta = { notes: g.description };
+  }
+  const toBeUsedBy = meta.toBeUsedBy
+    ? new Date(meta.toBeUsedBy as string | number | Date)
+    : new Date(g.endDate || g.createdAt);
+  const distributions = g.distributions ?? [];
+  const originalAmount = distributions.length
+    ? distributions.reduce(
+        (sum: number, d: { amount: { toString(): string } }) =>
+          sum + Number(d.amount?.toString?.() ?? d.amount ?? 0),
+        0,
+      )
+    : Number(g.totalAmount?.toString?.() ?? g.totalAmount ?? 0);
+  const spentAmount = distributions.reduce(
+    (sum: number, d: { spentAmount: { toString(): string } }) =>
+      sum + Number(d.spentAmount?.toString?.() ?? d.spentAmount ?? 0),
+    0,
   );
-
-  const clearAdvancedFilters = () => {
-    setMinAmountInput("");
-    setMaxAmountInput("");
-    setDueFromInput("");
-    setDueToInput("");
-    setAppliedMinAmount("");
-    setAppliedMaxAmount("");
-    setAppliedDueFrom("");
-    setAppliedDueTo("");
+  return {
+    id: String(g.id),
+    dbId: g.id,
+    fundPoolId: g.distributions?.[0]?.fundPool?.id ?? undefined,
+    organization: g.title,
+    category: String(meta.category ?? ""),
+    dateReceived: meta.dateReceived
+      ? new Date(meta.dateReceived as string | number | Date)
+      : new Date(g.createdAt),
+    toBeUsedBy,
+    email: String(meta.email ?? ""),
+    phoneNumber: String(meta.phoneNumber ?? ""),
+    notes: String(meta.notes ?? ""),
+    originalAmount,
+    spentAmount,
+    remainingAmount: originalAmount - spentAmount,
   };
+}
 
-  const queryInput = React.useMemo(() => {
-    const minRaw = appliedMinAmount.trim();
-    const maxRaw = appliedMaxAmount.trim();
-    const minN = minRaw === "" ? NaN : Number(minRaw);
-    const maxN = maxRaw === "" ? NaN : Number(maxRaw);
-    return {
-      page,
-      limit,
-      sortBy,
-      sortOrder,
-      title: appliedTitle || undefined,
-      minAmount: Number.isFinite(minN) && minN > 0 ? minN : undefined,
-      maxAmount: Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
-      startDate: appliedDueFrom
-        ? new Date(`${appliedDueFrom}T12:00:00`)
-        : undefined,
-      endDate: appliedDueTo ? new Date(`${appliedDueTo}T12:00:00`) : undefined,
-    };
-  }, [
-    page,
-    limit,
-    sortBy,
-    sortOrder,
-    appliedTitle,
-    appliedMinAmount,
-    appliedMaxAmount,
-    appliedDueFrom,
-    appliedDueTo,
-  ]);
+const SORT_FIELDS = [
+  { value: "createdAt" as const, label: "Date created" },
+  { value: "endDate" as const, label: "Due date" },
+  { value: "totalAmount" as const, label: "Amount" },
+  { value: "title" as const, label: "Organization (A–Z)" },
+];
+
+const EMPTY_FILTERS = { minAmount: "", maxAmount: "", dueFrom: "", dueTo: "" };
+
+export const GrantsTable = () => {
+  const tableState = useServerTableState<GrantSortBy>({
+    defaultSortBy: "createdAt",
+  });
+  const filters = useAdvancedFilters(EMPTY_FILTERS);
 
   const [addModalOpen, setAddModalOpen] = React.useState(false);
-
-  const utils = api.useContext();
-  const { data: session } = api.auth.getSession.useQuery();
-  const {
-    data: grantListResult,
-    isLoading,
-    isError,
-    isFetching,
-  } = api.grant.getGrants.useQuery(queryInput, {
-    retry: false,
-    refetchOnWindowFocus: false,
-    staleTime: 60_000,
-  });
-
-  const pagination = grantListResult?.pagination;
-  const dbGrants = grantListResult?.grants;
-
-  React.useEffect(() => {
-    if (!pagination || pagination.totalPages <= 0) return;
-    if (page > pagination.totalPages) setPage(pagination.totalPages);
-  }, [pagination, page]);
-
-  const { data: fundPools } = api.fundPool.getAll.useQuery(undefined, {
-    retry: false,
-    refetchOnWindowFocus: false,
-    // fundPool.getAll requires auth on the server. When unauthenticated
-    // this will be undefined; keep the default behavior but don't gate the
-    // grants table itself on session presence.
-  });
-
   const [addModalError, setAddModalError] = React.useState<string | null>(null);
+  const [rowErrors, setRowErrors] = React.useState<Record<string, string>>({});
+  const [editing, setEditing] = React.useState<{
+    rowId: string;
+    columnId: string;
+    value: unknown;
+  } | null>(null);
 
   // Inline add form state
   const [orgField, setOrgField] = React.useState("");
@@ -261,7 +144,78 @@ export const GrantsTable = () => {
     setSelectedPoolId(undefined);
   };
 
-  // default the selected pool to the first available pool when opening the inline add form
+  // Reset page when filters/sort change
+  React.useEffect(() => {
+    tableState.setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filters.applied.minAmount,
+    filters.applied.maxAmount,
+    filters.applied.dueFrom,
+    filters.applied.dueTo,
+    tableState.sortBy,
+    tableState.sortOrder,
+    tableState.limit,
+  ]);
+
+  const queryInput = React.useMemo(() => {
+    const minRaw = filters.applied.minAmount.trim();
+    const maxRaw = filters.applied.maxAmount.trim();
+    const minN = minRaw === "" ? NaN : Number(minRaw);
+    const maxN = maxRaw === "" ? NaN : Number(maxRaw);
+    return {
+      page: tableState.page,
+      limit: tableState.limit,
+      sortBy: tableState.sortBy,
+      sortOrder: tableState.sortOrder,
+      title: tableState.appliedSearch || undefined,
+      minAmount: Number.isFinite(minN) && minN > 0 ? minN : undefined,
+      maxAmount: Number.isFinite(maxN) && maxN > 0 ? maxN : undefined,
+      startDate: filters.applied.dueFrom
+        ? new Date(`${filters.applied.dueFrom}T12:00:00`)
+        : undefined,
+      endDate: filters.applied.dueTo
+        ? new Date(`${filters.applied.dueTo}T12:00:00`)
+        : undefined,
+    };
+  }, [
+    tableState.page,
+    tableState.limit,
+    tableState.sortBy,
+    tableState.sortOrder,
+    tableState.appliedSearch,
+    filters.applied,
+  ]);
+
+  const utils = api.useContext();
+  const { data: session } = api.auth.getSession.useQuery();
+
+  const {
+    data: grantListResult,
+    isLoading,
+    isError,
+    isFetching,
+  } = api.grant.getGrants.useQuery(queryInput, {
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  });
+
+  const pagination = grantListResult?.pagination;
+  const dbGrants = grantListResult?.grants;
+
+  React.useEffect(() => {
+    if (!pagination || pagination.totalPages <= 0) return;
+    if (tableState.page > pagination.totalPages)
+      tableState.setPage(pagination.totalPages);
+  }, [pagination, tableState.page]);
+
+  const { data: fundPools } = api.fundPool.getAll.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  // Seed default pool when add form opens
   React.useEffect(() => {
     if (
       addModalOpen &&
@@ -274,32 +228,55 @@ export const GrantsTable = () => {
     }
   }, [addModalOpen, fundPools]);
 
+  const localGrants = React.useMemo(
+    () => (dbGrants ?? []).map(mapDbGrant),
+    [dbGrants],
+  );
+
+  const invalidateAll = async () => {
+    await Promise.all([
+      utils.grant.getGrants.invalidate(),
+      utils.fundPool.getAll.invalidate(),
+      utils.fundPool.getTotalFunding.invalidate(),
+    ]);
+  };
+
   const createMutation = api.grant.create.useMutation({
     onSuccess: async () => {
-      await Promise.all([
-        utils.grant.getGrants.invalidate(),
-        utils.fundPool.getAll.invalidate(),
-        utils.fundPool.getTotalFunding.invalidate(),
-      ]);
+      await invalidateAll();
     },
-    onError: (err) => {
-      console.error("Create grant error:", err);
-      setAddModalError(err.message ?? "Error creating grant");
-    },
+    onError: (err) => setAddModalError(err.message ?? "Error creating grant"),
   });
 
   const updateMutation = api.grant.update.useMutation({
     onSuccess: async () => {
-      await Promise.all([
-        utils.grant.getGrants.invalidate(),
-        utils.fundPool.getAll.invalidate(),
-        utils.fundPool.getTotalFunding.invalidate(),
-      ]);
+      await invalidateAll();
+    },
+    onError: (err, _vars, _ctx) => {
+      // Invalidate to restore server state on update failure
+      void utils.grant.getGrants.invalidate();
+      setRowErrors((s) => ({
+        ...s,
+        [String(_vars.id)]: err?.message ?? "Failed to save",
+      }));
     },
   });
 
   const deleteMutation = api.grant.delete.useMutation({
-    onSuccess: async () => {
+    onMutate: async ({ id }) => {
+      await utils.grant.getGrants.cancel(queryInput);
+      const snapshot = utils.grant.getGrants.getData(queryInput);
+      utils.grant.getGrants.setData(queryInput, (old) =>
+        old ? { ...old, grants: old.grants.filter((g) => g.id !== id) } : old,
+      );
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot) {
+        utils.grant.getGrants.setData(queryInput, context.snapshot);
+      }
+    },
+    onSettled: async () => {
       await Promise.all([
         utils.grant.getGrants.invalidate(),
         utils.fundPool.getAll.invalidate(),
@@ -309,100 +286,43 @@ export const GrantsTable = () => {
     },
   });
 
-  const [rowErrors, setRowErrors] = React.useState<Record<string, string>>({});
-  const [editing, setEditing] = React.useState<{
-    rowId: string;
-    columnId: string;
-    value: unknown;
-  } | null>(null);
-  const previousSnapshotRef = React.useRef<Grant[] | null>(null);
-  React.useEffect(() => {
-    if (!dbGrants) return;
-
-    const mapped = dbGrants.map((g: DbGrant) => {
-      let meta: Record<string, unknown> = {};
-      try {
-        meta = g.description ? JSON.parse(g.description) : {};
-      } catch (e) {
-        meta = { notes: g.description };
-      }
-
-      const toBeUsedBy = meta.toBeUsedBy
-        ? new Date(meta.toBeUsedBy as string | number | Date)
-        : new Date(g.endDate || g.createdAt);
-      const distributions = g.distributions ?? [];
-      const originalAmount = distributions.length
-        ? distributions.reduce(
-            (sum: number, d: { amount: { toString(): string } }) =>
-              sum + Number(d.amount?.toString?.() ?? d.amount ?? 0),
-            0,
-          )
-        : Number(g.totalAmount?.toString?.() ?? g.totalAmount ?? 0);
-      const spentAmount = distributions.reduce(
-        (sum: number, d: { spentAmount: { toString(): string } }) =>
-          sum + Number(d.spentAmount?.toString?.() ?? d.spentAmount ?? 0),
-        0,
-      );
-
-      return {
-        id: String(g.id),
-        dbId: g.id,
-        fundPoolId: g.distributions?.[0]?.fundPool?.id ?? undefined,
-        organization: g.title,
-        category: String(meta.category ?? ""),
-        dateReceived: meta.dateReceived
-          ? new Date(meta.dateReceived as string | number | Date)
-          : new Date(g.createdAt),
-        toBeUsedBy,
-        email: String(meta.email ?? ""),
-        phoneNumber: String(meta.phoneNumber ?? ""),
-        notes: String(meta.notes ?? ""),
-        originalAmount,
-        spentAmount,
-        remainingAmount: originalAmount - spentAmount,
-      } as Grant;
-    });
-
-    setLocalGrants(mapped);
-  }, [dbGrants]);
-
-  // If there is no server data (for example because the user is signed out
-  // or the query is disabled), fall back to local mock data so the table
-  // always shows rows and the headers remain visible while adding items.
-  // No mock fallback: when unauthenticated there will be no grants to display.
-  // localGrants is populated only from server `dbGrants` above.
-
   const table = useReactTable<Grant>({
     data: localGrants,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      columnVisibility,
-      rowSelection,
-    },
   });
 
-  if (isLoading && !grantListResult) return <div>Loading...</div>;
-
-  if (isError) {
+  if (isLoading && !grantListResult) return <div>Loading…</div>;
+  if (isError)
     return (
       <div className="text-destructive">
         Could not load grants. Please try again.
       </div>
     );
-  }
+
+  const hasDraft = Boolean(
+    filters.draft.minAmount.trim() ||
+      filters.draft.maxAmount.trim() ||
+      filters.draft.dueFrom ||
+      filters.draft.dueTo,
+  );
+
+  const editableColumns = [
+    "organization",
+    "category",
+    "dateReceived",
+    "toBeUsedBy",
+    "email",
+    "phoneNumber",
+    "notes",
+    "originalAmount",
+  ];
 
   return (
     <div className="relative w-full">
-      {isFetching ? (
-        <div
-          className="pointer-events-none absolute inset-0 z-10 bg-background/40"
-          aria-hidden
-        />
-      ) : null}
-      {/* Top Messages (placeholder - mirrors clients) */}
+      {isFetching && <FetchingOverlay />}
+
+      {/* Stats banner */}
       <div className="border-t border-border -mx-8 px-8 py-4">
         <div className="flex flex-row items-start gap-10">
           <div className="flex flex-col">
@@ -418,8 +338,8 @@ export const GrantsTable = () => {
         </div>
       </div>
 
-      {/* Filter & sort */}
       <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
+        {/* Search row */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
             <label
@@ -432,12 +352,12 @@ export const GrantsTable = () => {
               <Input
                 id="grant-search"
                 placeholder="Search by organization…"
-                value={searchTitle}
-                onChange={(e) => setSearchTitle(e.target.value)}
+                value={tableState.draftSearch}
+                onChange={(e) => tableState.setDraftSearch(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    commitOrganizationSearch();
+                    tableState.commitSearch();
                   }
                 }}
                 className="min-w-0 flex-1"
@@ -446,212 +366,145 @@ export const GrantsTable = () => {
                 type="button"
                 variant="outline"
                 className="shrink-0 gap-2"
-                onClick={commitOrganizationSearch}
+                onClick={tableState.commitSearch}
               >
                 <Search className="h-4 w-4" aria-hidden />
                 Search
               </Button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "shrink-0 gap-2 border-none",
-                      hasAdvancedFilters && "border-[#45BAB8] bg-[#45BAB8]/10",
-                    )}
-                  >
-                    <ListFilter className="h-4 w-4" aria-hidden />
-                    Filter
-                    {hasAdvancedFilters ? (
-                      <span
-                        className="flex h-2 w-2 rounded-full bg-[#45BAB8]"
-                        aria-hidden
-                      />
-                    ) : null}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-80 p-0"
-                  align="start"
-                  side="bottom"
-                >
-                  <div className="border-b px-3 py-2">
-                    <p className="text-sm font-semibold">Filters</p>
-                    <p className="text-xs text-muted-foreground">
-                      Amount range and due date range
-                    </p>
+              <AdvancedFilterPopover
+                description="Amount range and due date range"
+                hasApplied={filters.hasApplied}
+                hasPending={filters.hasPending}
+                hasDraft={hasDraft}
+                onApply={() => {
+                  filters.apply();
+                  tableState.setPage(1);
+                }}
+                onClear={filters.clear}
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label
+                      className="text-xs text-muted-foreground"
+                      htmlFor="grant-min-amt"
+                    >
+                      Min amount
+                    </label>
+                    <Input
+                      id="grant-min-amt"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Min"
+                      value={filters.draft.minAmount}
+                      onChange={(e) =>
+                        filters.setDraft({ minAmount: e.target.value })
+                      }
+                    />
                   </div>
-                  <div className="flex flex-col gap-3 p-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label
-                          className="text-xs text-muted-foreground"
-                          htmlFor="grant-min-amt"
-                        >
-                          Min amount
-                        </label>
-                        <Input
-                          id="grant-min-amt"
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          placeholder="Min"
-                          value={minAmountInput}
-                          onChange={(e) => setMinAmountInput(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label
-                          className="text-xs text-muted-foreground"
-                          htmlFor="grant-max-amt"
-                        >
-                          Max amount
-                        </label>
-                        <Input
-                          id="grant-max-amt"
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          placeholder="Max"
-                          value={maxAmountInput}
-                          onChange={(e) => setMaxAmountInput(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label
-                          className="text-xs text-muted-foreground"
-                          htmlFor="grant-due-from"
-                        >
-                          Due from
-                        </label>
-                        <Input
-                          id="grant-due-from"
-                          type="date"
-                          className="w-full min-w-0"
-                          value={dueFromInput}
-                          onChange={(e) => setDueFromInput(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label
-                          className="text-xs text-muted-foreground"
-                          htmlFor="grant-due-to"
-                        >
-                          Due to
-                        </label>
-                        <Input
-                          id="grant-due-to"
-                          type="date"
-                          className="w-full min-w-0"
-                          value={dueToInput}
-                          onChange={(e) => setDueToInput(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground"
-                        onClick={clearAdvancedFilters}
-                        disabled={
-                          !hasAdvancedFilters &&
-                          !minAmountInput &&
-                          !maxAmountInput &&
-                          !dueFromInput &&
-                          !dueToInput
-                        }
-                      >
-                        Clear filters
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
-                        onClick={applyFilters}
-                      >
-                        Apply filters
-                      </Button>
-                    </div>
+                  <div className="flex flex-col gap-1">
+                    <label
+                      className="text-xs text-muted-foreground"
+                      htmlFor="grant-max-amt"
+                    >
+                      Max amount
+                    </label>
+                    <Input
+                      id="grant-max-amt"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Max"
+                      value={filters.draft.maxAmount}
+                      onChange={(e) =>
+                        filters.setDraft({ maxAmount: e.target.value })
+                      }
+                    />
                   </div>
-                </PopoverContent>
-              </Popover>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label
+                      className="text-xs text-muted-foreground"
+                      htmlFor="grant-due-from"
+                    >
+                      Due from
+                    </label>
+                    <Input
+                      id="grant-due-from"
+                      type="date"
+                      className="w-full min-w-0"
+                      value={filters.draft.dueFrom}
+                      onChange={(e) =>
+                        filters.setDraft({ dueFrom: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label
+                      className="text-xs text-muted-foreground"
+                      htmlFor="grant-due-to"
+                    >
+                      Due to
+                    </label>
+                    <Input
+                      id="grant-due-to"
+                      type="date"
+                      className="w-full min-w-0"
+                      value={filters.draft.dueTo}
+                      onChange={(e) =>
+                        filters.setDraft({ dueTo: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              </AdvancedFilterPopover>
             </div>
           </div>
         </div>
+
+        {/* Sort + actions row */}
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-xs text-muted-foreground"
-              htmlFor="grant-sort-by"
-            >
-              Sort by
-            </label>
-            <select
-              id="grant-sort-by"
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              value={sortBy}
-              onChange={(e) =>
-                setSortBy(
-                  e.target.value as
-                    | "totalAmount"
-                    | "endDate"
-                    | "createdAt"
-                    | "title",
-                )
-              }
-            >
-              <option value="createdAt">Date created</option>
-              <option value="endDate">Due date</option>
-              <option value="totalAmount">Amount</option>
-              <option value="title">Organization (A–Z)</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-xs text-muted-foreground"
-              htmlFor="grant-sort-order"
-            >
-              Order
-            </label>
-            <select
-              id="grant-sort-order"
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-            >
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-xs text-muted-foreground"
-              htmlFor="grant-page-size"
-            >
-              Rows per page
-            </label>
-            <select
-              id="grant-page-size"
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              value={limit}
-              onChange={(e) =>
-                setLimit(Number(e.target.value) as 30 | 50 | 100)
-              }
-            >
-              <option value={30}>30</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
+          <TableSortControls
+            sortFields={SORT_FIELDS}
+            sortBy={tableState.sortBy}
+            sortOrder={tableState.sortOrder}
+            onSortByChange={tableState.setSortBy}
+            onSortOrderChange={tableState.setSortOrder}
+          />
+
           <Button
             variant="ghost"
             className="ml-auto text-black hover:bg-transparent"
-            onClick={() => exportToCSV(localGrants)}
+            onClick={() =>
+              exportToCSV(
+                [
+                  "Organization",
+                  "Category",
+                  "Date Received",
+                  "To Be Used By",
+                  "Email",
+                  "Phone Number",
+                  "Notes",
+                  "Original",
+                  "Spent",
+                  "Remaining",
+                ],
+                localGrants.map((g) => [
+                  g.organization,
+                  g.category,
+                  g.dateReceived.toLocaleDateString(),
+                  g.toBeUsedBy.toLocaleDateString(),
+                  g.email,
+                  g.phoneNumber ?? "",
+                  (g.notes ?? "").replace(/\n/g, " "),
+                  g.originalAmount.toString(),
+                  g.spentAmount.toString(),
+                  g.remainingAmount.toString(),
+                ]),
+                "grant_list",
+              )
+            }
           >
             Export page
           </Button>
@@ -666,8 +519,6 @@ export const GrantsTable = () => {
           </Button>
         </div>
       </div>
-
-      {/* Inline add row will be rendered inside the table body to align under headers */}
 
       <div className="-mx-8">
         <Table>
@@ -688,7 +539,6 @@ export const GrantsTable = () => {
 
           <TableBody>
             {addModalOpen ? (
-              // render inline form as the first row so inputs align under headers
               <>
                 <TableRow className="bg-blue-50 hover:!bg-blue-50">
                   <TableCell className="bg-blue-50 p-1">
@@ -731,19 +581,17 @@ export const GrantsTable = () => {
                   <TableCell className="bg-blue-50 p-1">
                     <Input
                       type="date"
-                      placeholder="date received"
                       value={dateReceivedField}
                       onChange={(e) => setDateReceivedField(e.target.value)}
-                      className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                      className="w-full h-7 bg-white px-2"
                     />
                   </TableCell>
                   <TableCell className="bg-blue-50 p-1">
                     <Input
                       type="date"
-                      placeholder="to be used by"
                       value={toBeUsedByField}
                       onChange={(e) => setToBeUsedByField(e.target.value)}
-                      className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
+                      className="w-full h-7 bg-white px-2"
                     />
                   </TableCell>
                   <TableCell className="bg-blue-50 p-1">
@@ -779,7 +627,6 @@ export const GrantsTable = () => {
                       className="w-full h-7 bg-white placeholder:text-[#45BAB8] px-2"
                     />
                   </TableCell>
-                  {/* actions column placeholder to keep columns aligned and avoid white gap */}
                   <TableCell className="bg-blue-50 p-1" />
                 </TableRow>
 
@@ -790,7 +637,6 @@ export const GrantsTable = () => {
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1" />
-
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
@@ -803,7 +649,6 @@ export const GrantsTable = () => {
                         >
                           Cancel
                         </Button>
-
                         <Button
                           className="bg-[#45BAB8] text-white hover:bg-[#45BAB8] h-7 px-2"
                           onClick={async () => {
@@ -814,13 +659,11 @@ export const GrantsTable = () => {
                               );
                               return;
                             }
-
                             const poolId = selectedPoolId ?? fundPools?.[0]?.id;
                             if (!poolId) {
                               setAddModalError("Fund pool must be selected");
                               return;
                             }
-
                             try {
                               await createMutation.mutateAsync({
                                 organization: orgField,
@@ -846,7 +689,6 @@ export const GrantsTable = () => {
                         >
                           Save
                         </Button>
-
                         <Button
                           className="bg-[#45BAB8] text-white hover:bg-[#45BAB8] h-7 px-2"
                           onClick={async () => {
@@ -857,13 +699,11 @@ export const GrantsTable = () => {
                               );
                               return;
                             }
-
                             const poolId = selectedPoolId ?? fundPools?.[0]?.id;
                             if (!poolId) {
                               setAddModalError("Fund pool must be selected");
                               return;
                             }
-
                             try {
                               await createMutation.mutateAsync({
                                 organization: orgField,
@@ -876,7 +716,6 @@ export const GrantsTable = () => {
                                 amount: Number(amountField) || 0,
                                 fundPoolId: poolId,
                               });
-                              // keep the form open for another entry
                               resetInlineForm();
                             } catch (e: unknown) {
                               setAddModalError(
@@ -910,11 +749,9 @@ export const GrantsTable = () => {
                   }
                 >
                   {row.getVisibleCells().map((cell) => {
-                    // render actions column manually so we can inject delete handler
                     if (cell.column.id === "actions") {
                       return (
                         <TableCell key={cell.id}>
-                          {/* recreate the actions menu but with Delete wired */}
                           <div className="flex justify-end">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -929,10 +766,8 @@ export const GrantsTable = () => {
                                 </DropdownMenuLabel>
                                 <DropdownMenuItem
                                   onClick={() => {
-                                    // delete: optimistic UI handled by invalidation; show inline error on failure
                                     const dbId = row.original.dbId;
                                     if (!dbId) {
-                                      // can't delete a non-persisted mock row
                                       setRowErrors((s) => ({
                                         ...s,
                                         [row.original.id]:
@@ -940,34 +775,7 @@ export const GrantsTable = () => {
                                       }));
                                       return;
                                     }
-
-                                    previousSnapshotRef.current =
-                                      localGrants.slice();
-                                    // optimistic remove
-                                    setLocalGrants((prev) =>
-                                      prev.filter(
-                                        (r) => r.id !== row.original.id,
-                                      ),
-                                    );
-
-                                    deleteMutation.mutate(
-                                      { id: dbId },
-                                      {
-                                        onError: (err) => {
-                                          // revert
-                                          if (previousSnapshotRef.current)
-                                            setLocalGrants(
-                                              previousSnapshotRef.current,
-                                            );
-                                          setRowErrors((s) => ({
-                                            ...s,
-                                            [row.original.id]:
-                                              err?.message ??
-                                              "Failed to delete",
-                                          }));
-                                        },
-                                      },
-                                    );
+                                    deleteMutation.mutate({ id: dbId });
                                   }}
                                 >
                                   Delete
@@ -979,17 +787,6 @@ export const GrantsTable = () => {
                       );
                     }
 
-                    // default rendering with inline edit support for editable columns
-                    const editableColumns = [
-                      "organization",
-                      "category",
-                      "dateReceived",
-                      "toBeUsedBy",
-                      "email",
-                      "phoneNumber",
-                      "notes",
-                      "originalAmount",
-                    ];
                     if (editableColumns.includes(cell.column.id)) {
                       const isEditing =
                         editing?.rowId === row.original.id &&
@@ -1007,7 +804,6 @@ export const GrantsTable = () => {
                               ...s,
                               [row.original.id]: "",
                             }));
-                            // for category, seed editor with the fundPoolId; otherwise use the existing cell value
                             setEditing({
                               rowId: row.original.id,
                               columnId: cell.column.id,
@@ -1132,69 +928,21 @@ export const GrantsTable = () => {
                                 onClick={() => {
                                   if (!editing) return;
                                   const { rowId, columnId, value } = editing;
-                                  const prev = localGrants.slice();
-                                  previousSnapshotRef.current = prev;
-
-                                  if (columnId === "category") {
-                                    const chosenPoolId = Number(value);
-                                    const pool = fundPools?.find(
-                                      (p: FundPool) => p.id === chosenPoolId,
-                                    );
-                                    setLocalGrants((curr) =>
-                                      curr.map((r) =>
-                                        r.id === rowId
-                                          ? {
-                                              ...r,
-                                              category: pool?.category ?? "",
-                                              fundPoolId: chosenPoolId,
-                                            }
-                                          : r,
-                                      ),
-                                    );
-                                  } else if (columnId === "originalAmount") {
-                                    const nextOriginal = Number(value) || 0;
-                                    setLocalGrants((curr) =>
-                                      curr.map((r) =>
-                                        r.id === rowId
-                                          ? {
-                                              ...r,
-                                              originalAmount: nextOriginal,
-                                              remainingAmount:
-                                                nextOriginal - r.spentAmount,
-                                            }
-                                          : r,
-                                      ),
-                                    );
-                                  } else {
-                                    setLocalGrants((curr) =>
-                                      curr.map((r) =>
-                                        r.id === rowId
-                                          ? { ...r, [columnId]: value }
-                                          : r,
-                                      ),
-                                    );
-                                  }
-
-                                  // build payload for update mutation; include dbId if present
                                   const target = localGrants.find(
                                     (r) => r.id === rowId,
                                   );
                                   const dbId = target?.dbId;
                                   if (!dbId) {
-                                    // can't update mock-only row on server
                                     setRowErrors((s) => ({
                                       ...s,
                                       [rowId]: "Cannot update unsaved grant",
                                     }));
-                                    setLocalGrants(prev);
                                     setEditing(null);
                                     return;
                                   }
-
                                   const payload: UpdateGrantPayload = {
                                     id: dbId,
                                   };
-                                  // map columnId to server fields
                                   if (columnId === "organization")
                                     payload.organization = String(value);
                                   else if (columnId === "category") {
@@ -1203,11 +951,6 @@ export const GrantsTable = () => {
                                       (p: FundPool) => p.id === chosenPoolId,
                                     );
                                     if (!pool) {
-                                      // revert
-                                      if (previousSnapshotRef.current)
-                                        setLocalGrants(
-                                          previousSnapshotRef.current,
-                                        );
                                       setRowErrors((s) => ({
                                         ...s,
                                         [rowId]: "Selected fund pool not found",
@@ -1237,18 +980,6 @@ export const GrantsTable = () => {
                                     payload.amount = Number(value) || 0;
 
                                   updateMutation.mutate(payload, {
-                                    onError: (err) => {
-                                      // revert
-                                      if (previousSnapshotRef.current)
-                                        setLocalGrants(
-                                          previousSnapshotRef.current,
-                                        );
-                                      setRowErrors((s) => ({
-                                        ...s,
-                                        [rowId]:
-                                          err?.message ?? "Failed to save",
-                                      }));
-                                    },
                                     onSuccess: () => {
                                       setRowErrors((s) => ({
                                         ...s,
@@ -1256,20 +987,15 @@ export const GrantsTable = () => {
                                       }));
                                     },
                                   });
-
                                   setEditing(null);
                                 }}
                               >
                                 Save
                               </Button>
-
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  // cancel
-                                  setEditing(null);
-                                }}
+                                onClick={() => setEditing(null)}
                               >
                                 Cancel
                               </Button>
@@ -1300,14 +1026,7 @@ export const GrantsTable = () => {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colCount={columns.length} />
             )}
           </TableBody>
 
@@ -1315,44 +1034,12 @@ export const GrantsTable = () => {
         </Table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex flex-wrap items-center justify-between gap-2 py-4 px-8">
-        <p className="text-sm text-muted-foreground">
-          {pagination ? (
-            <>
-              Showing{" "}
-              {pagination.totalCount === 0
-                ? 0
-                : (pagination.currentPage - 1) * pagination.pageSize + 1}
-              –
-              {(pagination.currentPage - 1) * pagination.pageSize +
-                pagination.returnedCount}{" "}
-              of {pagination.totalCount} grants
-              {pagination.totalPages > 0
-                ? ` · Page ${pagination.currentPage} of ${pagination.totalPages}`
-                : null}
-            </>
-          ) : null}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={!pagination?.hasPreviousPage}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={!pagination?.hasNextPage}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <TablePagination
+        pagination={pagination}
+        limit={tableState.limit}
+        onPageChange={tableState.setPage}
+        onLimitChange={tableState.setLimit}
+      />
     </div>
   );
 };

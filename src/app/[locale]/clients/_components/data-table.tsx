@@ -230,8 +230,7 @@ export const ClientsTable = () => {
   const workers = React.useMemo(
     () =>
       (users ?? []).filter(
-        (u: ListedUser) =>
-          u.role === "InterventionTeam" || u.role === "Admin",
+        (u: ListedUser) => u.role === "InterventionTeam" || u.role === "Admin",
       ),
     [users],
   );

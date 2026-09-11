@@ -14,20 +14,21 @@ type UatPersona = {
 
 const PERSONAS: UatPersona[] = [
   {
-    email: process.env.UAT_ADMIN_EMAIL ?? "uat-admin@resiliencemtl.test",
+    email: process.env.UAT_ADMIN_EMAIL ?? "uat-admin+resilience@h4i.org",
     name: "UAT Admin",
     role: "Admin",
     supabaseIdEnv: "UAT_ADMIN_SUPABASE_ID",
   },
   {
     email:
-      process.env.UAT_BOOKKEEPER_EMAIL ?? "uat-bookkeeper@resiliencemtl.test",
+      process.env.UAT_BOOKKEEPER_EMAIL ?? "uat-bookkeeper+resilience@h4i.org",
     name: "UAT Bookkeeper",
     role: "Bookkeeper",
     supabaseIdEnv: "UAT_BOOKKEEPER_SUPABASE_ID",
   },
   {
-    email: process.env.UAT_WORKER_EMAIL ?? "uat-worker@resiliencemtl.test",
+    email:
+      process.env.UAT_WORKER_EMAIL ?? "uat-intervention+resilience@h4i.org",
     name: "UAT Worker",
     role: "InterventionTeam",
     supabaseIdEnv: "UAT_WORKER_SUPABASE_ID",

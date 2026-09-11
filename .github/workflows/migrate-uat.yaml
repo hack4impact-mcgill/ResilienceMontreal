@@ -1,0 +1,26 @@
+name: DB Migrate UAT
+
+on:
+  push:
+    branches: [uat]
+    paths:
+      - "prisma/**"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: uat
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - run: bun install --frozen-lockfile
+
+      - name: Apply migrations
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bunx prisma migrate deploy

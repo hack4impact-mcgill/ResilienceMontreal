@@ -7,7 +7,7 @@ setup("authenticate as worker", async ({ page }) => {
 
   if (!email || !password) {
     throw new Error(
-      "TEST_WORKER_EMAIL and TEST_WORKER_PASSWORD must be set in .env.local",
+      "TEST_WORKER_EMAIL and TEST_WORKER_PASSWORD must be set in .env",
     );
   }
 

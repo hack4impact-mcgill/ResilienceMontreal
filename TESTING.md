@@ -14,7 +14,7 @@ npx playwright install
 
 ### 2. Environment Variables
 
-You'll need specific environment variables to run the tests. These should be added to your `.env.local` file.
+You'll need specific environment variables to run the tests. Add them to your `.env` file.
 
 **Note: You can find these values in the Notion file for this project.**
 

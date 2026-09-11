@@ -8,7 +8,6 @@ jobs:
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
-    environment: dev
 
     steps:
       - name: Check Out
@@ -59,7 +58,6 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    environment: dev
 
     steps:
       - name: Check Out

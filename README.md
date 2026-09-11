@@ -32,7 +32,7 @@ Deployed dev: [https://resiliencemontreal.onrender.com](https://resiliencemontre
 
 Auto-deploys on push to `main`. Ask a tech lead for a Render team invite if you ever need to check the logs or restart a deployment. Env values are in Notion.
 
-Free tier sleeps after ~15 min idle. First load after idle may take ~30s. 
+Free tier sleeps after ~15 min idle. First load after idle may take ~30s.
 
 ## Contributing
 
@@ -52,10 +52,11 @@ Schema changes use Prisma migrations in `prisma/migrations/`. CI runs `migrate-c
 | 2 Feature   | migration branch | app code                                     | Second |
 
 **Workflow**
+
 > Note that Github now supports [stacked PRs](https://docs.github.com/en/pull-requests/how-tos/stacked-pull-requests). This can make it easier to track your work and you are encouraged to use them!
 
 1. Branch from `main` (e.g. `feat/add-grant-status-migration`).
-2. Run `bun run db:generate`, commit schema + migration, open PR 1 (migration only). 
+2. Run `bun run db:generate`, commit schema + migration, open PR 1 (migration only).
 3. Branch from that branch (e.g. `feat/add-grant-status-ui`).
 4. Implement the feature, open PR 2 with base set to the migration branch.
 5. Merge PR 1, rebase PR 2 onto `main` (or change its base to `main`), then merge PR 2.

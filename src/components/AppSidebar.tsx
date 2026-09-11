@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-import { UserRound } from "lucide-react";
+import { ChevronDown, KeyRound, LogOut, Users } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -74,6 +74,14 @@ export function AppSidebar() {
     0,
   );
 
+  const initials =
+    currentUser?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() ?? "?";
+
   const signOut = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -90,70 +98,93 @@ export function AppSidebar() {
                 className="
                   w-full
                   flex
-                  items-start
-                  gap-2
+                  items-center
+                  gap-3
                   px-3
-                  py-2
+                  py-2.5
                   mt-2
-                  rounded-md
+                  rounded-lg
                   text-left
+                  border border-border
+                  bg-muted/40
                   hover:bg-muted
                   transition-colors
                 "
               >
-                <UserRound size={26} />
-                <div className="text-xs leading-tight">
-                  <div>{currentUser?.name ?? "..."}</div>
-                  <div className="opacity-70">
+                {/* Initials avatar */}
+                <span
+                  className="
+                  flex-shrink-0
+                  inline-flex items-center justify-center
+                  w-8 h-8
+                  rounded-full
+                  bg-primary/10
+                  text-primary
+                  text-xs font-semibold
+                  select-none
+                "
+                >
+                  {initials}
+                </span>
+
+                {/* Name + role */}
+                <div className="flex-1 min-w-0 leading-tight">
+                  <div className="text-sm font-medium truncate">
+                    {currentUser?.name ?? "..."}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
                     {currentUser?.role ?? "Unassigned"}
                   </div>
                 </div>
+
+                {/* Dropdown affordance */}
+                <ChevronDown
+                  size={14}
+                  className="flex-shrink-0 text-muted-foreground"
+                />
               </button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent
               side="bottom"
               align="start"
-              sideOffset={2}
+              sideOffset={4}
               className="
-                w-[120%]
-                -ml-[1%]
-                rounded-none
+                w-[var(--radix-dropdown-menu-trigger-width)]
+                rounded-lg
                 bg-sidebar
-                shadow-none
-                border
-                border-border
-                px-0
-                py-0
+                shadow-md
+                border border-border
+                py-1
               "
             >
               <DropdownMenuItem
                 asChild
-                className="cursor-pointer flex items-center gap-2 px-3 py-1"
+                className="cursor-pointer flex items-center gap-2 px-3 py-2"
               >
                 <Link href="/admin/users">
-                  <UserRound size={16} />
+                  <Users size={15} className="text-muted-foreground" />
                   <span>People &amp; Permissions</span>
                 </Link>
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 asChild
-                className="cursor-pointer flex items-center gap-2 px-3 py-1"
+                className="cursor-pointer flex items-center gap-2 px-3 py-2"
               >
                 <Link href="/update-password">
-                  <UserRound size={16} />
+                  <KeyRound size={15} className="text-muted-foreground" />
                   <span>Change password</span>
                 </Link>
               </DropdownMenuItem>
 
-              <div className="h-px bg-border mx-3 my-1" />
+              <div className="h-px bg-border mx-2 my-1" />
 
               <DropdownMenuItem
-                className="cursor-pointer flex items-center gap-2 px-3 py-1"
+                className="cursor-pointer flex items-center gap-2 px-3 py-2 text-destructive focus:text-destructive"
                 onClick={signOut}
               >
-                <UserRound size={16} />
+                <LogOut size={15} />
                 <span>Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

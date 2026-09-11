@@ -20,7 +20,8 @@ const PERSONAS: UatPersona[] = [
     supabaseIdEnv: "UAT_ADMIN_SUPABASE_ID",
   },
   {
-    email: process.env.UAT_BOOKKEEPER_EMAIL ?? "uat-bookkeeper@resiliencemtl.test",
+    email:
+      process.env.UAT_BOOKKEEPER_EMAIL ?? "uat-bookkeeper@resiliencemtl.test",
     name: "UAT Bookkeeper",
     role: "Bookkeeper",
     supabaseIdEnv: "UAT_BOOKKEEPER_SUPABASE_ID",
@@ -115,10 +116,7 @@ async function seedGrants(fundPools: { id: number; category: string }[]) {
   const grantDefs = [
     {
       title: "City Housing Initiative",
-      description: grantDescription(
-        "Annual housing support grant",
-        "Housing",
-      ),
+      description: grantDescription("Annual housing support grant", "Housing"),
       totalAmount: new Prisma.Decimal(20000),
       status: "APPROVED" as const,
       fundPoolId: housing.id,
@@ -321,7 +319,9 @@ async function seedClients(workerSupabaseId: string) {
     created++;
   }
 
-  console.log(`  Clients: ${created} created (${clients.length} total defined)`);
+  console.log(
+    `  Clients: ${created} created (${clients.length} total defined)`,
+  );
 }
 
 async function seedExpenses() {

@@ -2,14 +2,13 @@
 
 ## Developer checklist
 
-- [ ] Get access to [Developer Onboarding](TODO) on Notion
-- [ ] Get Render access from a tech lead
+- [ ] Get access to [Developer Onboarding](https://app.notion.com/p/h4imcgill/Onboarding-3d80e5578cf581c38a62f35211e60a55) on Notion
 - [ ] Clone the repo and run `bun install`
 - [ ] Copy `.env` from Notion into the project root (do not commit)
 - [ ] Run `bunx prisma generate` and `bun run db:migrate`
 - [ ] Run `bun run dev` and open [http://localhost:3000](http://localhost:3000)
 - [ ] Read [Data tables](#data-tables) before changing list or table UI
-- [ ] Pick up a ticket, branch off `main`, open a PR, and assign a tech lead
+- [ ] Pick up a ticket, branch off `main`, open a PR, and assign a tech lead or senior developer
 
 Playwright test credentials go in `.env`. See [TESTING.md](TESTING.md).
 
@@ -31,9 +30,9 @@ For Docker: `bun run docker:up` (see [`docker-compose.yml`](docker-compose.yml))
 
 Deployed dev: [https://resiliencemontreal.onrender.com](https://resiliencemontreal.onrender.com)
 
-Auto-deploys on push to `main`. Ask a tech lead for a Render team invite. Env values are in Notion.
+Auto-deploys on push to `main`. Ask a tech lead for a Render team invite if you ever need to check the logs or restart a deployment. Env values are in Notion.
 
-Free tier sleeps after ~15 min idle. First load after idle may take ~30s.
+Free tier sleeps after ~15 min idle. First load after idle may take ~30s. 
 
 ## Contributing
 
@@ -53,9 +52,10 @@ Schema changes use Prisma migrations in `prisma/migrations/`. CI runs `migrate-c
 | 2 Feature   | migration branch | app code                                     | Second |
 
 **Workflow**
+> Note that Github now supports [stacked PRs](https://docs.github.com/en/pull-requests/how-tos/stacked-pull-requests). This can make it easier to track your work and you are encouraged to use them!
 
 1. Branch from `main` (e.g. `feat/add-grant-status-migration`).
-2. Run `bun run db:generate`, commit schema + migration, open PR 1 (migration only).
+2. Run `bun run db:generate`, commit schema + migration, open PR 1 (migration only). 
 3. Branch from that branch (e.g. `feat/add-grant-status-ui`).
 4. Implement the feature, open PR 2 with base set to the migration branch.
 5. Merge PR 1, rebase PR 2 onto `main` (or change its base to `main`), then merge PR 2.

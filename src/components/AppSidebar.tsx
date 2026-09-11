@@ -221,6 +221,7 @@ export function AppSidebar() {
                 alt="Logo"
                 width={150}
                 height={150}
+                style={{ height: "auto" }}
                 className="opacity-90"
               />
             </span>

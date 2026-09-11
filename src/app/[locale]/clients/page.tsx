@@ -1,16 +1,10 @@
 import { ClientsTable } from "./_components/data-table";
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from "@tanstack/react-query";
 import { redirect } from "next/navigation";
-import { api } from "~/trpc/react";
+import { api, HydrateClient } from "~/trpc/server";
 import { getServerAuthSession } from "~/server/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function ClientsPage() {
-  // Check user authentication and role
   const session = await getServerAuthSession();
 
   if (!session?.user?.email) {
@@ -24,19 +18,21 @@ export default async function ClientsPage() {
   if (!user || (user.role !== "InterventionTeam" && user.role !== "Admin")) {
     redirect("/unauthorized");
   }
-  const queryClient = new QueryClient();
 
-  await queryClient.prefetchQuery({
-    queryKey: ["clients"],
-    queryFn: () => api.clients.list.usePrefetchQuery(),
+  void api.clients.getClients.prefetch({
+    page: 1,
+    limit: 30,
+    sortBy: "createdAt",
+    sortOrder: "desc",
   });
+  void api.users.list.prefetch();
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
+    <HydrateClient>
       <div className="p-8">
         <h1 className="text-4xl mb-4">Clients</h1>
         <ClientsTable />
       </div>
-    </HydrationBoundary>
+    </HydrateClient>
   );
 }

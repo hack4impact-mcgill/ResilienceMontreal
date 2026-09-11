@@ -103,8 +103,10 @@ export function AppSidebar() {
               >
                 <UserRound size={26} />
                 <div className="text-xs leading-tight">
-                  <div>Firstname Familyname</div>
-                  <div className="opacity-70">Admin</div>
+                  <div>{currentUser?.name ?? "..."}</div>
+                  <div className="opacity-70">
+                    {currentUser?.role ?? "Unassigned"}
+                  </div>
                 </div>
               </button>
             </DropdownMenuTrigger>

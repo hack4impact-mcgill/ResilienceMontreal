@@ -3,8 +3,8 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
+import { signOut } from "@/app/[locale]/(auth)/actions";
 import { api } from "~/trpc/react";
-import { createClient } from "@/utils/supabase/client";
 
 import {
   Sidebar,
@@ -53,8 +53,6 @@ export function AppSidebar() {
   const router = useRouter();
   const [showUnauthorized, setShowUnauthorized] = React.useState(false);
 
-  const supabase = createClient();
-
   const { data: currentUser } = api.users.me.useQuery();
 
   const canViewFundPools =
@@ -81,12 +79,6 @@ export function AppSidebar() {
       .slice(0, 2)
       .join("")
       .toUpperCase() ?? "?";
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
 
   return (
     <Sidebar>
@@ -182,7 +174,7 @@ export function AppSidebar() {
 
               <DropdownMenuItem
                 className="cursor-pointer flex items-center gap-2 px-3 py-2 text-destructive focus:text-destructive"
-                onClick={signOut}
+                onClick={() => void signOut()}
               >
                 <LogOut size={15} />
                 <span>Logout</span>

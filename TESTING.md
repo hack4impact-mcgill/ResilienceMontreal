@@ -20,8 +20,8 @@ You'll need specific environment variables to run the tests. Add them to your `.
 
 ```env
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://vixxjsesqvihbugkqhlk.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_3hzM05Yj2SYBd-atzFMQIg_YiCDiDpW
+SUPABASE_URL=https://vixxjsesqvihbugkqhlk.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_3hzM05Yj2SYBd-atzFMQIg_YiCDiDpW
 
 # Test User Accounts (Obtain from Notion)
 TEST_USER_EMAIL="oualid.malak05@gmail.com"
@@ -31,7 +31,7 @@ TEST_WORKER_EMAIL="zhangkev20@gmail.com"
 TEST_WORKER_PASSWORD="ResilienceMTL"
 
 # Local App URL
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+APP_URL=http://localhost:3000
 ```
 
 ## 🧪 Running Tests

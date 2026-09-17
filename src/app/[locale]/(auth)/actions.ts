@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
+import { getAppUrl } from "@/utils/app-url";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -37,6 +38,9 @@ export async function signup(formData: FormData) {
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${getAppUrl()}/auth/confirm`,
+    },
   });
 
   if (authError) {

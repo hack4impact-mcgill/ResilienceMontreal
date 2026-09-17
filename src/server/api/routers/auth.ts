@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
-import { env } from "~/env";
+import { getAppUrl } from "~/utils/app-url";
 
 import {
   createTRPCRouter,
@@ -94,7 +94,13 @@ export const authRouter = createTRPCRouter({
           });
         }
 
-        const result = await supabase.auth.signUp({ email, password });
+        const result = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${getAppUrl()}/auth/confirm`,
+          },
+        });
         if (result.error) {
           // Provide more specific error messages
           let errorMessage = result.error.message;
@@ -225,7 +231,7 @@ export const authRouter = createTRPCRouter({
       try {
         const supabase = await createClient();
 
-        const redirectTo = `${env.NEXT_PUBLIC_APP_URL}/update-password`;
+        const redirectTo = `${getAppUrl()}/update-password`;
 
         const { error } = await supabase.auth.resetPasswordForEmail(
           input.email,

@@ -9,5 +9,5 @@ export function getAppUrl(): string {
     return `https://${process.env.VERCEL_URL}`;
   }
 
-  return env.NEXT_PUBLIC_APP_URL;
+  return env.APP_URL;
 }

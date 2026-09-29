@@ -21,6 +21,7 @@ export type ExpenseCreateData = {
   description: string;
   date: Date;
   invoiceUrl?: string;
+  clientId?: number;
 };
 
 export type CustomDistributionInput = {
@@ -200,6 +201,7 @@ export async function persistExpenseWithAllocations(
       description: input.description,
       date: input.date,
       invoiceUrl: input.invoiceUrl,
+      clientId: input.clientId,
     },
   });
 

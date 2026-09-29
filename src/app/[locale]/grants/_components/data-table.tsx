@@ -40,6 +40,8 @@ import { TablePagination } from "@/components/data-table/TablePagination";
 import { TableSortControls } from "@/components/data-table/TableSortControls";
 import { AdvancedFilterPopover } from "@/components/data-table/AdvancedFilterPopover";
 import { InlineFormRow } from "@/components/data-table/InlineFormRow";
+import { parseGrantMeta } from "@/lib/grant-meta";
+import { Link } from "@/i18n/navigation";
 
 type GrantSortBy = "totalAmount" | "endDate" | "createdAt" | "title";
 type FundPool = RouterOutputs["fundPool"]["getAll"][number];
@@ -55,12 +57,7 @@ function isGrantExpired(toBeUsedBy: Date): boolean {
 }
 
 function mapDbGrant(g: DbGrant): Grant {
-  let meta: Record<string, unknown> = {};
-  try {
-    meta = g.description ? JSON.parse(g.description) : {};
-  } catch {
-    meta = { notes: g.description };
-  }
+  const meta = parseGrantMeta(g.description);
   const toBeUsedBy = meta.toBeUsedBy
     ? new Date(meta.toBeUsedBy as string | number | Date)
     : new Date(g.endDate || g.createdAt);
@@ -303,9 +300,9 @@ export const GrantsTable = () => {
 
   const hasDraft = Boolean(
     filters.draft.minAmount.trim() ||
-      filters.draft.maxAmount.trim() ||
-      filters.draft.dueFrom ||
-      filters.draft.dueTo,
+    filters.draft.maxAmount.trim() ||
+    filters.draft.dueFrom ||
+    filters.draft.dueTo,
   );
 
   const editableColumns = [
@@ -728,6 +725,13 @@ export const GrantsTable = () => {
                                 <DropdownMenuLabel>
                                   Actions for {row.original.organization}
                                 </DropdownMenuLabel>
+                                {row.original.dbId ? (
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/grants/${row.original.dbId}`}>
+                                      View details
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ) : null}
                                 <DropdownMenuItem
                                   onClick={() => {
                                     const dbId = row.original.dbId;

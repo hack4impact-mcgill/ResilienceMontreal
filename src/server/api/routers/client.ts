@@ -306,4 +306,37 @@ export const clientRouter = createTRPCRouter({
         },
       };
     }),
+
+  // Client detail page: the client, their worker and linked expenses.
+  getById: interventionTeamProcedure
+    .input(z.object({ id: z.coerce.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const client = await ctx.db.client.findUnique({
+        where: { id: input.id },
+        include: {
+          worker: { select: { name: true, email: true, supabaseId: true } },
+          expenses: {
+            orderBy: { date: "desc" },
+            include: {
+              distributions: {
+                include: {
+                  grantDistribution: {
+                    include: {
+                      grant: { select: { id: true, title: true } },
+                      fundPool: { select: { id: true, category: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      return client;
+    }),
 });

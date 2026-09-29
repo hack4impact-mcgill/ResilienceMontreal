@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { EntityLink } from "@/components/detail-page";
 
 export type Expense = {
   id: number;
@@ -27,7 +29,11 @@ export const columns: ColumnDef<Expense>[] = [
   {
     accessorKey: "description",
     header: "DESCRIPTION",
-    cell: (info) => info.getValue(),
+    cell: ({ row }) => (
+      <EntityLink href={`/expenses/${row.original.id}`}>
+        {row.original.description}
+      </EntityLink>
+    ),
   },
   {
     accessorKey: "date",
@@ -91,7 +97,9 @@ export const columns: ColumnDef<Expense>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions for expense</DropdownMenuLabel>
-            <DropdownMenuItem>View expense details</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/expenses/${expense.id}`}>View expense details</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );

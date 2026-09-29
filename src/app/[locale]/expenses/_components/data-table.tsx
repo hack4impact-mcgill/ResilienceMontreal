@@ -97,6 +97,7 @@ const expenseSchema = z.object({
     .refine((val) => !val || z.string().url().safeParse(val).success, {
       message: "Invoice URL must be a valid URL",
     }),
+  clientId: z.string().optional(),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -157,6 +158,7 @@ const EMPTY_FORM: ExpenseFormData = {
   totalAmount: "",
   fundPoolId: "",
   invoiceUrl: "",
+  clientId: "",
 };
 
 export const ExpensesTable = () => {
@@ -243,6 +245,13 @@ export const ExpensesTable = () => {
     refetchOnWindowFocus: false,
   });
 
+  // Only Intervention Team / Admin can read clients; for other roles this
+  // query is forbidden and the client picker is simply not shown.
+  const { data: clients } = api.clients.list.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
   const createExpense = api.expenses.create.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -287,6 +296,9 @@ export const ExpensesTable = () => {
         totalAmount: parseFloat(form.formData.totalAmount),
         fundPoolId: Number(form.formData.fundPoolId),
         invoiceUrl: form.formData.invoiceUrl?.trim() || undefined,
+        clientId: form.formData.clientId
+          ? Number(form.formData.clientId)
+          : undefined,
       },
       {
         onSuccess: () => {
@@ -306,9 +318,9 @@ export const ExpensesTable = () => {
 
   const hasDraft = Boolean(
     filters.draft.minAmount.trim() ||
-      filters.draft.maxAmount.trim() ||
-      filters.draft.dateFrom ||
-      filters.draft.dateTo,
+    filters.draft.maxAmount.trim() ||
+    filters.draft.dateFrom ||
+    filters.draft.dateTo,
   );
 
   return (
@@ -627,6 +639,23 @@ export const ExpensesTable = () => {
                     <p className="text-xs text-muted-foreground">
                       No fund pools available
                     </p>
+                  )}
+                  {clients && (
+                    <select
+                      aria-label="Client"
+                      value={form.formData.clientId ?? ""}
+                      onChange={(e) =>
+                        form.setFormData({ clientId: e.target.value })
+                      }
+                      className="mt-2 w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9]"
+                    >
+                      <option value="">No client</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.firstName} {c.lastName}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </TableCell>
               </InlineFormRow>

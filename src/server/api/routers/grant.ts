@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   createTRPCRouter,
+  fundPoolReadProcedure,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
@@ -528,5 +529,32 @@ export const grantRouter = createTRPCRouter({
           returnedCount: grants.length,
         },
       };
+    }),
+
+  // Grant detail page: the grant, its per-fund-pool distributions and every
+  // expense allocated against it.
+  getById: fundPoolReadProcedure
+    .input(z.object({ id: z.coerce.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const grant = await ctx.db.grant.findUnique({
+        where: { id: input.id },
+        include: {
+          distributions: {
+            include: {
+              fundPool: { select: { id: true, category: true } },
+              expenseDistributions: {
+                include: { expense: true },
+                orderBy: { expense: { date: "desc" } },
+              },
+            },
+          },
+        },
+      });
+
+      if (!grant) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Grant not found" });
+      }
+
+      return grant;
     }),
 });

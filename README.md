@@ -26,14 +26,6 @@ bun install && bunx prisma generate && bun run dev
 
 For Docker: `bun run docker:up` (see [`docker-compose.yml`](docker-compose.yml)).
 
-## Render
-
-Deployed dev: [https://resiliencemontreal.onrender.com](https://resiliencemontreal.onrender.com)
-
-Auto-deploys on push to `main`. Ask a tech lead for a Render team invite if you ever need to check the logs or restart a deployment. Env values are in Notion.
-
-Free tier sleeps after ~15 min idle. First load after idle may take ~30s.
-
 ## Contributing
 
 When you pick up a ticket, branch off `main`, push your work, and open a PR. Assign a tech lead to review. Prettier runs on PRs.

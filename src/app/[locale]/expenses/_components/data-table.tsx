@@ -318,9 +318,9 @@ export const ExpensesTable = () => {
 
   const hasDraft = Boolean(
     filters.draft.minAmount.trim() ||
-    filters.draft.maxAmount.trim() ||
-    filters.draft.dateFrom ||
-    filters.draft.dateTo,
+      filters.draft.maxAmount.trim() ||
+      filters.draft.dateFrom ||
+      filters.draft.dateTo,
   );
 
   return (

@@ -300,9 +300,9 @@ export const GrantsTable = () => {
 
   const hasDraft = Boolean(
     filters.draft.minAmount.trim() ||
-    filters.draft.maxAmount.trim() ||
-    filters.draft.dueFrom ||
-    filters.draft.dueTo,
+      filters.draft.maxAmount.trim() ||
+      filters.draft.dueFrom ||
+      filters.draft.dueTo,
   );
 
   const editableColumns = [

@@ -529,4 +529,10 @@ export const grantRouter = createTRPCRouter({
         },
       };
     }),
+  checkExpiringGrants: publicProcedure
+    .query(async ({ ctx, input }) => {
+      
+    })
 });
+
+

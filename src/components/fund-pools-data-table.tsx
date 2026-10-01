@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 
 import { api } from "~/trpc/react";
+import { EntityLink } from "@/components/detail-page";
 
 interface FundPoolWithAmount {
   id: number;
@@ -280,7 +281,11 @@ export const FundPoolsDataTable = ({
     {
       accessorKey: "category",
       header: "CATEGORY",
-      cell: (info) => info.getValue(),
+      cell: ({ row }) => (
+        <EntityLink href={`/fund-pools/${row.original.id}`}>
+          {row.original.category}
+        </EntityLink>
+      ),
     },
     {
       accessorKey: "totalAllocated",

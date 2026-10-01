@@ -8,7 +8,13 @@ import {
   persistExpenseWithAllocations,
   validateCustomAllocations,
 } from "~/server/api/lib/expense-allocation";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { TRPCError } from "@trpc/server";
+import {
+  createTRPCRouter,
+  fundPoolReadProcedure,
+  interventionTeamProcedure,
+  protectedProcedure,
+} from "~/server/api/trpc";
 import { expenseListQuerySchema } from "~/lib/schemas/expense";
 
 const customDistributionSchema = z.object({
@@ -23,6 +29,7 @@ const createExpenseInputSchema = z
     description: z.string().min(1),
     date: z.coerce.date(),
     invoiceUrl: z.string().url().optional(),
+    clientId: z.coerce.number().int().positive().optional(),
     customDistributions: z.array(customDistributionSchema).optional(),
   })
   .refine(
@@ -46,6 +53,19 @@ export const expensesRouter = createTRPCRouter({
       const totalAmount = new Prisma.Decimal(String(input.totalAmount));
       const now = new Date();
 
+      if (input.clientId !== undefined) {
+        const client = await ctx.db.client.findUnique({
+          where: { id: input.clientId },
+          select: { id: true },
+        });
+        if (!client) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected client does not exist",
+          });
+        }
+      }
+
       const allocations = input.customDistributions?.length
         ? await validateCustomAllocations(ctx.db, {
             fundPoolId: input.fundPoolId,
@@ -66,6 +86,7 @@ export const expensesRouter = createTRPCRouter({
             description: input.description,
             date: input.date,
             invoiceUrl: input.invoiceUrl,
+            clientId: input.clientId,
           },
           allocations,
         ),
@@ -151,5 +172,85 @@ export const expensesRouter = createTRPCRouter({
           returnedCount: expenses.length,
         },
       };
+    }),
+
+  // Expense detail page: the expense, its grant/fund pool allocations and,
+  // for roles allowed to see client data, the linked client.
+  getById: fundPoolReadProcedure
+    .input(z.object({ id: z.coerce.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const expense = await ctx.db.expense.findUnique({
+        where: { id: input.id },
+        include: {
+          distributions: {
+            include: {
+              grantDistribution: {
+                include: {
+                  grant: { select: { id: true, title: true, endDate: true } },
+                  fundPool: { select: { id: true, category: true } },
+                },
+              },
+            },
+          },
+          client: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      if (!expense) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found",
+        });
+      }
+
+      const canViewClient =
+        ctx.userRole === "InterventionTeam" || ctx.userRole === "Admin";
+
+      return {
+        ...expense,
+        client: canViewClient ? expense.client : null,
+        hasClient: expense.clientId !== null,
+        canViewClient,
+      };
+    }),
+
+  // Link (or unlink with clientId: null) an existing expense to a client.
+  setClient: interventionTeamProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        clientId: z.number().int().positive().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const expense = await ctx.db.expense.findUnique({
+        where: { id: input.id },
+        select: { id: true },
+      });
+      if (!expense) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found",
+        });
+      }
+
+      if (input.clientId !== null) {
+        const client = await ctx.db.client.findUnique({
+          where: { id: input.clientId },
+          select: { id: true },
+        });
+        if (!client) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected client does not exist",
+          });
+        }
+      }
+
+      return ctx.db.expense.update({
+        where: { id: input.id },
+        data: { clientId: input.clientId },
+        select: { id: true, clientId: true },
+      });
     }),
 });

@@ -9,7 +9,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { ArrowUpRight, MoreHorizontal } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 
 function isGrantExpired(toBeUsedBy: Date): boolean {
   const today = new Date();
@@ -47,7 +48,22 @@ export const columns: ColumnDef<Grant>[] = [
   {
     accessorKey: "organization",
     header: "ORGANIZATION",
-    cell: (info) => info.getValue(),
+    // The name itself stays double-click editable; the icon opens the detail page.
+    cell: ({ row }) => (
+      <div className="flex items-center gap-1">
+        <span>{row.original.organization}</span>
+        {row.original.dbId ? (
+          <Link
+            href={`/grants/${row.original.dbId}`}
+            className="text-[#3FA9A9] hover:text-foreground"
+            aria-label={`View details for ${row.original.organization}`}
+            title="View details"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        ) : null}
+      </div>
+    ),
   },
   {
     accessorKey: "category",
@@ -139,7 +155,11 @@ export const columns: ColumnDef<Grant>[] = [
             <DropdownMenuLabel>
               Actions for {grant.organization}
             </DropdownMenuLabel>
-            <DropdownMenuItem>View grant details</DropdownMenuItem>
+            {grant.dbId ? (
+              <DropdownMenuItem asChild>
+                <Link href={`/grants/${grant.dbId}`}>View grant details</Link>
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       );

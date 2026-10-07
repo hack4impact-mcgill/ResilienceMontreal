@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { EntityLink } from "@/components/detail-page";
 
 export type BackendClient = {
   id: number;
@@ -61,12 +63,20 @@ export const createColumns = (
   {
     accessorKey: "firstName",
     header: "FIRST NAME",
-    cell: (info) => info.getValue(),
+    cell: ({ row }) => (
+      <EntityLink href={`/clients/${row.original.id}`}>
+        {row.original.firstName}
+      </EntityLink>
+    ),
   },
   {
     accessorKey: "lastName",
     header: "LAST NAME",
-    cell: (info) => info.getValue(),
+    cell: ({ row }) => (
+      <EntityLink href={`/clients/${row.original.id}`}>
+        {row.original.lastName}
+      </EntityLink>
+    ),
   },
   {
     accessorKey: "email",
@@ -125,8 +135,8 @@ export const createColumns = (
             <DropdownMenuItem onClick={() => onDelete(client.id)}>
               Delete client
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => alert("View details coming soon")}>
-              View details
+            <DropdownMenuItem asChild>
+              <Link href={`/clients/${client.id}`}>View details</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

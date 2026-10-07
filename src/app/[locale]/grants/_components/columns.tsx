@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal } from "lucide-react";
 import { ArrowUpRight, MoreHorizontal } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 

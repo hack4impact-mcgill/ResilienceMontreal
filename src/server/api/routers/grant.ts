@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   createTRPCRouter,
-  fundPoolReadProcedure,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
@@ -533,7 +532,7 @@ export const grantRouter = createTRPCRouter({
 
   // Grant detail page: the grant, its per-fund-pool distributions and every
   // expense allocated against it.
-  getById: fundPoolReadProcedure
+  getById: publicProcedure
     .input(z.object({ id: z.coerce.number().int().positive() }))
     .query(async ({ ctx, input }) => {
       const grant = await ctx.db.grant.findUnique({

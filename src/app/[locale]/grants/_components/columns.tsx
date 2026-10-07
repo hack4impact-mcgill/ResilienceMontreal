@@ -1,6 +1,7 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, Row, Table } from "@tanstack/react-table";
+import { useTranslations } from "next-intl";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowUpRight, MoreHorizontal } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
@@ -44,7 +46,54 @@ const formatMoney = (amount: number) =>
     maximumFractionDigits: 2,
   })}`;
 
+// Table cells have almost no padding and drop right padding around checkboxes,
+// so this wrapper adds the gap between the checkbox and the Organization column.
+function CheckboxCell({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center pr-4">{children}</div>;
+}
+
+function SelectAllCheckbox({ table }: { table: Table<Grant> }) {
+  const t = useTranslations("grants");
+  return (
+    <CheckboxCell>
+      <Checkbox
+        aria-label={t("selectAllRows")}
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+      />
+    </CheckboxCell>
+  );
+}
+
+function SelectRowCheckbox({ row }: { row: Row<Grant> }) {
+  const t = useTranslations("grants");
+  return (
+    <CheckboxCell>
+      <Checkbox
+        aria-label={t("selectRow", {
+          organization: row.original.organization,
+        })}
+        checked={row.getIsSelected()}
+        disabled={!row.getCanSelect()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        // keep clicks from starting the cell's double-click edit
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      />
+    </CheckboxCell>
+  );
+}
+
 export const columns: ColumnDef<Grant>[] = [
+  {
+    id: "select",
+    enableHiding: true,
+    header: SelectAllCheckbox,
+    cell: SelectRowCheckbox,
+  },
   {
     accessorKey: "organization",
     header: "ORGANIZATION",

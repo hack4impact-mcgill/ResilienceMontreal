@@ -1,11 +1,13 @@
 import { z } from "zod";
 import {
   createTRPCRouter,
+  fundPoolReadProcedure,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
 import { Prisma } from "~/generated/prisma/client";
 import {
+  bulkUpdateGrantCategorySchema,
   createGrantFullSchema,
   updateGrantFullSchema,
   grantQuerySchema,
@@ -386,6 +388,118 @@ export const grantRouter = createTRPCRouter({
           include: grantInclude,
         });
         return updated;
+      });
+    }),
+
+  // bulkUpdateCategory - move selected grants to one fund pool, all or nothing.
+  // Same rules as changing the category on a single grant in update, with grouped queries.
+  bulkUpdateCategory: fundPoolReadProcedure
+    .input(bulkUpdateGrantCategorySchema)
+    .mutation(async ({ ctx, input }) => {
+      const ids = [...new Set(input.ids)];
+      const targetPoolId = input.fundPoolId;
+
+      return await ctx.db.$transaction(async (tx) => {
+        const targetPool = await tx.fundPool.findUnique({
+          where: { id: targetPoolId },
+        });
+        if (!targetPool)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Fund pool not found",
+          });
+
+        const grants = await tx.grant.findMany({
+          where: { id: { in: ids } },
+          select: {
+            id: true,
+            title: true,
+            totalAmount: true,
+            distributions: {
+              select: { id: true, fundPoolId: true, amount: true },
+            },
+          },
+        });
+        if (grants.length !== ids.length)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "One or more grants not found",
+          });
+
+        const split = grants.filter((g) => g.distributions.length > 1);
+        if (split.length > 0)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Multiple distributions found for grant (splitting not supported): ${split.map((g) => g.title).join(", ")}`,
+          });
+
+        const moveIds: number[] = [];
+        const toCreate: { grantId: number; amount: Prisma.Decimal }[] = [];
+        // amount leaving each source pool, keyed by pool id
+        const outflows = new Map<number, Prisma.Decimal>();
+        let inflow = new Prisma.Decimal(0);
+        let unchangedCount = 0;
+
+        for (const grant of grants) {
+          const dist = grant.distributions[0];
+          if (!dist) {
+            toCreate.push({ grantId: grant.id, amount: grant.totalAmount });
+            inflow = inflow.plus(grant.totalAmount);
+          } else if (dist.fundPoolId === targetPoolId) {
+            unchangedCount++;
+          } else {
+            moveIds.push(dist.id);
+            inflow = inflow.plus(dist.amount);
+            // uncategorized (pool deleted): nothing to take out of a source pool
+            if (dist.fundPoolId != null) {
+              const prev =
+                outflows.get(dist.fundPoolId) ?? new Prisma.Decimal(0);
+              outflows.set(dist.fundPoolId, prev.plus(dist.amount));
+            }
+          }
+        }
+
+        // check and subtract in one statement so concurrent edits can't both pass
+        for (const [poolId, amount] of outflows) {
+          const { count } = await tx.fundPool.updateMany({
+            where: { id: poolId, amount: { gte: amount } },
+            data: { amount: { decrement: amount } },
+          });
+          if (count === 0)
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "Insufficient amount in source fund pool to remove",
+            });
+        }
+
+        if (inflow.gt(0)) {
+          await tx.fundPool.update({
+            where: { id: targetPoolId },
+            data: { amount: { increment: inflow } },
+          });
+        }
+
+        if (moveIds.length > 0) {
+          await tx.grantDistribution.updateMany({
+            where: { id: { in: moveIds } },
+            data: { fundPoolId: targetPoolId },
+          });
+        }
+
+        if (toCreate.length > 0) {
+          await tx.grantDistribution.createMany({
+            data: toCreate.map((row) => ({
+              grantId: row.grantId,
+              fundPoolId: targetPoolId,
+              amount: row.amount,
+            })),
+          });
+        }
+
+        return {
+          movedCount: moveIds.length + toCreate.length,
+          unchangedCount,
+        };
       });
     }),
 

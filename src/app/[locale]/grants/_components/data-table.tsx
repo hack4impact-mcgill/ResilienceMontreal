@@ -4,8 +4,11 @@ import * as React from "react";
 import {
   flexRender,
   getCoreRowModel,
+  RowSelectionState,
   useReactTable,
 } from "@tanstack/react-table";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { CirclePlus, MoreHorizontal, Search } from "lucide-react";
 
@@ -79,7 +82,8 @@ function mapDbGrant(g: DbGrant): Grant {
     dbId: g.id,
     fundPoolId: g.distributions?.[0]?.fundPool?.id ?? undefined,
     organization: g.title,
-    category: String(meta.category ?? ""),
+    category:
+      g.distributions?.[0]?.fundPool?.category ?? String(meta.category ?? ""),
     dateReceived: meta.dateReceived
       ? new Date(meta.dateReceived as string | number | Date)
       : new Date(g.createdAt),
@@ -103,6 +107,7 @@ const SORT_FIELDS = [
 const EMPTY_FILTERS = { minAmount: "", maxAmount: "", dueFrom: "", dueTo: "" };
 
 export const GrantsTable = () => {
+  const t = useTranslations("grants");
   const tableState = useServerTableState<GrantSortBy>({
     defaultSortBy: "createdAt",
   });
@@ -111,6 +116,10 @@ export const GrantsTable = () => {
   const [addModalOpen, setAddModalOpen] = React.useState(false);
   const [addModalError, setAddModalError] = React.useState<string | null>(null);
   const [rowErrors, setRowErrors] = React.useState<Record<string, string>>({});
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [bulkPoolId, setBulkPoolId] = React.useState<number | undefined>(
+    undefined,
+  );
   const [editing, setEditing] = React.useState<{
     rowId: string;
     columnId: string;
@@ -185,8 +194,19 @@ export const GrantsTable = () => {
     filters.applied,
   ]);
 
+  // Selection only covers rows on screen, so clear it when the page, filters, sort or search change
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [queryInput]);
+
   const utils = api.useContext();
   const { data: session } = api.auth.getSession.useQuery();
+  const { data: currentUser } = api.users.me.useQuery();
+  // same roles that can load fund pools (and so change a grant's category)
+  const canBulkEdit =
+    currentUser?.role === "Admin" ||
+    currentUser?.role === "Bookkeeper" ||
+    currentUser?.role === "InterventionTeam";
 
   const {
     data: grantListResult,
@@ -260,6 +280,20 @@ export const GrantsTable = () => {
     },
   });
 
+  const bulkCategoryMutation = api.grant.bulkUpdateCategory.useMutation({
+    onSuccess: async ({ movedCount }) => {
+      setRowSelection({});
+      setBulkPoolId(undefined);
+      toast.success(t("bulkMoved", { count: movedCount }));
+      await Promise.all([
+        utils.grant.getGrants.invalidate(),
+        utils.fundPool.getAll.invalidate(),
+        utils.fundPool.getUncategorized.invalidate(),
+      ]);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const deleteMutation = api.grant.delete.useMutation({
     onMutate: async ({ id }) => {
       await utils.grant.getGrants.cancel(queryInput);
@@ -288,7 +322,17 @@ export const GrantsTable = () => {
     data: localGrants,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.id,
+    enableRowSelection: canBulkEdit,
+    state: { rowSelection, columnVisibility: { select: canBulkEdit } },
+    onRowSelectionChange: setRowSelection,
   });
+
+  const visibleColCount = table.getVisibleLeafColumns().length;
+  const selectedGrantIds = table
+    .getSelectedRowModel()
+    .rows.map((row) => row.original.dbId)
+    .filter((id): id is number => id !== undefined);
 
   if (isLoading && !grantListResult) return <div>Loading…</div>;
   if (isError)
@@ -319,22 +363,6 @@ export const GrantsTable = () => {
   return (
     <div className="relative w-full">
       {isFetching && <FetchingOverlay />}
-
-      {/* Stats banner */}
-      <div className="border-t border-border -mx-8 px-8 py-4">
-        <div className="flex flex-row items-start gap-10">
-          <div className="flex flex-col">
-            <span className="text-green-600 font-bold text-2xl">$0000</span>
-            <span className="text-black text-sm -mt-1">available</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-red-600 font-bold text-2xl">X days</span>
-            <span className="text-black text-sm -mt-1">
-              until next grant is due
-            </span>
-          </div>
-        </div>
-      </div>
 
       <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
         {/* Search row */}
@@ -516,6 +544,65 @@ export const GrantsTable = () => {
             <CirclePlus /> Add Grant
           </Button>
         </div>
+
+        {selectedGrantIds.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-md bg-muted px-3 py-2">
+            <label
+              className="text-sm text-muted-foreground"
+              htmlFor="grant-bulk-category"
+            >
+              {t.rich("changeCategoryOfSelected", {
+                count: selectedGrantIds.length,
+                count_text: (chunks) => (
+                  <span className="font-medium text-foreground">{chunks}</span>
+                ),
+              })}
+            </label>
+            <select
+              id="grant-bulk-category"
+              value={bulkPoolId ?? ""}
+              onChange={(e) =>
+                setBulkPoolId(
+                  e.target.value ? Number(e.target.value) : undefined,
+                )
+              }
+              className="h-7 rounded-md bg-white px-2"
+            >
+              <option value="">{t("chooseCategory")}</option>
+              {fundPools?.map((p: FundPool) => (
+                <option key={p.id} value={p.id}>
+                  {p.category}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              className="h-7"
+              disabled={
+                bulkPoolId === undefined || bulkCategoryMutation.isPending
+              }
+              onClick={() => {
+                if (bulkPoolId === undefined) return;
+                bulkCategoryMutation.mutate({
+                  ids: selectedGrantIds,
+                  fundPoolId: bulkPoolId,
+                });
+              }}
+            >
+              {bulkCategoryMutation.isPending ? t("applying") : t("apply")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto text-destructive hover:text-destructive"
+              onClick={() => setRowSelection({})}
+            >
+              {t("clearSelection")}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="-mx-8">
@@ -538,7 +625,7 @@ export const GrantsTable = () => {
           <TableBody>
             {addModalOpen ? (
               <InlineFormRow
-                colCount={columns.length}
+                colCount={visibleColCount}
                 className="bg-blue-50 hover:!bg-blue-50"
                 onSave={async () => {
                   setAddModalError(null);
@@ -609,6 +696,7 @@ export const GrantsTable = () => {
                 isSaving={createMutation.isPending}
                 error={addModalError}
               >
+                {canBulkEdit ? <TableCell className="bg-blue-50 p-1" /> : null}
                 <TableCell className="bg-blue-50 p-1">
                   <Input
                     placeholder="organization name"
@@ -703,6 +791,7 @@ export const GrantsTable = () => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.original.id}
+                  data-state={row.getIsSelected() ? "selected" : undefined}
                   className={
                     isGrantExpired(row.original.toBeUsedBy)
                       ? "bg-muted/30"
@@ -994,7 +1083,7 @@ export const GrantsTable = () => {
                 </TableRow>
               ))
             ) : (
-              <TableEmptyRow colCount={columns.length} />
+              <TableEmptyRow colCount={visibleColCount} />
             )}
           </TableBody>
 

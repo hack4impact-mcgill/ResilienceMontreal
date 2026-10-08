@@ -42,7 +42,7 @@ const navItems: {
   titleKey: "dashboard" | "grants" | "expenses" | "clients";
   url: string;
 }[] = [
-  { titleKey: "dashboard", url: "/" },
+  { titleKey: "dashboard", url: "/dashboard" },
   { titleKey: "grants", url: "/grants" },
   { titleKey: "expenses", url: "/expenses" },
   { titleKey: "clients", url: "/clients" },

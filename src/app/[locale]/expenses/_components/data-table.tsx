@@ -5,6 +5,8 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
+  type Cell,
+  type Row,
 } from "@tanstack/react-table";
 import { CirclePlus, Search } from "lucide-react";
 import { z } from "zod";
@@ -173,6 +175,12 @@ export const ExpensesTable = () => {
     null,
   );
   const [groupByPool, setGroupByPool] = React.useState(false);
+  const [rowErrors, setRowErrors] = React.useState<Record<string, string>>({});
+  const [editing, setEditing] = React.useState<{
+    rowId: number;
+    columnId: string;
+    value: unknown;
+  } | null>(null);
 
   // Reset page when filters change
   React.useEffect(() => {
@@ -264,6 +272,24 @@ export const ExpensesTable = () => {
     },
   });
 
+  const updateExpense = api.expenses.update.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.expenses.list.invalidate(),
+        utils.fundPool.getAll.invalidate(),
+        utils.grant.getAll.invalidate(),
+      ]);
+    },
+    onError: (err, vars) => {
+      // Invalidate to restore server state on update failure
+      void utils.expenses.list.invalidate();
+      setRowErrors((s) => ({
+        ...s,
+        [String(vars.id)]: err?.message ?? "Failed to save",
+      }));
+    },
+  });
+
   const localExpenses: Expense[] = React.useMemo(
     () => (listData?.expenses ?? []).map(mapExpenseRow),
     [listData?.expenses],
@@ -322,6 +348,205 @@ export const ExpensesTable = () => {
       filters.draft.dateFrom ||
       filters.draft.dateTo,
   );
+
+  const editableColumns = ["description", "date", "totalAmount", "invoiceUrl"];
+
+  const startCellEdit = (row: Row<Expense>, columnId: string) => {
+    setRowErrors((s) => ({ ...s, [String(row.original.id)]: "" }));
+    setEditing({
+      rowId: row.original.id,
+      columnId,
+      value: row.original[columnId as keyof Expense],
+    });
+  };
+
+  const saveInlineEdit = () => {
+    if (!editing) return;
+    const { rowId, columnId, value } = editing;
+    const target = localExpenses.find((r) => r.id === rowId);
+    if (!target) {
+      setEditing(null);
+      return;
+    }
+
+    if (columnId === "description") {
+      const v = String(value ?? "").trim();
+      if (!v) {
+        setRowErrors((s) => ({
+          ...s,
+          [String(rowId)]: "Description is required",
+        }));
+        return;
+      }
+      updateExpense.mutate(
+        { id: rowId, description: v },
+        {
+          onSuccess: () => setRowErrors((s) => ({ ...s, [String(rowId)]: "" })),
+        },
+      );
+    } else if (columnId === "date") {
+      const d = value instanceof Date ? value : new Date(String(value));
+      if (Number.isNaN(d.getTime())) {
+        setRowErrors((s) => ({ ...s, [String(rowId)]: "Invalid date" }));
+        return;
+      }
+      updateExpense.mutate(
+        { id: rowId, date: d },
+        {
+          onSuccess: () => setRowErrors((s) => ({ ...s, [String(rowId)]: "" })),
+        },
+      );
+    } else if (columnId === "totalAmount") {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) {
+        setRowErrors((s) => ({
+          ...s,
+          [String(rowId)]: "Amount must be a positive number",
+        }));
+        return;
+      }
+      updateExpense.mutate(
+        { id: rowId, totalAmount: n },
+        {
+          onSuccess: () => setRowErrors((s) => ({ ...s, [String(rowId)]: "" })),
+        },
+      );
+    } else if (columnId === "invoiceUrl") {
+      const v = String(value ?? "").trim();
+      if (v !== "") {
+        try {
+          // Throws on invalid URL
+          new URL(v);
+        } catch {
+          setRowErrors((s) => ({
+            ...s,
+            [String(rowId)]: "Invoice URL must be a valid URL",
+          }));
+          return;
+        }
+      }
+      updateExpense.mutate(
+        // Empty string clears the invoice URL (backend normalizes to null)
+        { id: rowId, invoiceUrl: v },
+        {
+          onSuccess: () => setRowErrors((s) => ({ ...s, [String(rowId)]: "" })),
+        },
+      );
+    } else {
+      setEditing(null);
+      return;
+    }
+
+    setEditing(null);
+  };
+
+  const renderExpenseCell = (
+    row: Row<Expense>,
+    cell: Cell<Expense, unknown>,
+  ) => {
+    if (cell.column.id === "actions") {
+      return (
+        <TableCell key={cell.id}>
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </TableCell>
+      );
+    }
+
+    if (!editableColumns.includes(cell.column.id)) {
+      return (
+        <TableCell key={cell.id}>
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </TableCell>
+      );
+    }
+
+    const isEditing =
+      editing?.rowId === row.original.id &&
+      editing?.columnId === cell.column.id;
+    const display = flexRender(cell.column.columnDef.cell, cell.getContext());
+
+    if (!isEditing) {
+      return (
+        <TableCell
+          key={cell.id}
+          onDoubleClick={() => startCellEdit(row, cell.column.id)}
+        >
+          <div>
+            {display}
+            {rowErrors[String(row.original.id)] ? (
+              <div className="text-red-600 text-sm">
+                {rowErrors[String(row.original.id)]}
+              </div>
+            ) : null}
+          </div>
+        </TableCell>
+      );
+    }
+
+    return (
+      <TableCell key={cell.id}>
+        <div className="flex items-center gap-2">
+          {cell.column.id === "date" ? (
+            <Input
+              type="date"
+              value={
+                editing.value instanceof Date
+                  ? editing.value.toISOString().slice(0, 10)
+                  : editing.value
+                    ? new Date(editing.value as string | number)
+                        .toISOString()
+                        .slice(0, 10)
+                    : ""
+              }
+              onChange={(e) =>
+                setEditing(
+                  (p) =>
+                    p && {
+                      ...p,
+                      value: e.target.value ? new Date(e.target.value) : "",
+                    },
+                )
+              }
+            />
+          ) : cell.column.id === "totalAmount" ? (
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={Number(editing.value ?? 0)}
+              onChange={(e) =>
+                setEditing((p) => p && { ...p, value: Number(e.target.value) })
+              }
+              className="w-28"
+            />
+          ) : cell.column.id === "invoiceUrl" ? (
+            <Input
+              type="url"
+              placeholder="Invoice URL (optional, empty to clear)"
+              value={editing.value != null ? String(editing.value) : ""}
+              onChange={(e) =>
+                setEditing((p) => p && { ...p, value: e.target.value })
+              }
+            />
+          ) : (
+            <Input
+              value={editing.value != null ? String(editing.value) : ""}
+              onChange={(e) =>
+                setEditing((p) => p && { ...p, value: e.target.value })
+              }
+            />
+          )}
+
+          <Button size="sm" onClick={saveInlineEdit}>
+            Save
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setEditing(null)}>
+            Cancel
+          </Button>
+        </div>
+      </TableCell>
+    );
+  };
 
   return (
     <div className="relative w-full">
@@ -684,14 +909,9 @@ export const ExpensesTable = () => {
                             row.original.isFutureDated && "bg-muted/30",
                           )}
                         >
-                          {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id}>
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext(),
-                              )}
-                            </TableCell>
-                          ))}
+                          {row
+                            .getVisibleCells()
+                            .map((cell) => renderExpenseCell(row, cell))}
                         </TableRow>
                       ))}
                     </React.Fragment>
@@ -704,14 +924,9 @@ export const ExpensesTable = () => {
                         row.original.isFutureDated && "bg-muted/30",
                       )}
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      ))}
+                      {row
+                        .getVisibleCells()
+                        .map((cell) => renderExpenseCell(row, cell))}
                     </TableRow>
                   ))
               : !form.isAdding && <TableEmptyRow colCount={columns.length} />}

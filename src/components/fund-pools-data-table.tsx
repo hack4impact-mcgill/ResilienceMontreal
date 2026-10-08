@@ -14,7 +14,8 @@ import {
   VisibilityState,
 } from "@tanstack/react-table";
 
-import { CirclePlus, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { CirclePlus, ArrowUp, ArrowDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,8 @@ import {
 } from "@/components/ui/table";
 
 import { api } from "~/trpc/react";
-import { EntityLink } from "@/components/detail-page";
+import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
+import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog";
 
 interface FundPoolWithAmount {
   id: number;
@@ -164,6 +166,9 @@ export const FundPoolsDataTable = ({
   const [editModalOpen, setEditModalOpen] = React.useState(false);
   const [selectedFundPool, setSelectedFundPool] =
     React.useState<FundPoolWithAmount | null>(null);
+  const [deleteTarget, setDeleteTarget] =
+    React.useState<FundPoolWithAmount | null>(null);
+  const tCommon = useTranslations("common");
 
   const utils = api.useContext();
 
@@ -239,16 +244,11 @@ export const FundPoolsDataTable = ({
     });
   };
 
-  const handleDelete = async (fundPool: FundPoolWithAmount) => {
-    if (
-      confirm(
-        `Are you sure you want to delete "${fundPool.category}"? Any grants linked to this fund pool will be converted to uncategorized grants. This action cannot be undone.`,
-      )
-    ) {
-      await deleteMutation.mutateAsync({
-        id: fundPool.id,
-      });
-    }
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
+    await deleteMutation.mutateAsync({ id });
   };
 
   const moveUp = (index: number) => {
@@ -281,11 +281,7 @@ export const FundPoolsDataTable = ({
     {
       accessorKey: "category",
       header: "CATEGORY",
-      cell: ({ row }) => (
-        <EntityLink href={`/fund-pools/${row.original.id}`}>
-          {row.original.category}
-        </EntityLink>
-      ),
+      cell: (info) => info.getValue(),
     },
     {
       accessorKey: "totalAllocated",
@@ -337,25 +333,27 @@ export const FundPoolsDataTable = ({
         const fundPool = row.original;
 
         return (
-          <div className="flex space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedFundPool(fundPool);
-                setEditModalOpen(true);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDelete(fundPool)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <RowActionsDropdown
+            label={`Actions for ${fundPool.category}`}
+            actions={[
+              {
+                label: tCommon("viewDetails"),
+                href: `/fund-pools/${fundPool.id}`,
+              },
+              {
+                label: tCommon("edit"),
+                onClick: () => {
+                  setSelectedFundPool(fundPool);
+                  setEditModalOpen(true);
+                },
+              },
+              {
+                label: tCommon("delete"),
+                destructive: true,
+                onClick: () => setDeleteTarget(fundPool),
+              },
+            ]}
+          />
         );
       },
     },
@@ -394,6 +392,13 @@ export const FundPoolsDataTable = ({
 
   return (
     <div className={containerClass}>
+      <DeleteConfirmDialog
+        open={deleteTarget !== null}
+        entityName={deleteTarget ? `"${deleteTarget.category}"` : undefined}
+        description="Any grants linked to this fund pool will be converted to uncategorized grants."
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
       {/* Filter Row */}
       <div className={filterRowClass}>
         {/* Search Input */}

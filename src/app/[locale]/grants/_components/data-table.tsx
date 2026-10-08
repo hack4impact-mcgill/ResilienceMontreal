@@ -10,16 +10,9 @@ import {
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { CirclePlus, MoreHorizontal, Search } from "lucide-react";
+import { CirclePlus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -43,8 +36,9 @@ import { TablePagination } from "@/components/data-table/TablePagination";
 import { TableSortControls } from "@/components/data-table/TableSortControls";
 import { AdvancedFilterPopover } from "@/components/data-table/AdvancedFilterPopover";
 import { InlineFormRow } from "@/components/data-table/InlineFormRow";
+import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
+import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog";
 import { parseGrantMeta } from "@/lib/grant-meta";
-import { Link } from "@/i18n/navigation";
 
 type GrantSortBy = "totalAmount" | "endDate" | "createdAt" | "title";
 type FundPool = RouterOutputs["fundPool"]["getAll"][number];
@@ -108,6 +102,7 @@ const EMPTY_FILTERS = { minAmount: "", maxAmount: "", dueFrom: "", dueTo: "" };
 
 export const GrantsTable = () => {
   const t = useTranslations("grants");
+  const tCommon = useTranslations("common");
   const tableState = useServerTableState<GrantSortBy>({
     defaultSortBy: "createdAt",
   });
@@ -116,6 +111,10 @@ export const GrantsTable = () => {
   const [addModalOpen, setAddModalOpen] = React.useState(false);
   const [addModalError, setAddModalError] = React.useState<string | null>(null);
   const [rowErrors, setRowErrors] = React.useState<Record<string, string>>({});
+  const [deleteTarget, setDeleteTarget] = React.useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [bulkPoolId, setBulkPoolId] = React.useState<number | undefined>(
     undefined,
@@ -362,6 +361,15 @@ export const GrantsTable = () => {
 
   return (
     <div className="relative w-full">
+      <DeleteConfirmDialog
+        open={deleteTarget !== null}
+        entityName={deleteTarget?.name}
+        onConfirm={() => {
+          if (deleteTarget) deleteMutation.mutate({ id: deleteTarget.id });
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
       {isFetching && <FetchingOverlay />}
 
       <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
@@ -803,42 +811,28 @@ export const GrantsTable = () => {
                       return (
                         <TableCell key={cell.id}>
                           <div className="flex justify-end">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <span className="sr-only">Open menu</span>
-                                  <MoreHorizontal />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>
-                                  Actions for {row.original.organization}
-                                </DropdownMenuLabel>
-                                {row.original.dbId ? (
-                                  <DropdownMenuItem asChild>
-                                    <Link href={`/grants/${row.original.dbId}`}>
-                                      View details
-                                    </Link>
-                                  </DropdownMenuItem>
-                                ) : null}
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    const dbId = row.original.dbId;
-                                    if (!dbId) {
-                                      setRowErrors((s) => ({
-                                        ...s,
-                                        [row.original.id]:
-                                          "Cannot delete unsaved grant",
-                                      }));
-                                      return;
-                                    }
-                                    deleteMutation.mutate({ id: dbId });
-                                  }}
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <RowActionsDropdown
+                              label={`Actions for ${row.original.organization}`}
+                              actions={
+                                row.original.dbId
+                                  ? [
+                                      {
+                                        label: tCommon("viewDetails"),
+                                        href: `/grants/${row.original.dbId}`,
+                                      },
+                                      {
+                                        label: tCommon("delete"),
+                                        destructive: true,
+                                        onClick: () =>
+                                          setDeleteTarget({
+                                            id: row.original.dbId!,
+                                            name: row.original.organization,
+                                          }),
+                                      },
+                                    ]
+                                  : []
+                              }
+                            />
                           </div>
                         </TableCell>
                       );

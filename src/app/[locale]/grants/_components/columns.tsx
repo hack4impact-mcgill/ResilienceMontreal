@@ -1,6 +1,7 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, Row, Table } from "@tanstack/react-table";
+import { useTranslations } from "next-intl";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowUpRight, MoreHorizontal } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 
 function isGrantExpired(toBeUsedBy: Date): boolean {
   const today = new Date();
@@ -43,11 +46,73 @@ const formatMoney = (amount: number) =>
     maximumFractionDigits: 2,
   })}`;
 
+// Table cells have almost no padding and drop right padding around checkboxes,
+// so this wrapper adds the gap between the checkbox and the Organization column.
+function CheckboxCell({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center pr-4">{children}</div>;
+}
+
+function SelectAllCheckbox({ table }: { table: Table<Grant> }) {
+  const t = useTranslations("grants");
+  return (
+    <CheckboxCell>
+      <Checkbox
+        aria-label={t("selectAllRows")}
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+      />
+    </CheckboxCell>
+  );
+}
+
+function SelectRowCheckbox({ row }: { row: Row<Grant> }) {
+  const t = useTranslations("grants");
+  return (
+    <CheckboxCell>
+      <Checkbox
+        aria-label={t("selectRow", {
+          organization: row.original.organization,
+        })}
+        checked={row.getIsSelected()}
+        disabled={!row.getCanSelect()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        // keep clicks from starting the cell's double-click edit
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      />
+    </CheckboxCell>
+  );
+}
+
 export const columns: ColumnDef<Grant>[] = [
+  {
+    id: "select",
+    enableHiding: true,
+    header: SelectAllCheckbox,
+    cell: SelectRowCheckbox,
+  },
   {
     accessorKey: "organization",
     header: "ORGANIZATION",
-    cell: (info) => info.getValue(),
+    // The name itself stays double-click editable; the icon opens the detail page.
+    cell: ({ row }) => (
+      <div className="flex items-center gap-1">
+        <span>{row.original.organization}</span>
+        {row.original.dbId ? (
+          <Link
+            href={`/grants/${row.original.dbId}`}
+            className="text-[#3FA9A9] hover:text-foreground"
+            aria-label={`View details for ${row.original.organization}`}
+            title="View details"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        ) : null}
+      </div>
+    ),
   },
   {
     accessorKey: "category",
@@ -139,7 +204,11 @@ export const columns: ColumnDef<Grant>[] = [
             <DropdownMenuLabel>
               Actions for {grant.organization}
             </DropdownMenuLabel>
-            <DropdownMenuItem>View grant details</DropdownMenuItem>
+            {grant.dbId ? (
+              <DropdownMenuItem asChild>
+                <Link href={`/grants/${grant.dbId}`}>View grant details</Link>
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       );

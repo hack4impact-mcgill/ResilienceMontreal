@@ -56,7 +56,17 @@ export const fundPoolRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const fundPool = await ctx.db.fundPool.findUnique({
         where: { id: input.id },
-        include: { ...fundPoolInclude },
+        include: {
+          distributions: {
+            include: {
+              grant: true,
+              expenseDistributions: {
+                include: { expense: true },
+                orderBy: { expense: { date: "desc" } },
+              },
+            },
+          },
+        },
       });
 
       if (!fundPool) {

@@ -140,6 +140,8 @@ Generic table shell. Renders header, body, optional toolbar, and pagination.
   onColumnVisibilityChange={setColumnVisibility}
   // Optional grouping:
   groupBy={(row) => row.category}
+  // Optional: make rows clickable (links/buttons inside the row still work):
+  getRowHref={(row) => `/grants/${row.id}`}
 />
 ```
 

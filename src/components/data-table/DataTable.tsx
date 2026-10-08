@@ -18,6 +18,8 @@ import {
   TableRow,
   TableFooter,
 } from "@/components/ui/table";
+import { useRouter } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 import type { PaginationMeta } from "@/lib/data-table/types";
 import { groupRows } from "@/lib/data-table/group-rows";
 import { FetchingOverlay } from "./FetchingOverlay";
@@ -39,7 +41,12 @@ interface Props<TRow> {
   columnVisibility?: VisibilityState;
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
   groupBy?: (row: TRow) => string;
+  /** When set, clicking a row navigates to the returned path. */
+  getRowHref?: (row: TRow) => string;
 }
+
+// Clicks on links, buttons and inputs inside a row keep their own behaviour.
+const INTERACTIVE_SELECTOR = "a, button, input, select, textarea, [role=menu]";
 
 export function DataTable<TRow>({
   columns,
@@ -56,7 +63,28 @@ export function DataTable<TRow>({
   columnVisibility,
   onColumnVisibilityChange,
   groupBy,
+  getRowHref,
 }: Props<TRow>) {
+  const router = useRouter();
+
+  const rowLinkProps = (row: TRow) => {
+    if (!getRowHref) return { className: rowClassName?.(row) };
+    const href = getRowHref(row);
+    return {
+      className: cn("cursor-pointer", rowClassName?.(row)),
+      tabIndex: 0,
+      role: "link",
+      onClick: (e: React.MouseEvent<HTMLTableRowElement>) => {
+        if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return;
+        router.push(href);
+      },
+      onKeyDown: (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+        if (e.key === "Enter" && e.target === e.currentTarget) {
+          router.push(href);
+        }
+      },
+    };
+  };
   const table = useReactTable<TRow>({
     data,
     columns,
@@ -111,10 +139,7 @@ export function DataTable<TRow>({
                         </TableCell>
                       </TableRow>
                       {groupedRows.map((row) => (
-                        <TableRow
-                          key={row.id}
-                          className={rowClassName?.(row.original)}
-                        >
+                        <TableRow key={row.id} {...rowLinkProps(row.original)}>
                           {row.getVisibleCells().map((cell) => (
                             <TableCell key={cell.id}>
                               {flexRender(
@@ -128,10 +153,7 @@ export function DataTable<TRow>({
                     </React.Fragment>
                   ))
                 : table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className={rowClassName?.(row.original)}
-                    >
+                    <TableRow key={row.id} {...rowLinkProps(row.original)}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
                           {flexRender(

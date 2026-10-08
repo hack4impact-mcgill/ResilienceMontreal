@@ -1,5 +1,8 @@
 import * as z from "zod";
 
+// Largest Grants page size. Bulk actions select from one page, so they share this cap.
+export const MAX_GRANTS_PAGE_SIZE = 100;
+
 export const createGrantSchema = z.object({
   title: z.string().trim().min(1, "title is required"),
   description: z.string().trim().min(1, "description is required"),
@@ -58,9 +61,22 @@ export const updateGrantFullSchema = z
   .refine((data) => Object.keys(data).length > 1, {
     message: "At least one field to update must be provided",
   });
+
+export const bulkUpdateGrantCategorySchema = z.object({
+  ids: z
+    .array(z.coerce.number().int().positive())
+    .min(1, "Select at least one grant")
+    .max(MAX_GRANTS_PAGE_SIZE),
+  fundPoolId: z.coerce.number().int().positive("FundPoolId required"),
+});
 export const grantQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(30),
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(MAX_GRANTS_PAGE_SIZE)
+    .default(30),
 
   sortBy: z
     .enum(["createdAt", "totalAmount", "endDate", "title"])

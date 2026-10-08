@@ -46,6 +46,25 @@ const createExpenseInputSchema = z
     },
   );
 
+const updateExpenseInputSchema = z
+  .object({
+    id: z.coerce.number().int().positive(),
+    description: z.string().trim().min(1).optional(),
+    date: z.coerce.date().optional(),
+    invoiceUrl: z
+      .union([
+        z.string().trim().url("Invoice URL must be a valid URL"),
+        z.literal(""),
+        z.null(),
+      ])
+      .optional(),
+    totalAmount: z.coerce.number().positive().optional(),
+    fundPoolId: z.coerce.number().int().positive().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 1, {
+    message: "At least one field to update must be provided",
+  });
+
 export const expensesRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createExpenseInputSchema)
@@ -251,6 +270,169 @@ export const expensesRouter = createTRPCRouter({
         where: { id: input.id },
         data: { clientId: input.clientId },
         select: { id: true, clientId: true },
+      });
+    }),
+
+  update: protectedProcedure
+    .input(updateExpenseInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { id, description, date, invoiceUrl, totalAmount, fundPoolId } =
+        input;
+
+      // Normalize invoiceUrl: undefined = no change, null/"" = clear, string = set
+      let normalizedInvoiceUrl: string | null | undefined;
+      if (invoiceUrl === undefined) normalizedInvoiceUrl = undefined;
+      else if (invoiceUrl === null || invoiceUrl === "")
+        normalizedInvoiceUrl = null;
+      else normalizedInvoiceUrl = invoiceUrl;
+
+      const newTotal =
+        totalAmount !== undefined
+          ? new Prisma.Decimal(String(totalAmount))
+          : undefined;
+
+      const needsReallocation =
+        newTotal !== undefined || fundPoolId !== undefined;
+
+      // Metadata-only fast path (no amount/pool change)
+      if (!needsReallocation) {
+        const existing = await ctx.db.expense.findUnique({ where: { id } });
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Expense not found",
+          });
+        }
+        const updated = await ctx.db.expense.update({
+          where: { id },
+          data: {
+            ...(description !== undefined ? { description } : {}),
+            ...(date !== undefined ? { date } : {}),
+            ...(normalizedInvoiceUrl !== undefined
+              ? { invoiceUrl: normalizedInvoiceUrl }
+              : {}),
+          },
+          include: expenseListInclude,
+        });
+        return { expense: updated };
+      }
+
+      return await ctx.db.$transaction(async (tx) => {
+        const existing = await tx.expense.findUnique({
+          where: { id },
+          include: {
+            distributions: { include: { grantDistribution: true } },
+          },
+        });
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Expense not found",
+          });
+        }
+
+        const oldTotal = new Prisma.Decimal(String(existing.totalAmount));
+        const targetTotal = newTotal ?? oldTotal;
+
+        const currentPoolId =
+          existing.distributions[0]?.grantDistribution?.fundPoolId ?? null;
+        const targetPoolId = fundPoolId ?? currentPoolId;
+        if (!targetPoolId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cannot determine fund pool for expense re-allocation",
+          });
+        }
+
+        const targetPool = await tx.fundPool.findUnique({
+          where: { id: targetPoolId },
+        });
+        if (!targetPool) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Fund pool not found",
+          });
+        }
+
+        const metadataChanged =
+          description !== undefined ||
+          date !== undefined ||
+          normalizedInvoiceUrl !== undefined;
+        const amountSame = targetTotal.equals(oldTotal);
+        const poolSame = targetPoolId === currentPoolId;
+
+        if (amountSame && poolSame) {
+          if (!metadataChanged) return { expense: existing };
+          const updated = await tx.expense.update({
+            where: { id },
+            data: {
+              ...(description !== undefined ? { description } : {}),
+              ...(date !== undefined ? { date } : {}),
+              ...(normalizedInvoiceUrl !== undefined
+                ? { invoiceUrl: normalizedInvoiceUrl }
+                : {}),
+            },
+            include: expenseListInclude,
+          });
+          return { expense: updated };
+        }
+
+        // Release old allocations so availability checks see freed funds
+        for (const d of existing.distributions) {
+          await tx.grantDistribution.update({
+            where: { id: d.grantDistributionId },
+            data: { spentAmount: { decrement: d.amount } },
+          });
+        }
+        await tx.expenseDistribution.deleteMany({ where: { expenseId: id } });
+
+        // Build fresh greedy allocations in the target pool
+        const now = new Date();
+        const candidates = await tx.grantDistribution.findMany({
+          where: {
+            fundPoolId: targetPoolId,
+            grant: {
+              status: "APPROVED",
+              OR: [{ endDate: null }, { endDate: { gte: now } }],
+            },
+          },
+          select: {
+            id: true,
+            amount: true,
+            spentAmount: true,
+            grant: { select: { endDate: true } },
+          },
+        });
+        // Throws CONFLICT when insufficient funds
+        const allocations = buildGreedyAllocations(candidates, targetTotal);
+
+        for (const allocation of allocations) {
+          await tx.expenseDistribution.create({
+            data: {
+              expenseId: id,
+              grantDistributionId: allocation.grantDistributionId,
+              amount: allocation.amount,
+            },
+          });
+          await tx.grantDistribution.update({
+            where: { id: allocation.grantDistributionId },
+            data: { spentAmount: { increment: allocation.amount } },
+          });
+        }
+
+        const updated = await tx.expense.update({
+          where: { id },
+          data: {
+            totalAmount: targetTotal,
+            ...(description !== undefined ? { description } : {}),
+            ...(date !== undefined ? { date } : {}),
+            ...(normalizedInvoiceUrl !== undefined
+              ? { invoiceUrl: normalizedInvoiceUrl }
+              : {}),
+          },
+          include: expenseListInclude,
+        });
+        return { expense: updated };
       });
     }),
 });

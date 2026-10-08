@@ -1,7 +1,6 @@
 import type { RouterOutputs } from "@/trpc/react";
 
-export type DbGrant =
-  RouterOutputs["grant"]["getGrants"]["grants"][number];
+export type DbGrant = RouterOutputs["grant"]["getGrants"]["grants"][number];
 export type FundPool = RouterOutputs["fundPool"]["getAll"][number];
 
 export type DeadlineGrant = {
@@ -93,7 +92,9 @@ export function toDeadlineGrants(
     );
 
     const firstPoolId =
-      distributions[0]?.fundPool?.id ?? distributions[0]?.fundPoolId ?? undefined;
+      distributions[0]?.fundPool?.id ??
+      distributions[0]?.fundPoolId ??
+      undefined;
     const poolName =
       distributions[0]?.fundPool?.category ??
       (firstPoolId !== undefined ? poolNameById.get(firstPoolId) : undefined) ??
@@ -119,7 +120,8 @@ export function toDeadlineGrants(
 
 export function sortDeadlineGrants(grants: DeadlineGrant[]): DeadlineGrant[] {
   return [...grants].sort(
-    (a, b) => a.poolOrder - b.poolOrder || a.deadline.getTime() - b.deadline.getTime(),
+    (a, b) =>
+      a.poolOrder - b.poolOrder || a.deadline.getTime() - b.deadline.getTime(),
   );
 }
 
@@ -135,7 +137,8 @@ export function getYearDomain(year: number): TimeDomain {
 
 export function getTimeDomain(grants: DeadlineGrant[]): TimeDomain | null {
   const withDates = grants.filter(
-    (g) => !Number.isNaN(g.start.getTime()) && !Number.isNaN(g.deadline.getTime()),
+    (g) =>
+      !Number.isNaN(g.start.getTime()) && !Number.isNaN(g.deadline.getTime()),
   );
   if (withDates.length === 0) return null;
   let min = withDates[0].start.getTime();

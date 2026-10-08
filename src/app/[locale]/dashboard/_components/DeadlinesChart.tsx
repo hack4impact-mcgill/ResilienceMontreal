@@ -41,10 +41,9 @@ export function DeadlinesChart() {
   }, [grantsQuery.data, poolsQuery.data]);
 
   // Fixed Jan–Dec axis (current year), per the RM-145 mockup.
-  const domain = React.useMemo(
-    () => getYearDomain(new Date().getFullYear()),
-    [],
-  );
+  const [currentYear] = React.useState(() => new Date().getFullYear());
+  const [now] = React.useState(() => Date.now());
+  const domain = React.useMemo(() => getYearDomain(currentYear), [currentYear]);
   const ticks = React.useMemo(
     () => (domain ? monthTicks(domain) : []),
     [domain],
@@ -62,10 +61,9 @@ export function DeadlinesChart() {
     if (!domain) return null;
     const min = domain.min.getTime();
     const max = domain.max.getTime();
-    const now = Date.now();
     if (now < min || now > max) return null;
     return ((now - min) / (max - min)) * 100;
-  }, [domain]);
+  }, [domain, now]);
 
   if (grantsQuery.isLoading || poolsQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Loading deadlines…</p>;
@@ -74,14 +72,18 @@ export function DeadlinesChart() {
   if (grantsQuery.error) {
     return (
       <p className="text-sm text-destructive">
-        Couldn&apos;t load grant deadlines. Check your database connection
-        and try again.
+        Couldn&apos;t load grant deadlines. Check your database connection and
+        try again.
       </p>
     );
   }
 
   if (grants.length === 0) {
-    return <p className="text-sm text-muted-foreground">No grants with deadlines yet.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        No grants with deadlines yet.
+      </p>
+    );
   }
 
   const selected = grants.find((g) => g.id === selectedId) ?? null;
@@ -116,7 +118,10 @@ export function DeadlinesChart() {
           <div className="flex border-b" style={{ height: ROW_HEIGHT_PX }}>
             <div
               className="shrink-0 px-3 text-xs font-medium uppercase text-muted-foreground"
-              style={{ width: LABEL_WIDTH_PX, lineHeight: `${ROW_HEIGHT_PX}px` }}
+              style={{
+                width: LABEL_WIDTH_PX,
+                lineHeight: `${ROW_HEIGHT_PX}px`,
+              }}
             >
               Grant
             </div>
@@ -127,7 +132,10 @@ export function DeadlinesChart() {
                   <span
                     key={t.toISOString()}
                     className="absolute top-0 whitespace-nowrap border-l pl-1 text-xs text-muted-foreground"
-                    style={{ left: `${left}%`, lineHeight: `${ROW_HEIGHT_PX}px` }}
+                    style={{
+                      left: `${left}%`,
+                      lineHeight: `${ROW_HEIGHT_PX}px`,
+                    }}
                   >
                     {formatMonthYear(t)}
                   </span>
@@ -141,7 +149,9 @@ export function DeadlinesChart() {
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-y-0 z-10 w-px bg-red-500"
-                style={{ left: `calc(${LABEL_WIDTH_PX}px + (100% - ${LABEL_WIDTH_PX}px) * ${todayPct / 100})` }}
+                style={{
+                  left: `calc(${LABEL_WIDTH_PX}px + (100% - ${LABEL_WIDTH_PX}px) * ${todayPct / 100})`,
+                }}
                 title="Today"
               >
                 <span className="absolute -top-1 -translate-x-1/2 rounded bg-red-500 px-1 text-[10px] text-white">
@@ -150,7 +160,11 @@ export function DeadlinesChart() {
               </div>
             )}
             {grants.map((g) => {
-              const { leftPct, widthPct } = barPosition(g.start, g.deadline, domain);
+              const { leftPct, widthPct } = barPosition(
+                g.start,
+                g.deadline,
+                domain,
+              );
               const poolIndex = Math.max(0, poolOrder.indexOf(g.poolName));
               const progress = progressPct(g.spent, g.total);
               return (
@@ -197,7 +211,10 @@ export function DeadlinesChart() {
         </div>
       </div>
 
-      <GrantDeadlineDialog grant={selected} onClose={() => setSelectedId(null)} />
+      <GrantDeadlineDialog
+        grant={selected}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
   );
 }

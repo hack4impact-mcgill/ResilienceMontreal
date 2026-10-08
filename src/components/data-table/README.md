@@ -219,6 +219,7 @@ Replaces `window.confirm`.
 <DeleteConfirmDialog
   open={deleteTargetId !== null}
   entityName="this client"
+  description="Optional extra warning shown before 'This action cannot be undone.'"
   onConfirm={confirmDelete}
   onCancel={() => setDeleteTargetId(null)}
 />
@@ -226,13 +227,16 @@ Replaces `window.confirm`.
 
 ### `RowActionsDropdown`
 
+The 3-dot row menu used by every list table. Keep the order consistent: View details → Edit → Delete. "View details" is the only way to open an item's detail page (no inline links in cells). Delete is `destructive` (red) and should open `DeleteConfirmDialog`, never delete directly.
+
 ```tsx
 <RowActionsDropdown
   label="Actions for Jane Doe"
   actions={[
-    { label: "Edit client", onClick: () => startEdit(client) },
+    { label: t("viewDetails"), href: `/clients/${client.id}` }, // real link
+    { label: t("edit"), onClick: () => startEdit(client) },
     {
-      label: "Delete client",
+      label: t("delete"),
       onClick: () => setDeleteTargetId(client.id),
       destructive: true,
     },

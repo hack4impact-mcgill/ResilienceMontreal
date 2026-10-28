@@ -18,6 +18,19 @@ Copy `.env` from Notion into the project root. Required vars are validated in [`
 
 The default template uses the shared dev Supabase DB. For Docker Postgres, swap `DATABASE_URL` and `DIRECT_URL` per [`docker-compose.yml`](docker-compose.yml).
 
+## Grant expiry reminders
+
+Approved grants with a valid contact email receive a bilingual reminder seven days before their expiry date. Vercel runs the protected endpoint daily at 09:00 UTC using [`vercel.json`](vercel.json); for other hosting providers, schedule a daily `GET /api/cron/grant-expiry-reminders` request using the configured secret in the standard token-based `Authorization` header.
+
+Configure these server environment variables:
+
+- `RESEND_API_KEY`: Resend API key.
+- `RESEND_FROM_EMAIL`: verified sender address in Resend.
+- `CRON_SECRET`: secret used to authorize scheduled requests.
+
+The database migration adds a sent timestamp to each grant to avoid duplicate reminders. If a grant's expiry date or contact email changes, the reminder is eligible to be sent again.
+Apply the migration with `bun run db:migrate` before enabling the scheduled endpoint.
+
 ## Run locally
 
 ```bash

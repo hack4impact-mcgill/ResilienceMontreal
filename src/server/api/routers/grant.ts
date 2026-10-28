@@ -152,6 +152,9 @@ export const grantRouter = createTRPCRouter({
             where: { id },
             data: {
               description: JSON.stringify(descriptionObj),
+              ...(rest.toBeUsedBy !== undefined || rest.email !== undefined
+                ? { expiryReminderSentAt: null }
+                : {}),
               ...(rest.toBeUsedBy !== undefined
                 ? { endDate: rest.toBeUsedBy }
                 : {}),
@@ -361,6 +364,10 @@ export const grantRouter = createTRPCRouter({
             rest.toBeUsedBy !== undefined
               ? { endDate: rest.toBeUsedBy as Date }
               : {};
+          const expiryReminderPatch =
+            rest.toBeUsedBy !== undefined || rest.email !== undefined
+              ? { expiryReminderSentAt: null }
+              : {};
           if (rest.organization !== undefined) {
             await tx.grant.update({
               where: { id },
@@ -368,6 +375,7 @@ export const grantRouter = createTRPCRouter({
                 title: rest.organization,
                 description: JSON.stringify(descriptionObj),
                 ...endDatePatch,
+                ...expiryReminderPatch,
               },
             });
           } else {
@@ -376,6 +384,7 @@ export const grantRouter = createTRPCRouter({
               data: {
                 description: JSON.stringify(descriptionObj),
                 ...endDatePatch,
+                ...expiryReminderPatch,
               },
             });
           }

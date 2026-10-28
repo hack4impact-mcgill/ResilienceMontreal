@@ -9,10 +9,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 
 interface Action {
   label: string;
-  onClick: () => void;
+  // href renders a real link (supports middle-click / open in new tab)
+  href?: string;
+  onClick?: () => void;
   destructive?: boolean;
 }
 
@@ -32,15 +36,26 @@ export function RowActionsDropdown({ label, actions }: Props) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {label && <DropdownMenuLabel>{label}</DropdownMenuLabel>}
-        {actions.map((action) => (
-          <DropdownMenuItem
-            key={action.label}
-            onClick={action.onClick}
-            className={action.destructive ? "text-destructive" : undefined}
-          >
-            {action.label}
-          </DropdownMenuItem>
-        ))}
+        {actions.map((action) => {
+          const className = cn(
+            "cursor-pointer",
+            // keep red while hovered/focused (menu items default to accent text on focus)
+            action.destructive && "text-destructive focus:text-destructive",
+          );
+          return action.href ? (
+            <DropdownMenuItem key={action.label} className={className} asChild>
+              <Link href={action.href}>{action.label}</Link>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              key={action.label}
+              className={className}
+              onClick={action.onClick}
+            >
+              {action.label}
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );

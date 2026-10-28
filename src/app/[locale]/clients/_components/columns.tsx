@@ -1,17 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
-import { Link } from "@/i18n/navigation";
-import { EntityLink } from "@/components/detail-page";
+import { useTranslations } from "next-intl";
+import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
 
 export type BackendClient = {
   id: number;
@@ -56,6 +47,32 @@ export function mapClient(c: BackendClient): Client {
   };
 }
 
+function ClientRowActions({
+  client,
+  onEdit,
+  onDelete,
+}: {
+  client: Client;
+  onEdit: (client: Client) => void;
+  onDelete: (clientId: number) => void;
+}) {
+  const t = useTranslations("common");
+  return (
+    <RowActionsDropdown
+      label={`Actions for ${client.firstName} ${client.lastName}`}
+      actions={[
+        { label: t("viewDetails"), href: `/clients/${client.id}` },
+        { label: t("edit"), onClick: () => onEdit(client) },
+        {
+          label: t("delete"),
+          destructive: true,
+          onClick: () => onDelete(client.id),
+        },
+      ]}
+    />
+  );
+}
+
 export const createColumns = (
   onEdit: (client: Client) => void,
   onDelete: (clientId: number) => void,
@@ -63,20 +80,12 @@ export const createColumns = (
   {
     accessorKey: "firstName",
     header: "FIRST NAME",
-    cell: ({ row }) => (
-      <EntityLink href={`/clients/${row.original.id}`}>
-        {row.original.firstName}
-      </EntityLink>
-    ),
+    cell: (info) => info.getValue(),
   },
   {
     accessorKey: "lastName",
     header: "LAST NAME",
-    cell: ({ row }) => (
-      <EntityLink href={`/clients/${row.original.id}`}>
-        {row.original.lastName}
-      </EntityLink>
-    ),
+    cell: (info) => info.getValue(),
   },
   {
     accessorKey: "email",
@@ -115,32 +124,12 @@ export const createColumns = (
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      const client = row.original;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              Actions for {client.firstName} {client.lastName}
-            </DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onEdit(client)}>
-              Edit client
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(client.id)}>
-              Delete client
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/clients/${client.id}`}>View details</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    cell: ({ row }) => (
+      <ClientRowActions
+        client={row.original}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    ),
   },
 ];

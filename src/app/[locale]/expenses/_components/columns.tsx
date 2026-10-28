@@ -1,17 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
-import { Link } from "@/i18n/navigation";
-import { EntityLink } from "@/components/detail-page";
+import { useTranslations } from "next-intl";
+import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
 
 export type Expense = {
   id: number;
@@ -25,15 +16,22 @@ export type Expense = {
   fundPoolCategory: string;
 };
 
+// No Delete: expenses have no delete endpoint yet
+function ExpenseRowActions({ expense }: { expense: Expense }) {
+  const t = useTranslations("common");
+  return (
+    <RowActionsDropdown
+      label="Actions for expense"
+      actions={[{ label: t("viewDetails"), href: `/expenses/${expense.id}` }]}
+    />
+  );
+}
+
 export const columns: ColumnDef<Expense>[] = [
   {
     accessorKey: "description",
     header: "DESCRIPTION",
-    cell: ({ row }) => (
-      <EntityLink href={`/expenses/${row.original.id}`}>
-        {row.original.description}
-      </EntityLink>
-    ),
+    cell: (info) => info.getValue(),
   },
   {
     accessorKey: "date",
@@ -84,25 +82,6 @@ export const columns: ColumnDef<Expense>[] = [
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      const expense = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions for expense</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href={`/expenses/${expense.id}`}>View expense details</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    cell: ({ row }) => <ExpenseRowActions expense={row.original} />,
   },
 ];

@@ -1,5 +1,6 @@
 "use client";
 
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
 import {
   flexRender,
@@ -321,7 +322,7 @@ export const ExpensesTable = () => {
     );
   };
 
-  if (isLoading && !listData) return <div>Loading…</div>;
+  if (isLoading && !listData) return <TableLoadingState />;
   if (isError) return <div>Error loading data.</div>;
 
   const hasDraft = Boolean(

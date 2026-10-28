@@ -1,5 +1,6 @@
 "use client";
 
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
 import {
   flexRender,
@@ -295,7 +296,7 @@ export const ClientsTable = () => {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  if (isLoading) return <div>Loading…</div>;
+  if (isLoading) return <TableLoadingState />;
   if (isError)
     return <div className="p-6 text-red-600">Error loading clients.</div>;
 

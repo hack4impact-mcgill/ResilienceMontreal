@@ -216,7 +216,7 @@ export function DocumentsBrowser() {
                   {item.mimeType !== FOLDER && (
                     <a
                       href={`/api/documents/download?id=${encodeURIComponent(item.id)}`}
-                    className="ml-1 inline-flex shrink-0 items-center gap-2 text-sm text-primary hover:underline"
+                      className="ml-1 inline-flex shrink-0 items-center gap-2 text-sm text-primary hover:underline"
                     >
                       <Download size={16} />
                       Download

@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-import { ChevronDown, KeyRound, LogOut, Users } from "lucide-react";
+import { ChevronDown, FolderOpen, KeyRound, LogOut, Users } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -39,13 +39,14 @@ import {
 import Image from "next/image";
 
 const navItems: {
-  titleKey: "dashboard" | "grants" | "expenses" | "clients";
+  titleKey: "dashboard" | "grants" | "expenses" | "clients" | "documents";
   url: string;
 }[] = [
   { titleKey: "dashboard", url: "/" },
   { titleKey: "grants", url: "/grants" },
   { titleKey: "expenses", url: "/expenses" },
   { titleKey: "clients", url: "/clients" },
+  { titleKey: "documents", url: "/documents" },
 ];
 
 export function AppSidebar() {
@@ -189,7 +190,10 @@ export function AppSidebar() {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.titleKey}>
                   <SidebarMenuButton asChild>
-                    <Link href={item.url}>
+                    <Link href={item.url} className="flex items-center gap-2">
+                      {item.titleKey === "documents" && (
+                        <FolderOpen size={16} />
+                      )}
                       <span>{t(item.titleKey)}</span>
                     </Link>
                   </SidebarMenuButton>

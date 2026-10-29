@@ -13,6 +13,10 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    GOOGLE_DRIVE_CLIENT_ID: z.string().optional(),
+    GOOGLE_DRIVE_CLIENT_SECRET: z.string().optional(),
+    GOOGLE_DRIVE_ROOT_FOLDER_ID: z.string().optional(),
+    GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY: z.string().optional(),
   },
 
   // you can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g. middlewares) or client-side so we need to destruct manually
@@ -23,6 +27,11 @@ export const env = createEnv({
     SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
     APP_URL: process.env.APP_URL,
     NODE_ENV: process.env.NODE_ENV,
+    GOOGLE_DRIVE_CLIENT_ID: process.env.GOOGLE_DRIVE_CLIENT_ID,
+    GOOGLE_DRIVE_CLIENT_SECRET: process.env.GOOGLE_DRIVE_CLIENT_SECRET,
+    GOOGLE_DRIVE_ROOT_FOLDER_ID: process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID,
+    GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY:
+      process.env.GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY,
   },
 
   // run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation

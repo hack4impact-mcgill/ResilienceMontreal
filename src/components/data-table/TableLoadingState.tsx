@@ -11,7 +11,10 @@ export function TableLoadingState() {
       role="status"
       className="flex w-full justify-center p-6 text-muted-foreground"
     >
-      <LoaderCircle aria-hidden="true" className="size-6 motion-safe:animate-spin" />
+      <LoaderCircle
+        aria-hidden="true"
+        className="size-6 motion-safe:animate-spin"
+      />
       <span className="sr-only">{t("loading")}</span>
     </div>
   );

@@ -119,6 +119,7 @@ function mapExpenseRow(e: {
   distributions?: Array<{
     grantDistribution: { fundPool: { category: string } | null } | null;
   }>;
+  client?: { id: number; firstName: string; lastName: string } | null;
 }): Expense {
   const amount =
     typeof e.totalAmount === "number"
@@ -135,6 +136,9 @@ function mapExpenseRow(e: {
     invoiceUrl: e.invoiceUrl,
     isFutureDated: isExpenseFutureDated(expenseDate),
     fundPoolCategory,
+    client: e.client
+      ? { id: e.client.id, name: `${e.client.firstName} ${e.client.lastName}` }
+      : null,
   };
 }
 
@@ -245,9 +249,11 @@ export const ExpensesTable = () => {
     refetchOnWindowFocus: false,
   });
 
-  // Only Intervention Team / Admin can read clients; for other roles this
-  // query is forbidden and the client picker is simply not shown.
+  // Only Intervention Team / Admin see clients: the list tells us which,
+  // and the client column + picker are hidden for everyone else.
+  const canViewClient = listData?.canViewClient ?? false;
   const { data: clients } = api.clients.list.useQuery(undefined, {
+    enabled: canViewClient,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -273,7 +279,9 @@ export const ExpensesTable = () => {
     data: localExpenses,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    state: { columnVisibility: { client: canViewClient } },
   });
+  const visibleColumnCount = table.getVisibleLeafColumns().length;
 
   // Seed fundPoolId when form opens
   React.useEffect(() => {
@@ -484,12 +492,19 @@ export const ExpensesTable = () => {
             className="text-black hover:bg-transparent"
             onClick={() =>
               exportToCSV(
-                ["Description", "Date", "Amount", "Invoice URL"],
+                [
+                  "Description",
+                  "Date",
+                  "Amount",
+                  "Invoice URL",
+                  ...(canViewClient ? ["Client"] : []),
+                ],
                 localExpenses.map((e) => [
                   e.description,
                   e.date.toLocaleDateString(),
                   e.totalAmount.toFixed(2),
                   e.invoiceUrl ?? "",
+                  ...(canViewClient ? [e.client?.name ?? ""] : []),
                 ]),
                 "expense_list",
               )
@@ -537,7 +552,7 @@ export const ExpensesTable = () => {
           <TableBody>
             {form.isAdding && (
               <InlineFormRow
-                colCount={columns.length}
+                colCount={visibleColumnCount}
                 onSave={() => handleSave(false)}
                 onSaveAndAddMore={() => handleSave(true)}
                 onCancel={form.closeForm}
@@ -610,6 +625,25 @@ export const ExpensesTable = () => {
                     </p>
                   )}
                 </TableCell>
+                {canViewClient && (
+                  <TableCell>
+                    <select
+                      aria-label="Client"
+                      value={form.formData.clientId ?? ""}
+                      onChange={(e) =>
+                        form.setFormData({ clientId: e.target.value })
+                      }
+                      className="w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9]"
+                    >
+                      <option value="">No client</option>
+                      {(clients ?? []).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.firstName} {c.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </TableCell>
+                )}
                 <TableCell>
                   {fundPools && fundPools.length > 0 ? (
                     <>
@@ -640,23 +674,6 @@ export const ExpensesTable = () => {
                       No fund pools available
                     </p>
                   )}
-                  {clients && (
-                    <select
-                      aria-label="Client"
-                      value={form.formData.clientId ?? ""}
-                      onChange={(e) =>
-                        form.setFormData({ clientId: e.target.value })
-                      }
-                      className="mt-2 w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9]"
-                    >
-                      <option value="">No client</option>
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.firstName} {c.lastName}
-                        </option>
-                      ))}
-                    </select>
-                  )}
                 </TableCell>
               </InlineFormRow>
             )}
@@ -670,7 +687,7 @@ export const ExpensesTable = () => {
                     <React.Fragment key={key}>
                       <TableRow className="bg-muted/50">
                         <TableCell
-                          colSpan={columns.length}
+                          colSpan={visibleColumnCount}
                           className="py-1 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                         >
                           {key}
@@ -714,7 +731,9 @@ export const ExpensesTable = () => {
                       ))}
                     </TableRow>
                   ))
-              : !form.isAdding && <TableEmptyRow colCount={columns.length} />}
+              : !form.isAdding && (
+                  <TableEmptyRow colCount={visibleColumnCount} />
+                )}
           </TableBody>
 
           <TableFooter />

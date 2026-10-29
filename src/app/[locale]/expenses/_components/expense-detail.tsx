@@ -16,6 +16,7 @@ import {
   formatMoney,
 } from "@/components/detail-page";
 import { api } from "~/trpc/react";
+import { AllocationEditor } from "./allocation-editor";
 
 type Allocation = {
   id: number;
@@ -62,6 +63,7 @@ export function ExpenseDetail({ id }: { id: number }) {
     isError,
     error,
   } = api.expenses.getById.useQuery({ id }, { retry: false });
+  const [editingAllocations, setEditingAllocations] = React.useState(false);
 
   const allocations: Allocation[] = React.useMemo(
     () =>
@@ -132,12 +134,35 @@ export function ExpenseDetail({ id }: { id: number }) {
       )}
 
       <DetailSection title="Grant allocations">
-        <DataTable
-          columns={allocationColumns}
-          data={allocations}
-          getRowHref={(row) => `/grants/${row.grantId}`}
-          emptyMessage="This expense is not allocated to any grant."
-        />
+        {editingAllocations ? (
+          <AllocationEditor
+            expenseId={expense.id}
+            totalAmount={Number(expense.totalAmount)}
+            current={expense.distributions.map((d) => ({
+              grantDistributionId: d.grantDistributionId,
+              amount: Number(d.amount),
+            }))}
+            onDone={() => setEditingAllocations(false)}
+          />
+        ) : (
+          <>
+            {expense.canEditAllocations && (
+              <Button
+                variant="outline"
+                className="w-fit"
+                onClick={() => setEditingAllocations(true)}
+              >
+                Edit allocations
+              </Button>
+            )}
+            <DataTable
+              columns={allocationColumns}
+              data={allocations}
+              getRowHref={(row) => `/grants/${row.grantId}`}
+              emptyMessage="This expense is not allocated to any grant."
+            />
+          </>
+        )}
       </DetailSection>
     </DetailPage>
   );

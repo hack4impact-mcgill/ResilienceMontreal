@@ -139,6 +139,8 @@ export const ClientsTable = () => {
         leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(0),
         workerName: c.worker?.name ?? "",
         workerId: c.worker?.supabaseId ?? "",
+        expenseCount: c.expenseCount,
+        totalExpenses: c.totalExpenses,
       })),
     [pagedClients],
   );
@@ -272,6 +274,16 @@ export const ClientsTable = () => {
     );
   };
 
+  // Deleting keeps the client's expenses but clears their link (SET NULL).
+  const deleteTargetExpenses =
+    mappedClients.find((c) => c.id === deleteTargetId)?.expenseCount ?? 0;
+  const deleteWarning =
+    deleteTargetExpenses > 0
+      ? `This client has ${deleteTargetExpenses} linked ${
+          deleteTargetExpenses === 1 ? "expense" : "expenses"
+        }. ${deleteTargetExpenses === 1 ? "It" : "They"} will be kept but no longer linked to any client.`
+      : undefined;
+
   const columns = React.useMemo(
     () => createColumns(startEdit, (id) => setDeleteTargetId(id)),
     [],
@@ -322,6 +334,7 @@ export const ClientsTable = () => {
       <DeleteConfirmDialog
         open={deleteTargetId !== null}
         entityName="this client"
+        description={deleteWarning}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTargetId(null)}
       />
@@ -476,6 +489,7 @@ export const ClientsTable = () => {
                   "Intervention Worker",
                   "Lease Start Date",
                   "Lease End Date",
+                  "Total Expenses",
                 ],
                 mappedClients.map((c) => [
                   c.firstName,
@@ -485,6 +499,7 @@ export const ClientsTable = () => {
                   c.workerName,
                   c.leaseStartDate.toLocaleDateString(),
                   c.leaseEndDate.toLocaleDateString(),
+                  (c.totalExpenses ?? 0).toFixed(2),
                 ]),
                 "client_list",
               )
@@ -634,6 +649,7 @@ export const ClientsTable = () => {
                   )}
                 </TableCell>
                 <TableCell />
+                <TableCell />
               </InlineFormRow>
             )}
 
@@ -773,6 +789,7 @@ export const ClientsTable = () => {
                                 </p>
                               )}
                             </TableCell>
+                            <TableCell />
                             <TableCell />
                           </InlineFormRow>
                         ) : (

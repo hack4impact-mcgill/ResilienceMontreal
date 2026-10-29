@@ -288,13 +288,31 @@ export const clientRouter = createTRPCRouter({
             worker: {
               select: { name: true, email: true, supabaseId: true, role: true },
             },
+            _count: { select: { expenses: true } },
           },
         }),
       ]);
 
+      // Sum of linked expenses for the clients on this page (one grouped query).
+      const expenseTotals = await ctx.db.expense.groupBy({
+        by: ["clientId"],
+        where: { clientId: { in: clients.map((c) => c.id) } },
+        _sum: { totalAmount: true },
+      });
+      const totalByClient = new Map(
+        expenseTotals.map((row) => [
+          row.clientId,
+          row._sum.totalAmount?.toNumber() ?? 0,
+        ]),
+      );
+
       const totalPages = Math.ceil(total / input.limit);
       return {
-        data: clients,
+        data: clients.map(({ _count, ...client }) => ({
+          ...client,
+          expenseCount: _count.expenses,
+          totalExpenses: totalByClient.get(client.id) ?? 0,
+        })),
         pagination: {
           currentPage: input.page,
           pageSize: input.limit,

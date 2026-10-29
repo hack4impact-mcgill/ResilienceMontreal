@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 
 import { api } from "@/trpc/react";
 import { GrantDeadlineDialog } from "./GrantDeadlineDialog";
@@ -66,7 +67,7 @@ export function DeadlinesChart() {
   }, [domain, now]);
 
   if (grantsQuery.isLoading || poolsQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading deadlines…</p>;
+    return <TableLoadingState />;
   }
 
   if (grantsQuery.error) {

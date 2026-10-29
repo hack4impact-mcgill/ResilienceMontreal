@@ -139,6 +139,8 @@ export const ClientsTable = () => {
         leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(0),
         workerName: c.worker?.name ?? "",
         workerId: c.worker?.supabaseId ?? "",
+        expenseCount: c.expenseCount,
+        totalExpenses: c.totalExpenses,
       })),
     [pagedClients],
   );
@@ -476,6 +478,7 @@ export const ClientsTable = () => {
                   "Intervention Worker",
                   "Lease Start Date",
                   "Lease End Date",
+                  "Total Expenses",
                 ],
                 mappedClients.map((c) => [
                   c.firstName,
@@ -485,6 +488,7 @@ export const ClientsTable = () => {
                   c.workerName,
                   c.leaseStartDate.toLocaleDateString(),
                   c.leaseEndDate.toLocaleDateString(),
+                  (c.totalExpenses ?? 0).toFixed(2),
                 ]),
                 "client_list",
               )
@@ -634,6 +638,7 @@ export const ClientsTable = () => {
                   )}
                 </TableCell>
                 <TableCell />
+                <TableCell />
               </InlineFormRow>
             )}
 
@@ -773,6 +778,7 @@ export const ClientsTable = () => {
                                 </p>
                               )}
                             </TableCell>
+                            <TableCell />
                             <TableCell />
                           </InlineFormRow>
                         ) : (

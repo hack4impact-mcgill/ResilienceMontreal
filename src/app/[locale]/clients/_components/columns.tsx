@@ -18,6 +18,8 @@ export type BackendClient = {
     supabaseId: string;
     role: string;
   } | null;
+  expenseCount?: number;
+  totalExpenses?: number;
 };
 
 export type Client = {
@@ -30,6 +32,10 @@ export type Client = {
   leaseEndDate: Date;
   workerName: string;
   workerId: string;
+  /** Number of expenses linked to this client. */
+  expenseCount?: number;
+  /** Sum of the linked expenses' totals. */
+  totalExpenses?: number;
 };
 
 // Map backend client to frontend Client
@@ -44,6 +50,8 @@ export function mapClient(c: BackendClient): Client {
     leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(0),
     workerName: c.worker?.name ?? "",
     workerId: c.worker?.supabaseId ?? "",
+    expenseCount: c.expenseCount ?? 0,
+    totalExpenses: c.totalExpenses ?? 0,
   };
 }
 
@@ -120,6 +128,14 @@ export const createColumns = (
     accessorKey: "workerName",
     header: "INTERVENTION WORKER",
     cell: (info) => info.getValue(),
+  },
+  {
+    accessorKey: "totalExpenses",
+    header: "TOTAL EXPENSES",
+    cell: ({ row }) =>
+      row.original.expenseCount
+        ? `$${(row.original.totalExpenses ?? 0).toFixed(2)}`
+        : "—",
   },
   {
     id: "actions",

@@ -3,6 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
 import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
+import { EntityLink } from "@/components/detail-page";
 
 export type Expense = {
   id: number;
@@ -14,6 +15,8 @@ export type Expense = {
   isFutureDated: boolean;
   /** Fund pool category derived from the first distribution (empty string if none). */
   fundPoolCategory: string;
+  /** Linked client; null when none is linked or the viewer can't see clients. */
+  client: { id: number; name: string } | null;
 };
 
 // No Delete: expenses have no delete endpoint yet
@@ -78,6 +81,19 @@ export const columns: ColumnDef<Expense>[] = [
         </a>
       );
     },
+  },
+  {
+    // Hidden for roles that can't see client data (see ExpensesTable)
+    id: "client",
+    header: "CLIENT",
+    cell: ({ row }) =>
+      row.original.client ? (
+        <EntityLink href={`/clients/${row.original.client.id}`}>
+          {row.original.client.name}
+        </EntityLink>
+      ) : (
+        "—"
+      ),
   },
   {
     id: "actions",

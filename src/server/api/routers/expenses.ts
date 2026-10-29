@@ -150,23 +150,36 @@ export const expensesRouter = createTRPCRouter({
         [sortBy]: sortOrder,
       };
 
-      const [expenses, totalCount] = await Promise.all([
+      const [expenses, totalCount, viewer] = await Promise.all([
         ctx.db.expense.findMany({
           where,
           orderBy,
           skip,
           take: limit,
-          include: expenseListInclude,
+          include: {
+            ...expenseListInclude,
+            client: { select: { id: true, firstName: true, lastName: true } },
+          },
         }),
         ctx.db.expense.count({ where }),
+        ctx.db.user.findUnique({
+          where: { email: ctx.user.email ?? undefined },
+          select: { role: true },
+        }),
       ]);
+
+      const canViewClient = canViewClientData(viewer?.role);
 
       const totalPages = Math.ceil(totalCount / limit) || 0;
       const hasNextPage = page < totalPages;
       const hasPreviousPage = page > 1;
 
       return {
-        expenses,
+        expenses: expenses.map((expense) => ({
+          ...expense,
+          client: canViewClient ? expense.client : null,
+        })),
+        canViewClient,
         pagination: {
           currentPage: page,
           pageSize: limit,

@@ -266,3 +266,127 @@ export const expenseListInclude = {
     },
   },
 } satisfies Prisma.ExpenseInclude;
+
+const isDistributionActive = (
+  grant: { status: string; endDate: Date | null },
+  now: Date,
+) => grant.status === "APPROVED" && (!grant.endDate || grant.endDate >= now);
+
+// Replaces an existing expense's allocations. The old amounts are released
+// back to their grant distributions before the new ones are checked, so an
+// expense can move money between grants it already uses.
+//
+// Design decisions (RM-138 follow-up, open to change):
+// - Any fund pool: unlike creation, re-allocation is not limited to the
+//   expense's original fund pool, so a bookkeeper can fix an expense that was
+//   filed under the wrong pool.
+// - Expired grants: new money must go to active, approved grants. An amount
+//   already on a grant that has since expired or lost approval may be kept or
+//   reduced, but not increased, so editing an older expense doesn't force its
+//   money off a grant it was legitimately spent from.
+export async function reallocateExpense(
+  tx: TransactionClient,
+  input: {
+    expenseId: number;
+    allocations: CustomDistributionInput[];
+    now: Date;
+  },
+) {
+  const expense = await tx.expense.findUnique({
+    where: { id: input.expenseId },
+    select: {
+      id: true,
+      totalAmount: true,
+      distributions: { select: { grantDistributionId: true, amount: true } },
+    },
+  });
+
+  if (!expense) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
+  }
+
+  const newSum = input.allocations.reduce(
+    (sum, row) => sum.plus(new Prisma.Decimal(String(row.amount))),
+    new Prisma.Decimal(0),
+  );
+  if (!newSum.equals(expense.totalAmount)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Allocation amounts must sum to expense total",
+    });
+  }
+
+  const previous = new Map(
+    expense.distributions.map((d) => [d.grantDistributionId, d.amount]),
+  );
+
+  for (const old of expense.distributions) {
+    await tx.grantDistribution.update({
+      where: { id: old.grantDistributionId },
+      data: { spentAmount: { decrement: old.amount } },
+    });
+  }
+  await tx.expenseDistribution.deleteMany({
+    where: { expenseId: expense.id },
+  });
+
+  const distributions = await tx.grantDistribution.findMany({
+    where: {
+      id: { in: input.allocations.map((row) => row.grantDistributionId) },
+    },
+    select: {
+      id: true,
+      amount: true,
+      spentAmount: true,
+      grant: { select: { status: true, endDate: true } },
+    },
+  });
+  const byId = new Map(distributions.map((d) => [d.id, d]));
+
+  const allocations: Allocation[] = input.allocations.map((row) => {
+    const distribution = byId.get(row.grantDistributionId);
+    if (!distribution) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Grant distribution ${row.grantDistributionId} does not exist`,
+      });
+    }
+
+    const amount = new Prisma.Decimal(String(row.amount));
+    const kept = previous.get(row.grantDistributionId);
+    if (
+      !isDistributionActive(distribution.grant, input.now) &&
+      (!kept || amount.gt(kept))
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Grant distribution ${row.grantDistributionId} belongs to an expired or unapproved grant`,
+      });
+    }
+
+    if (availableAmount(distribution).lessThan(amount)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `Insufficient available funds for grant distribution ${row.grantDistributionId}`,
+      });
+    }
+
+    return { grantDistributionId: row.grantDistributionId, amount };
+  });
+
+  await tx.expenseDistribution.createMany({
+    data: allocations.map((allocation) => ({
+      expenseId: expense.id,
+      grantDistributionId: allocation.grantDistributionId,
+      amount: allocation.amount,
+    })),
+  });
+  for (const allocation of allocations) {
+    await tx.grantDistribution.update({
+      where: { id: allocation.grantDistributionId },
+      data: { spentAmount: { increment: allocation.amount } },
+    });
+  }
+
+  return { id: expense.id };
+}

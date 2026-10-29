@@ -6,10 +6,12 @@ import {
   expenseListInclude,
   fetchActiveDistributions,
   persistExpenseWithAllocations,
+  reallocateExpense,
   validateCustomAllocations,
 } from "~/server/api/lib/expense-allocation";
 import { TRPCError } from "@trpc/server";
 import {
+  bookkeeperProcedure,
   createTRPCRouter,
   fundPoolReadProcedure,
   interventionTeamProcedure,
@@ -22,6 +24,13 @@ const customDistributionSchema = z.object({
   amount: z.coerce.number().positive(),
 });
 
+const uniqueDistributionIds = (rows: { grantDistributionId: number }[]) =>
+  rows.length === new Set(rows.map((row) => row.grantDistributionId)).size;
+
+// Client data is limited to the roles that can open the clients pages.
+const canViewClientData = (role: string | null | undefined) =>
+  role === "InterventionTeam" || role === "Admin";
+
 const createExpenseInputSchema = z
   .object({
     fundPoolId: z.coerce.number().int().positive(),
@@ -33,13 +42,9 @@ const createExpenseInputSchema = z
     customDistributions: z.array(customDistributionSchema).optional(),
   })
   .refine(
-    (data) => {
-      if (!data.customDistributions?.length) return true;
-      const ids = data.customDistributions.map(
-        (row) => row.grantDistributionId,
-      );
-      return ids.length === new Set(ids).size;
-    },
+    (data) =>
+      !data.customDistributions?.length ||
+      uniqueDistributionIds(data.customDistributions),
     {
       message: "Duplicate grantDistributionId in customDistributions",
       path: ["customDistributions"],
@@ -203,14 +208,15 @@ export const expensesRouter = createTRPCRouter({
         });
       }
 
-      const canViewClient =
-        ctx.userRole === "InterventionTeam" || ctx.userRole === "Admin";
+      const canViewClient = canViewClientData(ctx.userRole);
 
       return {
         ...expense,
         client: canViewClient ? expense.client : null,
         hasClient: expense.clientId !== null,
         canViewClient,
+        canEditAllocations:
+          ctx.userRole === "Bookkeeper" || ctx.userRole === "Admin",
       };
     }),
 
@@ -253,4 +259,82 @@ export const expensesRouter = createTRPCRouter({
         select: { id: true, clientId: true },
       });
     }),
+
+  // Grant distributions an expense can be re-allocated to: every active one in
+  // any fund pool, plus any this expense already uses (even if expired). See
+  // reallocateExpense for why both are allowed. `available` counts this
+  // expense's own current amount as free, since saving releases it first.
+  allocationOptions: bookkeeperProcedure
+    .input(z.object({ id: z.coerce.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+      const current = await ctx.db.expenseDistribution.findMany({
+        where: { expenseId: input.id },
+        select: { grantDistributionId: true, amount: true },
+      });
+      const currentById = new Map(
+        current.map((d) => [d.grantDistributionId, d.amount]),
+      );
+
+      const distributions = await ctx.db.grantDistribution.findMany({
+        where: {
+          OR: [
+            {
+              grant: {
+                status: "APPROVED",
+                OR: [{ endDate: null }, { endDate: { gte: now } }],
+              },
+            },
+            { id: { in: [...currentById.keys()] } },
+          ],
+        },
+        include: {
+          grant: {
+            select: { id: true, title: true, endDate: true, status: true },
+          },
+          fundPool: { select: { id: true, category: true } },
+        },
+        orderBy: [{ fundPoolId: "asc" }, { grantId: "asc" }],
+      });
+
+      return distributions.map((d) => {
+        const currentAmount = currentById.get(d.id) ?? new Prisma.Decimal(0);
+        return {
+          id: d.id,
+          grant: { id: d.grant.id, title: d.grant.title },
+          fundPool: d.fundPool,
+          active:
+            d.grant.status === "APPROVED" &&
+            (!d.grant.endDate || d.grant.endDate >= now),
+          currentAmount: currentAmount.toNumber(),
+          available: d.amount
+            .minus(d.spentAmount)
+            .plus(currentAmount)
+            .toNumber(),
+        };
+      });
+    }),
+
+  // Replace an expense's grant allocations (re-split or move between grants).
+  updateAllocations: bookkeeperProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        allocations: z
+          .array(customDistributionSchema)
+          .min(1)
+          .refine(uniqueDistributionIds, {
+            message: "Each grant distribution can only appear once",
+          }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) =>
+      ctx.db.$transaction((tx) =>
+        reallocateExpense(tx, {
+          expenseId: input.id,
+          allocations: input.allocations,
+          now: new Date(),
+        }),
+      ),
+    ),
 });

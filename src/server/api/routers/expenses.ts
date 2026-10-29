@@ -273,6 +273,109 @@ export const expensesRouter = createTRPCRouter({
       });
     }),
 
+  // Edit description, date, invoice URL and client. Fields left out are not
+  // changed; invoiceUrl and clientId accept null to clear them. The amount and
+  // allocations are changed through updateAllocations.
+  update: bookkeeperProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        description: z
+          .string()
+          .trim()
+          .min(1, "Description is required")
+          .optional(),
+        date: z.coerce.date({ error: "Enter a valid date" }).optional(),
+        invoiceUrl: z
+          .string()
+          .url("Invoice URL must be a valid URL")
+          .nullable()
+          .optional(),
+        clientId: z.number().int().positive().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+
+      // Bookkeepers cannot see client data, so only roles that can may change it.
+      if (data.clientId !== undefined && !canViewClientData(ctx.userRole)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permission to change the client",
+        });
+      }
+
+      const expense = await ctx.db.expense.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!expense) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found",
+        });
+      }
+
+      if (data.clientId) {
+        const client = await ctx.db.client.findUnique({
+          where: { id: data.clientId },
+          select: { id: true },
+        });
+        if (!client) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected client does not exist",
+          });
+        }
+      }
+
+      return ctx.db.expense.update({
+        where: { id },
+        data,
+        select: {
+          id: true,
+          description: true,
+          date: true,
+          invoiceUrl: true,
+          clientId: true,
+        },
+      });
+    }),
+
+  // Delete an expense and give its allocated amounts back to the grants.
+  delete: bookkeeperProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) =>
+      ctx.db.$transaction(async (tx) => {
+        const expense = await tx.expense.findUnique({
+          where: { id: input.id },
+          select: {
+            id: true,
+            distributions: {
+              select: { grantDistributionId: true, amount: true },
+            },
+          },
+        });
+        if (!expense) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Expense not found",
+          });
+        }
+
+        for (const allocation of expense.distributions) {
+          await tx.grantDistribution.update({
+            where: { id: allocation.grantDistributionId },
+            data: { spentAmount: { decrement: allocation.amount } },
+          });
+        }
+
+        // The expense's allocation rows are removed with it (onDelete: Cascade).
+        await tx.expense.delete({ where: { id: expense.id } });
+        return { id: expense.id };
+      }),
+    ),
+
   // Grant distributions an expense can be re-allocated to: every active one in
   // any fund pool, plus any this expense already uses (even if expired). See
   // reallocateExpense for why both are allowed. `available` counts this

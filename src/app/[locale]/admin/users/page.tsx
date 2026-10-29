@@ -1,5 +1,6 @@
 "use client";
 
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import React, { useState } from "react";
 import Link from "next/link";
 import { api } from "~/trpc/react";
@@ -37,7 +38,7 @@ export default function AdminUsersPage() {
 
   const [selected, setSelected] = useState<Record<string, RoleName>>({});
 
-  if (usersLoading) return <div>Loading users...</div>;
+  if (usersLoading) return <TableLoadingState />;
 
   // If the current user is not an admin, the server returns a FORBIDDEN error.
   if (usersError) {

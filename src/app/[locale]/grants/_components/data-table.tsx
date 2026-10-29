@@ -1,5 +1,6 @@
 "use client";
 
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
 import {
   flexRender,
@@ -333,7 +334,7 @@ export const GrantsTable = () => {
     .rows.map((row) => row.original.dbId)
     .filter((id): id is number => id !== undefined);
 
-  if (isLoading && !grantListResult) return <div>Loading…</div>;
+  if (isLoading && !grantListResult) return <TableLoadingState />;
   if (isError)
     return (
       <div className="text-destructive">

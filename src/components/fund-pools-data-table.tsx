@@ -1,5 +1,6 @@
 "use client";
 
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
 import {
   ColumnDef,
@@ -378,7 +379,7 @@ export const FundPoolsDataTable = ({
     },
   });
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <TableLoadingState />;
   if (isError) return <div>Error loading data.</div>;
 
   const containerClass = inModal ? "w-full" : "w-full";

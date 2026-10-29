@@ -274,6 +274,16 @@ export const ClientsTable = () => {
     );
   };
 
+  // Deleting keeps the client's expenses but clears their link (SET NULL).
+  const deleteTargetExpenses =
+    mappedClients.find((c) => c.id === deleteTargetId)?.expenseCount ?? 0;
+  const deleteWarning =
+    deleteTargetExpenses > 0
+      ? `This client has ${deleteTargetExpenses} linked ${
+          deleteTargetExpenses === 1 ? "expense" : "expenses"
+        }. ${deleteTargetExpenses === 1 ? "It" : "They"} will be kept but no longer linked to any client.`
+      : undefined;
+
   const columns = React.useMemo(
     () => createColumns(startEdit, (id) => setDeleteTargetId(id)),
     [],
@@ -324,6 +334,7 @@ export const ClientsTable = () => {
       <DeleteConfirmDialog
         open={deleteTargetId !== null}
         entityName="this client"
+        description={deleteWarning}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTargetId(null)}
       />

@@ -8,14 +8,16 @@ import { TableErrorState } from "@/components/data-table/TableErrorState";
 import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import {
   DetailFields,
+  DetailNotes,
   DetailPage,
   DetailSection,
   EntityLink,
   formatDate,
   formatMoney,
+  useAuditFields,
 } from "@/components/detail-page";
-import { parseGrantMeta } from "@/lib/grant-meta";
 import { api } from "~/trpc/react";
+import { grantFields } from "./grant-fields";
 
 type PoolRow = {
   id: number;
@@ -136,18 +138,14 @@ export function GrantDetail({ id }: { id: number }) {
     [grant?.distributions],
   );
 
+  const auditFields = useAuditFields(grant);
+
   if (isLoading) return <TableLoadingState />;
   if (isError || !grant) {
     return <TableErrorState message={error?.message} />;
   }
 
-  const meta = parseGrantMeta(grant.description);
-  const allocated = poolRows.reduce((sum, r) => sum + r.allocated, 0);
-  const spent = poolRows.reduce((sum, r) => sum + r.spent, 0);
-  const metaString = (key: string) =>
-    meta[key] ? String(meta[key]) : undefined;
-  const metaDate = (key: string) =>
-    meta[key] ? formatDate(meta[key] as string) : undefined;
+  const { fields, notes } = grantFields(grant);
 
   return (
     <DetailPage
@@ -156,28 +154,8 @@ export function GrantDetail({ id }: { id: number }) {
       title={grant.title}
       subtitle={`${formatMoney(grant.totalAmount)} · ${grant.status}`}
     >
-      <DetailFields
-        fields={[
-          { label: "Organization", value: grant.title },
-          { label: "Category", value: metaString("category") },
-          { label: "Status", value: grant.status },
-          {
-            label: "Date received",
-            value: metaDate("dateReceived") ?? formatDate(grant.createdAt),
-          },
-          {
-            label: "To be used by",
-            value: metaDate("toBeUsedBy") ?? formatDate(grant.endDate),
-          },
-          { label: "Email", value: metaString("email") },
-          { label: "Phone", value: metaString("phoneNumber") },
-          { label: "Total amount", value: formatMoney(grant.totalAmount) },
-          { label: "Unassigned", value: formatMoney(grant.unassignedAmount) },
-          { label: "Spent", value: formatMoney(spent) },
-          { label: "Remaining", value: formatMoney(allocated - spent) },
-          { label: "Notes", value: metaString("notes") },
-        ]}
-      />
+      <DetailFields fields={[...fields, ...auditFields]} />
+      <DetailNotes label={notes.label} value={notes.value} />
 
       <DetailSection title="Fund pool distributions">
         <DataTable

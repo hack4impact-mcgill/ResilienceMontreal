@@ -13,3 +13,12 @@ enum RoleName {
   InterventionTeam
   Admin
 }
+
+/// The single Google account authorised to manage the shared document folder.
+model GoogleDriveIntegration {
+  id                    Int      @id @default(1)
+  encryptedRefreshToken String
+  accountEmail          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}

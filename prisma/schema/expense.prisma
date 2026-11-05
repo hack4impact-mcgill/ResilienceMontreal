@@ -1,22 +1,22 @@
 model Expense {
-  id              Int                     @id @default(autoincrement())
-  totalAmount     Decimal                 @db.Decimal(10, 2)
-  description     String
-  date            DateTime                @default(now())
-  invoiceUrl      String?
-  clientId        Int?
-  client          Client?                 @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  id            Int                   @id @default(autoincrement())
+  totalAmount   Decimal               @db.Decimal(10, 2)
+  description   String
+  date          DateTime              @default(now())
+  invoiceUrl    String?
+  clientId      Int?
+  client        Client?               @relation(fields: [clientId], references: [id], onDelete: SetNull)
   distributions ExpenseDistribution[]
 
   @@index([clientId])
 }
 
 model ExpenseDistribution {
-  id         Int      @id @default(autoincrement())
-  expenseId  Int
+  id                  Int               @id @default(autoincrement())
+  expenseId           Int
   grantDistributionId Int
-  amount     Decimal  @db.Decimal(10, 2)
-  expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  amount              Decimal           @db.Decimal(10, 2)
+  expense             Expense           @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   grantDistribution   GrantDistribution @relation(fields: [grantDistributionId], references: [id], onDelete: Restrict)
 
   @@unique([expenseId, grantDistributionId])

@@ -8,5 +8,9 @@
   "export": "Export",
   "viewDetails": "View details",
   "edit": "Edit",
-  "delete": "Delete"
+  "delete": "Delete",
+  "createdBy": "Intervention worker",
+  "dateCreated": "Date created",
+  "lastEditedBy": "Last editor",
+  "dateLastEdited": "Date last edited"
 }

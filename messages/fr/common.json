@@ -8,5 +8,9 @@
   "export": "Exporter",
   "viewDetails": "Voir les détails",
   "edit": "Modifier",
-  "delete": "Supprimer"
+  "delete": "Supprimer",
+  "createdBy": "Intervenant(e)",
+  "dateCreated": "Date de création",
+  "lastEditedBy": "Dernière modification par",
+  "dateLastEdited": "Date de dernière modification"
 }

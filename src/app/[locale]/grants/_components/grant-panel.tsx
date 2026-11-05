@@ -41,7 +41,7 @@ export function GrantPanel({
   const setDraft = (patch: Partial<GrantDraft>) =>
     setDraftRaw((prev) => (prev ? { ...prev, ...patch } : prev));
 
-  // same queries the grants table refreshes after an edit or delete
+  // same queries the grants table refreshes after a delete
   const invalidate = () =>
     Promise.all([
       utils.grant.getGrants.invalidate(),

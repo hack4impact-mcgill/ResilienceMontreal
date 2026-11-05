@@ -69,9 +69,6 @@ function SelectRowCheckbox({ row }: { row: Row<Grant> }) {
         checked={row.getIsSelected()}
         disabled={!row.getCanSelect()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        // keep clicks from starting the cell's double-click edit
-        onClick={(e) => e.stopPropagation()}
-        onDoubleClick={(e) => e.stopPropagation()}
       />
     </CheckboxCell>
   );

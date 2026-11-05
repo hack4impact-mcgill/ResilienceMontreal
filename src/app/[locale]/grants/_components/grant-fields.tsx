@@ -14,7 +14,7 @@ import { type RouterOutputs } from "~/trpc/react";
 export type GrantDetailData = RouterOutputs["grant"]["getById"];
 type FundPool = RouterOutputs["fundPool"]["getAll"][number];
 
-/** Editable grant fields as form strings (same set as the table's double-click edit). */
+/** Editable grant fields as form strings. */
 export type GrantDraft = {
   organization: string;
   fundPoolId: string;

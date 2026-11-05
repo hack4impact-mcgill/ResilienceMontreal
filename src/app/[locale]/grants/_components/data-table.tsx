@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/table";
 
 import { columns, Grant } from "./columns";
-import { api, type RouterInputs, type RouterOutputs } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 
 import { useServerTableState } from "@/hooks/use-server-table-state";
 import { useAdvancedFilters } from "@/hooks/use-advanced-filters";
@@ -39,12 +39,13 @@ import { AdvancedFilterPopover } from "@/components/data-table/AdvancedFilterPop
 import { InlineFormRow } from "@/components/data-table/InlineFormRow";
 import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
 import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog";
+import { DetailSplit, useDetailPanel } from "@/components/detail-panel";
+import { GrantPanel } from "./grant-panel";
 import { parseGrantMeta } from "@/lib/grant-meta";
 
 type GrantSortBy = "totalAmount" | "endDate" | "createdAt" | "title";
 type FundPool = RouterOutputs["fundPool"]["getAll"][number];
 type DbGrant = RouterOutputs["grant"]["getGrants"]["grants"][number];
-type UpdateGrantPayload = RouterInputs["grant"]["update"];
 
 function isGrantExpired(toBeUsedBy: Date): boolean {
   const today = new Date();
@@ -101,7 +102,7 @@ const SORT_FIELDS = [
 
 const EMPTY_FILTERS = { minAmount: "", maxAmount: "", dueFrom: "", dueTo: "" };
 
-export const GrantsTable = () => {
+const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
   const t = useTranslations("grants");
   const tCommon = useTranslations("common");
   const tableState = useServerTableState<GrantSortBy>({
@@ -111,7 +112,6 @@ export const GrantsTable = () => {
 
   const [addModalOpen, setAddModalOpen] = React.useState(false);
   const [addModalError, setAddModalError] = React.useState<string | null>(null);
-  const [rowErrors, setRowErrors] = React.useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = React.useState<{
     id: number;
     name: string;
@@ -120,11 +120,6 @@ export const GrantsTable = () => {
   const [bulkPoolId, setBulkPoolId] = React.useState<number | undefined>(
     undefined,
   );
-  const [editing, setEditing] = React.useState<{
-    rowId: string;
-    columnId: string;
-    value: unknown;
-  } | null>(null);
 
   // Inline add form state
   const [orgField, setOrgField] = React.useState("");
@@ -266,20 +261,6 @@ export const GrantsTable = () => {
     onError: (err) => setAddModalError(err.message ?? "Error creating grant"),
   });
 
-  const updateMutation = api.grant.update.useMutation({
-    onSuccess: async () => {
-      await invalidateAll();
-    },
-    onError: (err, _vars, _ctx) => {
-      // Invalidate to restore server state on update failure
-      void utils.grant.getGrants.invalidate();
-      setRowErrors((s) => ({
-        ...s,
-        [String(_vars.id)]: err?.message ?? "Failed to save",
-      }));
-    },
-  });
-
   const bulkCategoryMutation = api.grant.bulkUpdateCategory.useMutation({
     onSuccess: async ({ movedCount }) => {
       setRowSelection({});
@@ -349,17 +330,6 @@ export const GrantsTable = () => {
       filters.draft.dueTo,
   );
 
-  const editableColumns = [
-    "organization",
-    "category",
-    "dateReceived",
-    "toBeUsedBy",
-    "email",
-    "phoneNumber",
-    "notes",
-    "originalAmount",
-  ];
-
   return (
     <div className="relative w-full">
       <DeleteConfirmDialog
@@ -373,7 +343,7 @@ export const GrantsTable = () => {
       />
       {isFetching && <FetchingOverlay />}
 
-      <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
+      <div className="flex flex-col gap-3 py-4">
         {/* Search row */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
@@ -819,7 +789,8 @@ export const GrantsTable = () => {
                                   ? [
                                       {
                                         label: tCommon("viewDetails"),
-                                        href: `/grants/${row.original.dbId}`,
+                                        onClick: () =>
+                                          onView(row.original.dbId!),
                                       },
                                       {
                                         label: tCommon("delete"),
@@ -835,233 +806,6 @@ export const GrantsTable = () => {
                               }
                             />
                           </div>
-                        </TableCell>
-                      );
-                    }
-
-                    if (editableColumns.includes(cell.column.id)) {
-                      const isEditing =
-                        editing?.rowId === row.original.id &&
-                        editing?.columnId === cell.column.id;
-                      const display = flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      );
-
-                      return (
-                        <TableCell
-                          key={cell.id}
-                          onDoubleClick={() => {
-                            setRowErrors((s) => ({
-                              ...s,
-                              [row.original.id]: "",
-                            }));
-                            setEditing({
-                              rowId: row.original.id,
-                              columnId: cell.column.id,
-                              value:
-                                cell.column.id === "category"
-                                  ? (row.original.fundPoolId ?? "")
-                                  : row.original[cell.column.id as keyof Grant],
-                            });
-                          }}
-                        >
-                          {isEditing ? (
-                            <div className="flex items-center gap-2">
-                              {cell.column.id === "notes" ? (
-                                <textarea
-                                  value={
-                                    editing.value != null
-                                      ? String(editing.value)
-                                      : ""
-                                  }
-                                  onChange={(e) =>
-                                    setEditing(
-                                      (p) =>
-                                        p && { ...p, value: e.target.value },
-                                    )
-                                  }
-                                  className="w-full h-20 p-2 border rounded"
-                                />
-                              ) : cell.column.id === "originalAmount" ? (
-                                <Input
-                                  type="number"
-                                  value={Number(editing.value ?? 0)}
-                                  onChange={(e) =>
-                                    setEditing(
-                                      (p) =>
-                                        p && {
-                                          ...p,
-                                          value: Number(e.target.value),
-                                        },
-                                    )
-                                  }
-                                  className="w-28"
-                                />
-                              ) : cell.column.id === "dateReceived" ||
-                                cell.column.id === "toBeUsedBy" ? (
-                                <Input
-                                  type="date"
-                                  value={
-                                    editing.value instanceof Date
-                                      ? editing.value.toISOString().slice(0, 10)
-                                      : editing.value
-                                        ? new Date(
-                                            editing.value as string | number,
-                                          )
-                                            .toISOString()
-                                            .slice(0, 10)
-                                        : ""
-                                  }
-                                  onChange={(e) =>
-                                    setEditing(
-                                      (p) =>
-                                        p && {
-                                          ...p,
-                                          value: new Date(e.target.value),
-                                        },
-                                    )
-                                  }
-                                />
-                              ) : cell.column.id === "category" ? (
-                                fundPools && fundPools.length > 0 ? (
-                                  <select
-                                    value={Number(editing.value ?? 0)}
-                                    onChange={(e) =>
-                                      setEditing(
-                                        (p) =>
-                                          p && {
-                                            ...p,
-                                            value: Number(e.target.value),
-                                          },
-                                      )
-                                    }
-                                    className="w-full h-7 bg-white px-2"
-                                  >
-                                    {fundPools.map((p: FundPool) => (
-                                      <option key={p.id} value={p.id}>
-                                        {p.category}
-                                      </option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <Input
-                                    value={
-                                      editing.value != null
-                                        ? String(editing.value)
-                                        : ""
-                                    }
-                                    onChange={(e) =>
-                                      setEditing(
-                                        (p) =>
-                                          p && { ...p, value: e.target.value },
-                                      )
-                                    }
-                                  />
-                                )
-                              ) : (
-                                <Input
-                                  value={
-                                    editing.value != null
-                                      ? String(editing.value)
-                                      : ""
-                                  }
-                                  onChange={(e) =>
-                                    setEditing(
-                                      (p) =>
-                                        p && { ...p, value: e.target.value },
-                                    )
-                                  }
-                                />
-                              )}
-
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  if (!editing) return;
-                                  const { rowId, columnId, value } = editing;
-                                  const target = localGrants.find(
-                                    (r) => r.id === rowId,
-                                  );
-                                  const dbId = target?.dbId;
-                                  if (!dbId) {
-                                    setRowErrors((s) => ({
-                                      ...s,
-                                      [rowId]: "Cannot update unsaved grant",
-                                    }));
-                                    setEditing(null);
-                                    return;
-                                  }
-                                  const payload: UpdateGrantPayload = {
-                                    id: dbId,
-                                  };
-                                  if (columnId === "organization")
-                                    payload.organization = String(value);
-                                  else if (columnId === "category") {
-                                    const chosenPoolId = Number(value);
-                                    const pool = fundPools?.find(
-                                      (p: FundPool) => p.id === chosenPoolId,
-                                    );
-                                    if (!pool) {
-                                      setRowErrors((s) => ({
-                                        ...s,
-                                        [rowId]: "Selected fund pool not found",
-                                      }));
-                                      setEditing(null);
-                                      return;
-                                    }
-                                    payload.category = pool.category;
-                                    payload.fundPoolId = chosenPoolId;
-                                  } else if (columnId === "dateReceived")
-                                    payload.dateReceived =
-                                      value instanceof Date
-                                        ? value
-                                        : new Date(String(value));
-                                  else if (columnId === "toBeUsedBy")
-                                    payload.toBeUsedBy =
-                                      value instanceof Date
-                                        ? value
-                                        : new Date(String(value));
-                                  else if (columnId === "email")
-                                    payload.email = String(value);
-                                  else if (columnId === "phoneNumber")
-                                    payload.phoneNumber = String(value);
-                                  else if (columnId === "notes")
-                                    payload.notes = String(value);
-                                  else if (columnId === "originalAmount")
-                                    payload.amount = Number(value) || 0;
-
-                                  updateMutation.mutate(payload, {
-                                    onSuccess: () => {
-                                      setRowErrors((s) => ({
-                                        ...s,
-                                        [rowId]: "",
-                                      }));
-                                    },
-                                  });
-                                  setEditing(null);
-                                }}
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditing(null)}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          ) : (
-                            <div>
-                              {display}
-                              {rowErrors[row.original.id] ? (
-                                <div className="text-red-600 text-sm">
-                                  {rowErrors[row.original.id]}
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
                         </TableCell>
                       );
                     }
@@ -1093,5 +837,22 @@ export const GrantsTable = () => {
         onLimitChange={tableState.setLimit}
       />
     </div>
+  );
+};
+
+/** The table, with the selected row's details panel beside it. */
+export const GrantsTable = () => {
+  const panel = useDetailPanel();
+  return (
+    <DetailSplit
+      panel={
+        panel.id !== null && (
+          // keyed so switching rows starts the next record fresh
+          <GrantPanel key={panel.id} id={panel.id} {...panel.controls} />
+        )
+      }
+    >
+      <GrantsTableContent onView={panel.open} />
+    </DetailSplit>
   );
 };

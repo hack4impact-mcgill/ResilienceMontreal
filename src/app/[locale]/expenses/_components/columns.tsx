@@ -19,18 +19,26 @@ export type Expense = {
   client: { id: number; name: string } | null;
 };
 
-// No Delete: expenses have no delete endpoint yet
-function ExpenseRowActions({ expense }: { expense: Expense }) {
+// Delete lives in the details panel (Bookkeeper / Admin only)
+function ExpenseRowActions({
+  expense,
+  onView,
+}: {
+  expense: Expense;
+  onView: (expenseId: number) => void;
+}) {
   const t = useTranslations("common");
   return (
     <RowActionsDropdown
       label="Actions for expense"
-      actions={[{ label: t("viewDetails"), href: `/expenses/${expense.id}` }]}
+      actions={[{ label: t("viewDetails"), onClick: () => onView(expense.id) }]}
     />
   );
 }
 
-export const columns: ColumnDef<Expense>[] = [
+export const createColumns = (
+  onView: (expenseId: number) => void,
+): ColumnDef<Expense>[] => [
   {
     accessorKey: "description",
     header: "DESCRIPTION",
@@ -98,6 +106,8 @@ export const columns: ColumnDef<Expense>[] = [
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => <ExpenseRowActions expense={row.original} />,
+    cell: ({ row }) => (
+      <ExpenseRowActions expense={row.original} onView={onView} />
+    ),
   },
 ];

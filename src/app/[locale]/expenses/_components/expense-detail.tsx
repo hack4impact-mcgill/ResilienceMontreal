@@ -9,14 +9,17 @@ import { TableErrorState } from "@/components/data-table/TableErrorState";
 import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import {
   DetailFields,
+  DetailNotes,
   DetailPage,
   DetailSection,
   EntityLink,
   formatDate,
   formatMoney,
+  useAuditFields,
 } from "@/components/detail-page";
 import { api } from "~/trpc/react";
 import { AllocationEditor } from "./allocation-editor";
+import { expenseFields } from "./expense-fields";
 
 type Allocation = {
   id: number;
@@ -78,20 +81,15 @@ export function ExpenseDetail({ id }: { id: number }) {
     [expense?.distributions],
   );
 
+  // expenses have no created/edited timestamps yet, so these all show "—"
+  const auditFields = useAuditFields();
+
   if (isLoading) return <TableLoadingState />;
   if (isError || !expense) {
     return <TableErrorState message={error?.message} />;
   }
 
-  const clientValue = expense.client ? (
-    <EntityLink href={`/clients/${expense.client.id}`}>
-      {expense.client.firstName} {expense.client.lastName}
-    </EntityLink>
-  ) : expense.hasClient ? (
-    <span className="text-muted-foreground">Restricted</span>
-  ) : (
-    "—"
-  );
+  const { fields, notes } = expenseFields(expense);
 
   return (
     <DetailPage
@@ -100,29 +98,8 @@ export function ExpenseDetail({ id }: { id: number }) {
       title={expense.description}
       subtitle={`${formatMoney(expense.totalAmount)} · ${formatDate(expense.date)}`}
     >
-      <DetailFields
-        fields={[
-          { label: "Description", value: expense.description },
-          { label: "Date", value: formatDate(expense.date) },
-          { label: "Amount", value: formatMoney(expense.totalAmount) },
-          {
-            label: "Invoice",
-            value: expense.invoiceUrl ? (
-              <a
-                href={expense.invoiceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[#3FA9A9] underline-offset-2 hover:underline"
-              >
-                Open invoice
-              </a>
-            ) : (
-              "—"
-            ),
-          },
-          { label: "Client", value: clientValue },
-        ]}
-      />
+      <DetailFields fields={[...fields, ...auditFields]} />
+      <DetailNotes label={notes.label} value={notes.value} />
 
       {expense.canViewClient && (
         <ClientLinkEditor

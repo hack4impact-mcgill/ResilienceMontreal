@@ -38,6 +38,8 @@ import { AdvancedFilterPopover } from "@/components/data-table/AdvancedFilterPop
 import { InlineFormRow } from "@/components/data-table/InlineFormRow";
 import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
 import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog";
+import { DetailSplit, useDetailPanel } from "@/components/detail-panel";
+import { GrantPanel } from "./grant-panel";
 import { parseGrantMeta } from "@/lib/grant-meta";
 
 type GrantSortBy = "totalAmount" | "endDate" | "createdAt" | "title";
@@ -100,7 +102,7 @@ const SORT_FIELDS = [
 
 const EMPTY_FILTERS = { minAmount: "", maxAmount: "", dueFrom: "", dueTo: "" };
 
-export const GrantsTable = () => {
+const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
   const t = useTranslations("grants");
   const tCommon = useTranslations("common");
   const tableState = useServerTableState<GrantSortBy>({
@@ -372,7 +374,7 @@ export const GrantsTable = () => {
       />
       {isFetching && <FetchingOverlay />}
 
-      <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
+      <div className="flex flex-col gap-3 py-4">
         {/* Search row */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
@@ -818,7 +820,8 @@ export const GrantsTable = () => {
                                   ? [
                                       {
                                         label: tCommon("viewDetails"),
-                                        href: `/grants/${row.original.dbId}`,
+                                        onClick: () =>
+                                          onView(row.original.dbId!),
                                       },
                                       {
                                         label: tCommon("delete"),
@@ -1092,5 +1095,22 @@ export const GrantsTable = () => {
         onLimitChange={tableState.setLimit}
       />
     </div>
+  );
+};
+
+/** The table, with the selected row's details panel beside it. */
+export const GrantsTable = () => {
+  const panel = useDetailPanel();
+  return (
+    <DetailSplit
+      panel={
+        panel.id !== null && (
+          // keyed so switching rows starts the next record fresh
+          <GrantPanel key={panel.id} id={panel.id} {...panel.controls} />
+        )
+      }
+    >
+      <GrantsTableContent onView={panel.open} />
+    </DetailSplit>
   );
 };

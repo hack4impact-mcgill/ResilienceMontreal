@@ -22,7 +22,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { columns, Expense } from "./columns";
+import { createColumns, Expense } from "./columns";
+import { DetailSplit, useDetailPanel } from "@/components/detail-panel";
+import { ExpensePanel } from "./expense-panel";
 import { api } from "~/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -165,7 +167,7 @@ const EMPTY_FORM: ExpenseFormData = {
   clientId: "",
 };
 
-export const ExpensesTable = () => {
+const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
   const tableState = useServerTableState<ExpenseSortBy>({
     defaultSortBy: "date",
   });
@@ -177,6 +179,7 @@ export const ExpensesTable = () => {
     null,
   );
   const [groupByPool, setGroupByPool] = React.useState(false);
+  const columns = React.useMemo(() => createColumns(onView), [onView]);
 
   // Reset page when filters change
   React.useEffect(() => {
@@ -335,7 +338,7 @@ export const ExpensesTable = () => {
     <div className="relative w-full">
       {isFetching && <FetchingOverlay />}
 
-      <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
+      <div className="flex flex-col gap-3 py-4">
         {/* Search row */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
@@ -747,5 +750,22 @@ export const ExpensesTable = () => {
         onLimitChange={tableState.setLimit}
       />
     </div>
+  );
+};
+
+/** The table, with the selected row's details panel beside it. */
+export const ExpensesTable = () => {
+  const panel = useDetailPanel();
+  return (
+    <DetailSplit
+      panel={
+        panel.id !== null && (
+          // keyed so switching rows starts the next record fresh
+          <ExpensePanel key={panel.id} id={panel.id} {...panel.controls} />
+        )
+      }
+    >
+      <ExpensesTableContent onView={panel.open} />
+    </DetailSplit>
   );
 };

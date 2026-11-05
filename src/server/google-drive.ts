@@ -158,8 +158,13 @@ async function accessToken() {
   });
   const result = (await response.json()) as {
     access_token?: string;
+    error?: string;
     error_description?: string;
   };
+  if (result.error === "invalid_grant")
+    throw new Error(
+      "The Google Drive connection has expired or was revoked. An administrator must reconnect the shared Google account.",
+    );
   if (!response.ok || !result.access_token)
     throw new Error(
       result.error_description ?? "Could not authorize Google Drive.",

@@ -165,9 +165,16 @@ export function DocumentsBrowser() {
         </div>
       </div>
       {error ? (
-        <p className="rounded border border-destructive p-4 text-destructive">
-          {error.message}
-        </p>
+        <div className="rounded border border-destructive p-4 text-destructive">
+          <p>{error.message}</p>
+          {isAdmin && (
+            <Button className="mt-4" variant="outline" asChild>
+              <NextLink href="/api/documents/google/connect">
+                Reconnect the shared Google account
+              </NextLink>
+            </Button>
+          )}
+        </div>
       ) : isLoading ? (
         <p className="text-muted-foreground">Loading files…</p>
       ) : (

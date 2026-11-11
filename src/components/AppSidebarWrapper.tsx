@@ -3,7 +3,6 @@
 import { usePathname } from "@/i18n/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 
 export function AppSidebarWrapper({
   isLoggedIn,
@@ -18,9 +17,6 @@ export function AppSidebarWrapper({
   if (!isLoggedIn || hideSidebar) {
     return (
       <main className="w-full">
-        <div className="flex justify-end border-b border-border px-4 py-2">
-          <LocaleSwitcher />
-        </div>
         {children}
       </main>
     );
@@ -32,7 +28,6 @@ export function AppSidebarWrapper({
       <main className="w-full">
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
           <SidebarTrigger />
-          <LocaleSwitcher />
         </div>
         {children}
       </main>

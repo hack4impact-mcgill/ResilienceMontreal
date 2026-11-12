@@ -15,13 +15,16 @@ export async function GET(request: Request) {
       { status: 400 },
     );
   try {
-    const source = await downloadDriveFile(id);
+    const { name, response: source } = await downloadDriveFile(id);
+    const encodedName = encodeURIComponent(name).replace(
+      /['()*]/g,
+      (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
     return new NextResponse(source.body, {
       headers: {
         "content-type":
           source.headers.get("content-type") ?? "application/octet-stream",
-        "content-disposition":
-          source.headers.get("content-disposition") ?? "attachment",
+        "content-disposition": `attachment; filename*=UTF-8''${encodedName}`,
       },
     });
   } catch (error) {

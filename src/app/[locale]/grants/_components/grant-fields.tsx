@@ -9,6 +9,7 @@ import {
   formatMoney,
 } from "@/components/detail-page";
 import { parseGrantMeta } from "@/lib/grant-meta";
+import { formatPercent } from "@/lib/grant-split";
 import { type RouterOutputs } from "~/trpc/react";
 
 export type GrantDetailData = RouterOutputs["grant"]["getById"];
@@ -74,6 +75,16 @@ export function grantFields(
     (sum, d) => sum + Number(d.spentAmount),
     0,
   );
+  // grant.update can't change the category or amount of a split grant
+  const isSplit = grant.distributions.length > 1;
+  const splitSummary = grant.distributions
+    .map(
+      (d) =>
+        `${d.fundPool?.category ?? "Uncategorized"} ${formatPercent(
+          allocated > 0 ? (Number(d.amount) / allocated) * 100 : 0,
+        )}`,
+    )
+    .join(" · ");
 
   const text = (key: keyof GrantDraft, type = "text") =>
     edit && (
@@ -93,8 +104,8 @@ export function grantFields(
       },
       {
         label: "Category",
-        value: metaString("category"),
-        input: edit && (
+        value: isSplit ? splitSummary : metaString("category"),
+        input: edit && !isSplit && (
           <select
             value={edit.draft.fundPoolId}
             onChange={(e) => edit.setDraft({ fundPoolId: e.target.value })}
@@ -135,7 +146,7 @@ export function grantFields(
       {
         label: "Total amount",
         value: formatMoney(grant.totalAmount),
-        input: text("amount", "number"),
+        input: isSplit ? undefined : text("amount", "number"),
       },
       { label: "Unassigned", value: formatMoney(grant.unassignedAmount) },
       { label: "Spent", value: formatMoney(spent) },

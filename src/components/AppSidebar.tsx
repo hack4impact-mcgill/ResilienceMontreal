@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { signOut } from "@/app/[locale]/(auth)/actions";
 import { api } from "~/trpc/react";
+import { formatMoney } from "@/components/detail-page";
 
 import {
   Sidebar,
@@ -210,7 +211,7 @@ export function AppSidebar() {
               <span className="-ml-2">FUNDING POOLS</span>
               <span className="tabular-nums px-2">
                 {totalRemaining !== undefined
-                  ? `$${totalRemaining.toLocaleString()}`
+                  ? formatMoney(totalRemaining)
                   : "..."}
               </span>
             </div>
@@ -223,7 +224,7 @@ export function AppSidebar() {
                 >
                   <span>{pool.category}</span>
                   <span className="tabular-nums text-muted-foreground">
-                    ${Number(pool.calculatedAmount).toLocaleString()}
+                    {formatMoney(pool.calculatedAmount)}
                   </span>
                 </div>
               ))}

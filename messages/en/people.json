@@ -1,0 +1,22 @@
+{
+  "title": "People",
+  "searchPlaceholder": "Search by name or email…",
+  "columnUser": "USER",
+  "columnEmail": "EMAIL",
+  "columnRole": "ROLE",
+  "you": "(you)",
+  "noResults": "No people found.",
+  "changeRoleFor": "Change role for {name}",
+  "roleUpdated": "{name} is now {role}",
+  "roleAdmin": "Admin",
+  "roleAdminDescription": "Full access, including managing people.",
+  "roleInterventionTeam": "Intervention team member",
+  "roleInterventionTeamDescription": "Manages clients and links them to expenses. Can view fund pools.",
+  "roleBookkeeper": "Bookkeeper",
+  "roleBookkeeperDescription": "Manages fund pools, and edits expenses and how they're split across grants.",
+  "roleUnassigned": "Unassigned",
+  "roleUnassignedDescription": "No role yet. Can't see clients, fund pools or expense details.",
+  "accessDeniedTitle": "Access denied",
+  "accessDeniedBody": "You do not have permission to view this page. This area is for administrators only.",
+  "returnHome": "Return to home"
+}

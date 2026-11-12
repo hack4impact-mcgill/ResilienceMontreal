@@ -7,6 +7,7 @@ export const MESSAGE_NAMESPACES = [
   "navigation",
   "home",
   "grants",
+  "people",
 ] as const;
 
 export type MessageNamespace = (typeof MESSAGE_NAMESPACES)[number];

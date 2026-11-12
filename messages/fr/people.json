@@ -1,0 +1,22 @@
+{
+  "title": "Personnes",
+  "searchPlaceholder": "Rechercher par nom ou courriel…",
+  "columnUser": "UTILISATEUR",
+  "columnEmail": "COURRIEL",
+  "columnRole": "RÔLE",
+  "you": "(vous)",
+  "noResults": "Aucune personne trouvée.",
+  "changeRoleFor": "Changer le rôle de {name}",
+  "roleUpdated": "Nouveau rôle de {name} : {role}",
+  "roleAdmin": "Administrateur(trice)",
+  "roleAdminDescription": "Accès complet, y compris la gestion des personnes.",
+  "roleInterventionTeam": "Membre de l'équipe d'intervention",
+  "roleInterventionTeamDescription": "Gère les clients et les associe aux dépenses. Peut consulter les fonds.",
+  "roleBookkeeper": "Comptable",
+  "roleBookkeeperDescription": "Gère les fonds et modifie les dépenses ainsi que leur répartition entre les subventions.",
+  "roleUnassigned": "Non assigné(e)",
+  "roleUnassignedDescription": "Aucun rôle pour l'instant. Ne peut pas voir les clients, les fonds ni le détail des dépenses.",
+  "accessDeniedTitle": "Accès refusé",
+  "accessDeniedBody": "Vous n'avez pas la permission de voir cette page. Cette section est réservée aux administrateurs.",
+  "returnHome": "Retour à l'accueil"
+}

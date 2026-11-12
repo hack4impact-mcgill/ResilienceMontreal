@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
+import { formatMoney } from "@/components/detail-page";
 import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
 
 export type Expense = {
@@ -66,10 +67,7 @@ export const createColumns = (
   {
     accessorKey: "totalAmount",
     header: "AMOUNT",
-    cell: (info) => {
-      const amount = info.getValue() as number;
-      return <div>${Number(amount).toFixed(2)}</div>;
-    },
+    cell: (info) => <div>{formatMoney(info.getValue())}</div>,
   },
   {
     accessorKey: "invoiceUrl",

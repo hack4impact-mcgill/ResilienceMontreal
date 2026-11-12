@@ -303,6 +303,7 @@ export async function fetchGrants(): Promise<Grant[]> {
           originalAmount: 3000,
           spentAmount: 0,
           remainingAmount: 3000,
+          splits: [],
         },
         {
           id: "g2",
@@ -316,6 +317,7 @@ export async function fetchGrants(): Promise<Grant[]> {
           originalAmount: 2000,
           spentAmount: 0,
           remainingAmount: 2000,
+          splits: [],
         },
       ]);
     }, 600);

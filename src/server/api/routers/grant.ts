@@ -35,12 +35,19 @@ export const grantRouter = createTRPCRouter({
     .input(createGrantFullSchema)
     .mutation(async ({ ctx, input }) => {
       const amount = new Prisma.Decimal(String(input.amount));
+      // the schema guarantees exactly one of fundPoolId / splits
+      const shares = input.splits
+        ? input.splits.map((s) => ({
+            fundPoolId: s.fundPoolId,
+            amount: new Prisma.Decimal(String(s.amount)),
+          }))
+        : [{ fundPoolId: input.fundPoolId!, amount }];
 
       return await ctx.db.$transaction(async (tx) => {
-        const fundPool = await tx.fundPool.findUnique({
-          where: { id: input.fundPoolId },
+        const fundPools = await tx.fundPool.findMany({
+          where: { id: { in: shares.map((s) => s.fundPoolId) } },
         });
-        if (!fundPool) {
+        if (fundPools.length !== shares.length) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Fund pool not found",
@@ -67,22 +74,20 @@ export const grantRouter = createTRPCRouter({
           },
         });
 
-        // create a single distribution for this grant
-        await tx.grantDistribution.create({
-          data: {
-            grantId: createdGrant.id,
-            fundPoolId: input.fundPoolId,
-            amount: amount,
-          },
-        });
-
-        // add the grant amount to fundPool.amount
-        await tx.fundPool.update({
-          where: { id: input.fundPoolId },
-          data: {
-            amount: new Prisma.Decimal(String(fundPool.amount)).plus(amount),
-          },
-        });
+        // one distribution per fund pool, each adding its share to fundPool.amount
+        for (const share of shares) {
+          await tx.grantDistribution.create({
+            data: {
+              grantId: createdGrant.id,
+              fundPoolId: share.fundPoolId,
+              amount: share.amount,
+            },
+          });
+          await tx.fundPool.update({
+            where: { id: share.fundPoolId },
+            data: { amount: { increment: share.amount } },
+          });
+        }
 
         const result = await tx.grant.findUnique({
           where: { id: createdGrant.id },

@@ -2,6 +2,7 @@
 
 import { ColumnDef, Row, Table } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 function isGrantExpired(toBeUsedBy: Date): boolean {
@@ -28,9 +29,20 @@ export type Grant = {
   originalAmount: number;
   spentAmount: number;
   remainingAmount: number;
+  // one entry per fund pool when the grant is split over several; empty otherwise
+  splits: GrantSplitPart[];
 };
 
-const formatMoney = (amount: number) =>
+export type GrantSplitPart = {
+  distributionId: number;
+  category: string;
+  percent: number;
+  originalAmount: number;
+  spentAmount: number;
+  remainingAmount: number;
+};
+
+export const formatMoney = (amount: number) =>
   `$${amount.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -89,7 +101,25 @@ export const columns: ColumnDef<Grant>[] = [
   {
     accessorKey: "category",
     header: "CATEGORY",
-    cell: (info) => info.getValue(),
+    // split grants toggle their per-category rows (rendered by data-table.tsx)
+    cell: ({ row }) =>
+      row.getCanExpand() ? (
+        <button
+          type="button"
+          onClick={row.getToggleExpandedHandler()}
+          aria-expanded={row.getIsExpanded()}
+          className="flex cursor-pointer items-center gap-1 text-[#3FA9A9] hover:underline"
+        >
+          {row.getIsExpanded() ? (
+            <ChevronDown className="h-4 w-4" aria-hidden />
+          ) : (
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          )}
+          Split ({row.original.splits.length})
+        </button>
+      ) : (
+        row.original.category
+      ),
   },
   {
     accessorKey: "dateReceived",

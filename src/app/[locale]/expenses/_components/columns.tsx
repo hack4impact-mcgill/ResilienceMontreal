@@ -3,7 +3,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
 import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
-import { EntityLink } from "@/components/detail-page";
 
 export type Expense = {
   id: number;
@@ -94,14 +93,7 @@ export const createColumns = (
     // Hidden for roles that can't see client data (see ExpensesTable)
     id: "client",
     header: "CLIENT",
-    cell: ({ row }) =>
-      row.original.client ? (
-        <EntityLink href={`/clients/${row.original.client.id}`}>
-          {row.original.client.name}
-        </EntityLink>
-      ) : (
-        "—"
-      ),
+    cell: ({ row }) => row.original.client?.name ?? "—",
   },
   {
     id: "actions",

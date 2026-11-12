@@ -38,7 +38,11 @@ export default function AdminUsersPage() {
     data: users,
     isLoading: usersLoading,
     error: usersError,
-  } = api.users.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  } = api.users.list.useQuery(undefined, {
+    // a non-admin's FORBIDDEN won't change on retry; show Access denied right away
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
   const { data: me } = api.users.me.useQuery();
 
   const setRole = api.users.setRole.useMutation({

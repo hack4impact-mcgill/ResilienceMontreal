@@ -14,6 +14,8 @@ import {
 interface Props {
   open: boolean;
   entityName?: string;
+  // extra context shown before "This action cannot be undone."
+  description?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -21,6 +23,7 @@ interface Props {
 export function DeleteConfirmDialog({
   open,
   entityName,
+  description,
   onConfirm,
   onCancel,
 }: Props) {
@@ -32,7 +35,8 @@ export function DeleteConfirmDialog({
             Delete {entityName ?? "this item"}?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone.
+            {description ? `${description} ` : null}This action cannot be
+            undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

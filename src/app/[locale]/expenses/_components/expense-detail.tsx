@@ -1,0 +1,218 @@
+"use client";
+
+import * as React from "react";
+import { ColumnDef } from "@tanstack/react-table";
+
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table/DataTable";
+import { TableErrorState } from "@/components/data-table/TableErrorState";
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
+import {
+  DetailFields,
+  DetailNotes,
+  DetailPage,
+  DetailSection,
+  EntityLink,
+  formatDate,
+  formatMoney,
+  useAuditFields,
+} from "@/components/detail-page";
+import { api } from "~/trpc/react";
+import { AllocationEditor } from "./allocation-editor";
+import { expenseFields } from "./expense-fields";
+
+type Allocation = {
+  id: number;
+  grantId: number;
+  grantTitle: string;
+  fundPoolId: number | null;
+  fundPoolCategory: string;
+  amount: number;
+};
+
+const allocationColumns: ColumnDef<Allocation>[] = [
+  {
+    accessorKey: "grantTitle",
+    header: "GRANT",
+    cell: ({ row }) => (
+      <EntityLink href={`/grants/${row.original.grantId}`}>
+        {row.original.grantTitle}
+      </EntityLink>
+    ),
+  },
+  {
+    accessorKey: "fundPoolCategory",
+    header: "FUND POOL",
+    cell: ({ row }) =>
+      row.original.fundPoolId ? (
+        <EntityLink href={`/fund-pools/${row.original.fundPoolId}`}>
+          {row.original.fundPoolCategory}
+        </EntityLink>
+      ) : (
+        "Uncategorized"
+      ),
+  },
+  {
+    accessorKey: "amount",
+    header: "AMOUNT",
+    cell: ({ row }) => formatMoney(row.original.amount),
+  },
+];
+
+export function ExpenseDetail({ id }: { id: number }) {
+  const {
+    data: expense,
+    isLoading,
+    isError,
+    error,
+  } = api.expenses.getById.useQuery({ id }, { retry: false });
+  const [editingAllocations, setEditingAllocations] = React.useState(false);
+
+  const allocations: Allocation[] = React.useMemo(
+    () =>
+      (expense?.distributions ?? []).map((d) => ({
+        id: d.id,
+        grantId: d.grantDistribution.grant.id,
+        grantTitle: d.grantDistribution.grant.title,
+        fundPoolId: d.grantDistribution.fundPool?.id ?? null,
+        fundPoolCategory: d.grantDistribution.fundPool?.category ?? "",
+        amount: Number(d.amount),
+      })),
+    [expense?.distributions],
+  );
+
+  // expenses have no created/edited timestamps yet, so these all show "—"
+  const auditFields = useAuditFields();
+
+  if (isLoading) return <TableLoadingState />;
+  if (isError || !expense) {
+    return <TableErrorState message={error?.message} />;
+  }
+
+  const { fields, notes } = expenseFields(expense);
+
+  return (
+    <DetailPage
+      backHref="/expenses"
+      backLabel="Expenses"
+      title={expense.description}
+      subtitle={`${formatMoney(expense.totalAmount)} · ${formatDate(expense.date)}`}
+    >
+      <DetailFields fields={[...fields, ...auditFields]} />
+      <DetailNotes label={notes.label} value={notes.value} />
+
+      {expense.canViewClient && (
+        <ClientLinkEditor
+          // Remount when the saved link changes so the select resets to it.
+          key={expense.client?.id ?? "none"}
+          expenseId={expense.id}
+          currentClientId={expense.client?.id ?? null}
+        />
+      )}
+
+      <DetailSection title="Grant allocations">
+        {editingAllocations ? (
+          <AllocationEditor
+            expenseId={expense.id}
+            totalAmount={Number(expense.totalAmount)}
+            current={expense.distributions.map((d) => ({
+              grantDistributionId: d.grantDistributionId,
+              amount: Number(d.amount),
+            }))}
+            onDone={() => setEditingAllocations(false)}
+          />
+        ) : (
+          <>
+            {expense.canEditAllocations && (
+              <Button
+                variant="outline"
+                className="w-fit"
+                onClick={() => setEditingAllocations(true)}
+              >
+                Edit allocations
+              </Button>
+            )}
+            <DataTable
+              columns={allocationColumns}
+              data={allocations}
+              getRowHref={(row) => `/grants/${row.grantId}`}
+              emptyMessage="This expense is not allocated to any grant."
+            />
+          </>
+        )}
+      </DetailSection>
+    </DetailPage>
+  );
+}
+
+function ClientLinkEditor({
+  expenseId,
+  currentClientId,
+}: {
+  expenseId: number;
+  currentClientId: number | null;
+}) {
+  const utils = api.useUtils();
+  const [selected, setSelected] = React.useState(
+    currentClientId ? String(currentClientId) : "",
+  );
+
+  const { data: clients } = api.clients.list.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const setClient = api.expenses.setClient.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.expenses.getById.invalidate({ id: expenseId }),
+        utils.clients.getById.invalidate(),
+      ]);
+    },
+  });
+
+  const unchanged =
+    selected === (currentClientId ? String(currentClientId) : "");
+
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-col gap-1">
+        <label
+          htmlFor="expense-client"
+          className="text-xs text-muted-foreground"
+        >
+          Linked client
+        </label>
+        <select
+          id="expense-client"
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          className="h-9 min-w-[240px] rounded-md border border-[#3FA9A9] bg-white px-2"
+        >
+          <option value="">No client</option>
+          {(clients ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.firstName} {c.lastName}
+            </option>
+          ))}
+        </select>
+      </div>
+      <Button
+        variant="outline"
+        className="bg-[#45BAB8] text-white hover:bg-[#45BAB8]"
+        disabled={unchanged || setClient.isPending}
+        onClick={() =>
+          setClient.mutate({
+            id: expenseId,
+            clientId: selected ? Number(selected) : null,
+          })
+        }
+      >
+        {setClient.isPending ? "Saving…" : "Save"}
+      </Button>
+      {setClient.error && (
+        <p className="text-sm text-red-600">{setClient.error.message}</p>
+      )}
+    </div>
+  );
+}

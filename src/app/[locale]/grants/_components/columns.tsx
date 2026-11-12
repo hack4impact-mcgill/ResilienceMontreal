@@ -1,15 +1,8 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { ColumnDef, Row, Table } from "@tanstack/react-table";
+import { useTranslations } from "next-intl";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function isGrantExpired(toBeUsedBy: Date): boolean {
   const today = new Date();
@@ -43,7 +36,51 @@ const formatMoney = (amount: number) =>
     maximumFractionDigits: 2,
   })}`;
 
+// Table cells have almost no padding and drop right padding around checkboxes,
+// so this wrapper adds the gap between the checkbox and the Organization column.
+function CheckboxCell({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center pr-4">{children}</div>;
+}
+
+function SelectAllCheckbox({ table }: { table: Table<Grant> }) {
+  const t = useTranslations("grants");
+  return (
+    <CheckboxCell>
+      <Checkbox
+        aria-label={t("selectAllRows")}
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+      />
+    </CheckboxCell>
+  );
+}
+
+function SelectRowCheckbox({ row }: { row: Row<Grant> }) {
+  const t = useTranslations("grants");
+  return (
+    <CheckboxCell>
+      <Checkbox
+        aria-label={t("selectRow", {
+          organization: row.original.organization,
+        })}
+        checked={row.getIsSelected()}
+        disabled={!row.getCanSelect()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+      />
+    </CheckboxCell>
+  );
+}
+
 export const columns: ColumnDef<Grant>[] = [
+  {
+    id: "select",
+    enableHiding: true,
+    header: SelectAllCheckbox,
+    cell: SelectRowCheckbox,
+  },
   {
     accessorKey: "organization",
     header: "ORGANIZATION",
@@ -122,27 +159,8 @@ export const columns: ColumnDef<Grant>[] = [
     cell: ({ row }) => formatMoney(row.original.remainingAmount),
   },
   {
+    // The menu itself is rendered by data-table.tsx for this column id
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      const grant = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              Actions for {grant.organization}
-            </DropdownMenuLabel>
-            <DropdownMenuItem>View grant details</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
   },
 ];

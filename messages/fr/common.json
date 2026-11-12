@@ -5,5 +5,18 @@
   "save": "Enregistrer",
   "cancel": "Annuler",
   "refresh": "Actualiser",
-  "export": "Exporter"
+  "export": "Exporter",
+  "viewDetails": "Voir les détails",
+  "edit": "Modifier",
+  "delete": "Supprimer",
+  "saving": "Enregistrement…",
+  "back": "Retour",
+  "viewAsPage": "Voir en pleine page",
+  "information": "Informations",
+  "createdBy": "Intervenant(e)",
+  "dateCreated": "Date de création",
+  "lastEditedBy": "Dernière modification par",
+  "dateLastEdited": "Date de dernière modification",
+  "grant": "Subvention",
+  "expense": "Dépense"
 }

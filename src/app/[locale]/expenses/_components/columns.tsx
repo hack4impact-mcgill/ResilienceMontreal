@@ -1,15 +1,9 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { formatMoney } from "@/components/detail-page";
+import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
 
 export type Expense = {
   id: number;
@@ -21,9 +15,30 @@ export type Expense = {
   isFutureDated: boolean;
   /** Fund pool category derived from the first distribution (empty string if none). */
   fundPoolCategory: string;
+  /** Linked client; null when none is linked or the viewer can't see clients. */
+  client: { id: number; name: string } | null;
 };
 
-export const columns: ColumnDef<Expense>[] = [
+// Delete lives in the details panel (Bookkeeper / Admin only)
+function ExpenseRowActions({
+  expense,
+  onView,
+}: {
+  expense: Expense;
+  onView: (expenseId: number) => void;
+}) {
+  const t = useTranslations("common");
+  return (
+    <RowActionsDropdown
+      label="Actions for expense"
+      actions={[{ label: t("viewDetails"), onClick: () => onView(expense.id) }]}
+    />
+  );
+}
+
+export const createColumns = (
+  onView: (expenseId: number) => void,
+): ColumnDef<Expense>[] => [
   {
     accessorKey: "description",
     header: "DESCRIPTION",
@@ -52,10 +67,7 @@ export const columns: ColumnDef<Expense>[] = [
   {
     accessorKey: "totalAmount",
     header: "AMOUNT",
-    cell: (info) => {
-      const amount = info.getValue() as number;
-      return <div>${Number(amount).toFixed(2)}</div>;
-    },
+    cell: (info) => <div>{formatMoney(info.getValue())}</div>,
   },
   {
     accessorKey: "invoiceUrl",
@@ -76,25 +88,16 @@ export const columns: ColumnDef<Expense>[] = [
     },
   },
   {
+    // Hidden for roles that can't see client data (see ExpensesTable)
+    id: "client",
+    header: "CLIENT",
+    cell: ({ row }) => row.original.client?.name ?? "—",
+  },
+  {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      const expense = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions for expense</DropdownMenuLabel>
-            <DropdownMenuItem>View expense details</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    cell: ({ row }) => (
+      <ExpenseRowActions expense={row.original} onView={onView} />
+    ),
   },
 ];

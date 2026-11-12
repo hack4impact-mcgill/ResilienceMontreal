@@ -5,5 +5,18 @@
   "save": "Save",
   "cancel": "Cancel",
   "refresh": "Refresh",
-  "export": "Export"
+  "export": "Export",
+  "viewDetails": "View details",
+  "edit": "Edit",
+  "delete": "Delete",
+  "saving": "Saving…",
+  "back": "Back",
+  "viewAsPage": "View as page",
+  "information": "Information",
+  "createdBy": "Intervention worker",
+  "dateCreated": "Date created",
+  "lastEditedBy": "Last editor",
+  "dateLastEdited": "Date last edited",
+  "grant": "Grant",
+  "expense": "Expense"
 }

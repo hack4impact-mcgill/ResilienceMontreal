@@ -298,13 +298,31 @@ export const clientRouter = createTRPCRouter({
             worker: {
               select: { name: true, email: true, supabaseId: true, role: true },
             },
+            _count: { select: { expenses: true } },
           },
         }),
       ]);
 
+      // Sum of linked expenses for the clients on this page (one grouped query).
+      const expenseTotals = await ctx.db.expense.groupBy({
+        by: ["clientId"],
+        where: { clientId: { in: clients.map((c) => c.id) } },
+        _sum: { totalAmount: true },
+      });
+      const totalByClient = new Map(
+        expenseTotals.map((row) => [
+          row.clientId,
+          row._sum.totalAmount?.toNumber() ?? 0,
+        ]),
+      );
+
       const totalPages = Math.ceil(total / input.limit);
       return {
-        data: clients,
+        data: clients.map(({ _count, ...client }) => ({
+          ...client,
+          expenseCount: _count.expenses,
+          totalExpenses: totalByClient.get(client.id) ?? 0,
+        })),
         pagination: {
           currentPage: input.page,
           pageSize: input.limit,
@@ -317,7 +335,8 @@ export const clientRouter = createTRPCRouter({
       };
     }),
 
-  // Full profile shown in the client details modal.
+  // Client detail modal and detail page: the client, their worker and
+  // linked expenses.
   getById: interventionTeamProcedure
     .input(z.object({ id: z.coerce.number().int().positive() }))
     .query(async ({ ctx, input }) => {
@@ -326,6 +345,21 @@ export const clientRouter = createTRPCRouter({
         include: {
           worker: {
             select: { name: true, email: true, supabaseId: true, role: true },
+          },
+          expenses: {
+            orderBy: { date: "desc" },
+            include: {
+              distributions: {
+                include: {
+                  grantDistribution: {
+                    include: {
+                      grant: { select: { id: true, title: true } },
+                      fundPool: { select: { id: true, category: true } },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       });

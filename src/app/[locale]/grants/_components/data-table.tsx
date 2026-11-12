@@ -1,22 +1,19 @@
 "use client";
 
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
 import {
   flexRender,
   getCoreRowModel,
+  RowSelectionState,
   useReactTable,
 } from "@tanstack/react-table";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
-import { CirclePlus, MoreHorizontal, Search } from "lucide-react";
+import { CirclePlus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -29,7 +26,7 @@ import {
 } from "@/components/ui/table";
 
 import { columns, Grant } from "./columns";
-import { api, type RouterInputs, type RouterOutputs } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 
 import { useServerTableState } from "@/hooks/use-server-table-state";
 import { useAdvancedFilters } from "@/hooks/use-advanced-filters";
@@ -40,11 +37,15 @@ import { TablePagination } from "@/components/data-table/TablePagination";
 import { TableSortControls } from "@/components/data-table/TableSortControls";
 import { AdvancedFilterPopover } from "@/components/data-table/AdvancedFilterPopover";
 import { InlineFormRow } from "@/components/data-table/InlineFormRow";
+import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
+import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog";
+import { DetailSplit, useDetailPanel } from "@/components/detail-panel";
+import { GrantPanel } from "./grant-panel";
+import { parseGrantMeta } from "@/lib/grant-meta";
 
 type GrantSortBy = "totalAmount" | "endDate" | "createdAt" | "title";
 type FundPool = RouterOutputs["fundPool"]["getAll"][number];
 type DbGrant = RouterOutputs["grant"]["getGrants"]["grants"][number];
-type UpdateGrantPayload = RouterInputs["grant"]["update"];
 
 function isGrantExpired(toBeUsedBy: Date): boolean {
   const today = new Date();
@@ -55,12 +56,7 @@ function isGrantExpired(toBeUsedBy: Date): boolean {
 }
 
 function mapDbGrant(g: DbGrant): Grant {
-  let meta: Record<string, unknown> = {};
-  try {
-    meta = g.description ? JSON.parse(g.description) : {};
-  } catch {
-    meta = { notes: g.description };
-  }
+  const meta = parseGrantMeta(g.description);
   const toBeUsedBy = meta.toBeUsedBy
     ? new Date(meta.toBeUsedBy as string | number | Date)
     : new Date(g.endDate || g.createdAt);
@@ -82,7 +78,8 @@ function mapDbGrant(g: DbGrant): Grant {
     dbId: g.id,
     fundPoolId: g.distributions?.[0]?.fundPool?.id ?? undefined,
     organization: g.title,
-    category: String(meta.category ?? ""),
+    category:
+      g.distributions?.[0]?.fundPool?.category ?? String(meta.category ?? ""),
     dateReceived: meta.dateReceived
       ? new Date(meta.dateReceived as string | number | Date)
       : new Date(g.createdAt),
@@ -105,7 +102,9 @@ const SORT_FIELDS = [
 
 const EMPTY_FILTERS = { minAmount: "", maxAmount: "", dueFrom: "", dueTo: "" };
 
-export const GrantsTable = () => {
+const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
+  const t = useTranslations("grants");
+  const tCommon = useTranslations("common");
   const tableState = useServerTableState<GrantSortBy>({
     defaultSortBy: "createdAt",
   });
@@ -113,12 +112,14 @@ export const GrantsTable = () => {
 
   const [addModalOpen, setAddModalOpen] = React.useState(false);
   const [addModalError, setAddModalError] = React.useState<string | null>(null);
-  const [rowErrors, setRowErrors] = React.useState<Record<string, string>>({});
-  const [editing, setEditing] = React.useState<{
-    rowId: string;
-    columnId: string;
-    value: unknown;
+  const [deleteTarget, setDeleteTarget] = React.useState<{
+    id: number;
+    name: string;
   } | null>(null);
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [bulkPoolId, setBulkPoolId] = React.useState<number | undefined>(
+    undefined,
+  );
 
   // Inline add form state
   const [orgField, setOrgField] = React.useState("");
@@ -188,8 +189,19 @@ export const GrantsTable = () => {
     filters.applied,
   ]);
 
+  // Selection only covers rows on screen, so clear it when the page, filters, sort or search change
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [queryInput]);
+
   const utils = api.useContext();
   const { data: session } = api.auth.getSession.useQuery();
+  const { data: currentUser } = api.users.me.useQuery();
+  // same roles that can load fund pools (and so change a grant's category)
+  const canBulkEdit =
+    currentUser?.role === "Admin" ||
+    currentUser?.role === "Bookkeeper" ||
+    currentUser?.role === "InterventionTeam";
 
   const {
     data: grantListResult,
@@ -249,18 +261,18 @@ export const GrantsTable = () => {
     onError: (err) => setAddModalError(err.message ?? "Error creating grant"),
   });
 
-  const updateMutation = api.grant.update.useMutation({
-    onSuccess: async () => {
-      await invalidateAll();
+  const bulkCategoryMutation = api.grant.bulkUpdateCategory.useMutation({
+    onSuccess: async ({ movedCount }) => {
+      setRowSelection({});
+      setBulkPoolId(undefined);
+      toast.success(t("bulkMoved", { count: movedCount }));
+      await Promise.all([
+        utils.grant.getGrants.invalidate(),
+        utils.fundPool.getAll.invalidate(),
+        utils.fundPool.getUncategorized.invalidate(),
+      ]);
     },
-    onError: (err, _vars, _ctx) => {
-      // Invalidate to restore server state on update failure
-      void utils.grant.getGrants.invalidate();
-      setRowErrors((s) => ({
-        ...s,
-        [String(_vars.id)]: err?.message ?? "Failed to save",
-      }));
-    },
+    onError: (err) => toast.error(err.message),
   });
 
   const deleteMutation = api.grant.delete.useMutation({
@@ -291,9 +303,19 @@ export const GrantsTable = () => {
     data: localGrants,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.id,
+    enableRowSelection: canBulkEdit,
+    state: { rowSelection, columnVisibility: { select: canBulkEdit } },
+    onRowSelectionChange: setRowSelection,
   });
 
-  if (isLoading && !grantListResult) return <div>Loading…</div>;
+  const visibleColCount = table.getVisibleLeafColumns().length;
+  const selectedGrantIds = table
+    .getSelectedRowModel()
+    .rows.map((row) => row.original.dbId)
+    .filter((id): id is number => id !== undefined);
+
+  if (isLoading && !grantListResult) return <TableLoadingState />;
   if (isError)
     return (
       <div className="text-destructive">
@@ -308,38 +330,20 @@ export const GrantsTable = () => {
       filters.draft.dueTo,
   );
 
-  const editableColumns = [
-    "organization",
-    "category",
-    "dateReceived",
-    "toBeUsedBy",
-    "email",
-    "phoneNumber",
-    "notes",
-    "originalAmount",
-  ];
-
   return (
     <div className="relative w-full">
+      <DeleteConfirmDialog
+        open={deleteTarget !== null}
+        entityName={deleteTarget?.name}
+        onConfirm={() => {
+          if (deleteTarget) deleteMutation.mutate({ id: deleteTarget.id });
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
       {isFetching && <FetchingOverlay />}
 
-      {/* Stats banner */}
-      <div className="border-t border-border -mx-8 px-8 py-4">
-        <div className="flex flex-row items-start gap-10">
-          <div className="flex flex-col">
-            <span className="text-green-600 font-bold text-2xl">$0000</span>
-            <span className="text-black text-sm -mt-1">available</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-red-600 font-bold text-2xl">X days</span>
-            <span className="text-black text-sm -mt-1">
-              until next grant is due
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
+      <div className="flex flex-col gap-3 py-4">
         {/* Search row */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
@@ -519,6 +523,65 @@ export const GrantsTable = () => {
             <CirclePlus /> Add Grant
           </Button>
         </div>
+
+        {selectedGrantIds.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-md bg-muted px-3 py-2">
+            <label
+              className="text-sm text-muted-foreground"
+              htmlFor="grant-bulk-category"
+            >
+              {t.rich("changeCategoryOfSelected", {
+                count: selectedGrantIds.length,
+                count_text: (chunks) => (
+                  <span className="font-medium text-foreground">{chunks}</span>
+                ),
+              })}
+            </label>
+            <select
+              id="grant-bulk-category"
+              value={bulkPoolId ?? ""}
+              onChange={(e) =>
+                setBulkPoolId(
+                  e.target.value ? Number(e.target.value) : undefined,
+                )
+              }
+              className="h-7 rounded-md bg-white px-2"
+            >
+              <option value="">{t("chooseCategory")}</option>
+              {fundPools?.map((p: FundPool) => (
+                <option key={p.id} value={p.id}>
+                  {p.category}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              className="h-7"
+              disabled={
+                bulkPoolId === undefined || bulkCategoryMutation.isPending
+              }
+              onClick={() => {
+                if (bulkPoolId === undefined) return;
+                bulkCategoryMutation.mutate({
+                  ids: selectedGrantIds,
+                  fundPoolId: bulkPoolId,
+                });
+              }}
+            >
+              {bulkCategoryMutation.isPending ? t("applying") : t("apply")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto text-destructive hover:text-destructive"
+              onClick={() => setRowSelection({})}
+            >
+              {t("clearSelection")}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="-mx-8">
@@ -541,7 +604,7 @@ export const GrantsTable = () => {
           <TableBody>
             {addModalOpen ? (
               <InlineFormRow
-                colCount={columns.length}
+                colCount={visibleColCount}
                 className="bg-blue-50 hover:!bg-blue-50"
                 onSave={async () => {
                   setAddModalError(null);
@@ -612,6 +675,7 @@ export const GrantsTable = () => {
                 isSaving={createMutation.isPending}
                 error={addModalError}
               >
+                {canBulkEdit ? <TableCell className="bg-blue-50 p-1" /> : null}
                 <TableCell className="bg-blue-50 p-1">
                   <Input
                     placeholder="organization name"
@@ -706,6 +770,7 @@ export const GrantsTable = () => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.original.id}
+                  data-state={row.getIsSelected() ? "selected" : undefined}
                   className={
                     isGrantExpired(row.original.toBeUsedBy)
                       ? "bg-muted/30"
@@ -717,263 +782,30 @@ export const GrantsTable = () => {
                       return (
                         <TableCell key={cell.id}>
                           <div className="flex justify-end">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <span className="sr-only">Open menu</span>
-                                  <MoreHorizontal />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>
-                                  Actions for {row.original.organization}
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    const dbId = row.original.dbId;
-                                    if (!dbId) {
-                                      setRowErrors((s) => ({
-                                        ...s,
-                                        [row.original.id]:
-                                          "Cannot delete unsaved grant",
-                                      }));
-                                      return;
-                                    }
-                                    deleteMutation.mutate({ id: dbId });
-                                  }}
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <RowActionsDropdown
+                              label={`Actions for ${row.original.organization}`}
+                              actions={
+                                row.original.dbId
+                                  ? [
+                                      {
+                                        label: tCommon("viewDetails"),
+                                        onClick: () =>
+                                          onView(row.original.dbId!),
+                                      },
+                                      {
+                                        label: tCommon("delete"),
+                                        destructive: true,
+                                        onClick: () =>
+                                          setDeleteTarget({
+                                            id: row.original.dbId!,
+                                            name: row.original.organization,
+                                          }),
+                                      },
+                                    ]
+                                  : []
+                              }
+                            />
                           </div>
-                        </TableCell>
-                      );
-                    }
-
-                    if (editableColumns.includes(cell.column.id)) {
-                      const isEditing =
-                        editing?.rowId === row.original.id &&
-                        editing?.columnId === cell.column.id;
-                      const display = flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      );
-
-                      return (
-                        <TableCell
-                          key={cell.id}
-                          onDoubleClick={() => {
-                            setRowErrors((s) => ({
-                              ...s,
-                              [row.original.id]: "",
-                            }));
-                            setEditing({
-                              rowId: row.original.id,
-                              columnId: cell.column.id,
-                              value:
-                                cell.column.id === "category"
-                                  ? (row.original.fundPoolId ?? "")
-                                  : row.original[cell.column.id as keyof Grant],
-                            });
-                          }}
-                        >
-                          {isEditing ? (
-                            <div className="flex items-center gap-2">
-                              {cell.column.id === "notes" ? (
-                                <textarea
-                                  value={
-                                    editing.value != null
-                                      ? String(editing.value)
-                                      : ""
-                                  }
-                                  onChange={(e) =>
-                                    setEditing(
-                                      (p) =>
-                                        p && { ...p, value: e.target.value },
-                                    )
-                                  }
-                                  className="w-full h-20 p-2 border rounded"
-                                />
-                              ) : cell.column.id === "originalAmount" ? (
-                                <Input
-                                  type="number"
-                                  value={Number(editing.value ?? 0)}
-                                  onChange={(e) =>
-                                    setEditing(
-                                      (p) =>
-                                        p && {
-                                          ...p,
-                                          value: Number(e.target.value),
-                                        },
-                                    )
-                                  }
-                                  className="w-28"
-                                />
-                              ) : cell.column.id === "dateReceived" ||
-                                cell.column.id === "toBeUsedBy" ? (
-                                <Input
-                                  type="date"
-                                  value={
-                                    editing.value instanceof Date
-                                      ? editing.value.toISOString().slice(0, 10)
-                                      : editing.value
-                                        ? new Date(
-                                            editing.value as string | number,
-                                          )
-                                            .toISOString()
-                                            .slice(0, 10)
-                                        : ""
-                                  }
-                                  onChange={(e) =>
-                                    setEditing(
-                                      (p) =>
-                                        p && {
-                                          ...p,
-                                          value: new Date(e.target.value),
-                                        },
-                                    )
-                                  }
-                                />
-                              ) : cell.column.id === "category" ? (
-                                fundPools && fundPools.length > 0 ? (
-                                  <select
-                                    value={Number(editing.value ?? 0)}
-                                    onChange={(e) =>
-                                      setEditing(
-                                        (p) =>
-                                          p && {
-                                            ...p,
-                                            value: Number(e.target.value),
-                                          },
-                                      )
-                                    }
-                                    className="w-full h-7 bg-white px-2"
-                                  >
-                                    {fundPools.map((p: FundPool) => (
-                                      <option key={p.id} value={p.id}>
-                                        {p.category}
-                                      </option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <Input
-                                    value={
-                                      editing.value != null
-                                        ? String(editing.value)
-                                        : ""
-                                    }
-                                    onChange={(e) =>
-                                      setEditing(
-                                        (p) =>
-                                          p && { ...p, value: e.target.value },
-                                      )
-                                    }
-                                  />
-                                )
-                              ) : (
-                                <Input
-                                  value={
-                                    editing.value != null
-                                      ? String(editing.value)
-                                      : ""
-                                  }
-                                  onChange={(e) =>
-                                    setEditing(
-                                      (p) =>
-                                        p && { ...p, value: e.target.value },
-                                    )
-                                  }
-                                />
-                              )}
-
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  if (!editing) return;
-                                  const { rowId, columnId, value } = editing;
-                                  const target = localGrants.find(
-                                    (r) => r.id === rowId,
-                                  );
-                                  const dbId = target?.dbId;
-                                  if (!dbId) {
-                                    setRowErrors((s) => ({
-                                      ...s,
-                                      [rowId]: "Cannot update unsaved grant",
-                                    }));
-                                    setEditing(null);
-                                    return;
-                                  }
-                                  const payload: UpdateGrantPayload = {
-                                    id: dbId,
-                                  };
-                                  if (columnId === "organization")
-                                    payload.organization = String(value);
-                                  else if (columnId === "category") {
-                                    const chosenPoolId = Number(value);
-                                    const pool = fundPools?.find(
-                                      (p: FundPool) => p.id === chosenPoolId,
-                                    );
-                                    if (!pool) {
-                                      setRowErrors((s) => ({
-                                        ...s,
-                                        [rowId]: "Selected fund pool not found",
-                                      }));
-                                      setEditing(null);
-                                      return;
-                                    }
-                                    payload.category = pool.category;
-                                    payload.fundPoolId = chosenPoolId;
-                                  } else if (columnId === "dateReceived")
-                                    payload.dateReceived =
-                                      value instanceof Date
-                                        ? value
-                                        : new Date(String(value));
-                                  else if (columnId === "toBeUsedBy")
-                                    payload.toBeUsedBy =
-                                      value instanceof Date
-                                        ? value
-                                        : new Date(String(value));
-                                  else if (columnId === "email")
-                                    payload.email = String(value);
-                                  else if (columnId === "phoneNumber")
-                                    payload.phoneNumber = String(value);
-                                  else if (columnId === "notes")
-                                    payload.notes = String(value);
-                                  else if (columnId === "originalAmount")
-                                    payload.amount = Number(value) || 0;
-
-                                  updateMutation.mutate(payload, {
-                                    onSuccess: () => {
-                                      setRowErrors((s) => ({
-                                        ...s,
-                                        [rowId]: "",
-                                      }));
-                                    },
-                                  });
-                                  setEditing(null);
-                                }}
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditing(null)}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          ) : (
-                            <div>
-                              {display}
-                              {rowErrors[row.original.id] ? (
-                                <div className="text-red-600 text-sm">
-                                  {rowErrors[row.original.id]}
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
                         </TableCell>
                       );
                     }
@@ -990,7 +822,7 @@ export const GrantsTable = () => {
                 </TableRow>
               ))
             ) : (
-              <TableEmptyRow colCount={columns.length} />
+              <TableEmptyRow colCount={visibleColCount} />
             )}
           </TableBody>
 
@@ -1005,5 +837,22 @@ export const GrantsTable = () => {
         onLimitChange={tableState.setLimit}
       />
     </div>
+  );
+};
+
+/** The table, with the selected row's details panel beside it. */
+export const GrantsTable = () => {
+  const panel = useDetailPanel();
+  return (
+    <DetailSplit
+      panel={
+        panel.id !== null && (
+          // keyed so switching rows starts the next record fresh
+          <GrantPanel key={panel.id} id={panel.id} {...panel.controls} />
+        )
+      }
+    >
+      <GrantsTableContent onView={panel.open} />
+    </DetailSplit>
   );
 };

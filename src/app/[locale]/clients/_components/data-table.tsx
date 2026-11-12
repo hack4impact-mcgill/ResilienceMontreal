@@ -1,5 +1,6 @@
 "use client";
 
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
 import {
   flexRender,
@@ -139,6 +140,8 @@ export const ClientsTable = () => {
         leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : null,
         workerName: c.worker?.name ?? "",
         workerId: c.worker?.supabaseId ?? "",
+        expenseCount: c.expenseCount,
+        totalExpenses: c.totalExpenses,
       })),
     [pagedClients],
   );
@@ -269,6 +272,16 @@ export const ClientsTable = () => {
     );
   };
 
+  // Deleting keeps the client's expenses but clears their link (SET NULL).
+  const deleteTargetExpenses =
+    mappedClients.find((c) => c.id === deleteTargetId)?.expenseCount ?? 0;
+  const deleteWarning =
+    deleteTargetExpenses > 0
+      ? `This client has ${deleteTargetExpenses} linked ${
+          deleteTargetExpenses === 1 ? "expense" : "expenses"
+        }. ${deleteTargetExpenses === 1 ? "It" : "They"} will be kept but no longer linked to any client.`
+      : undefined;
+
   const columns = React.useMemo(
     () =>
       createColumns(
@@ -285,7 +298,7 @@ export const ClientsTable = () => {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  if (isLoading) return <div>Loading…</div>;
+  if (isLoading) return <TableLoadingState />;
   if (isError)
     return <div className="p-6 text-red-600">Error loading clients.</div>;
 
@@ -324,6 +337,7 @@ export const ClientsTable = () => {
       <DeleteConfirmDialog
         open={deleteTargetId !== null}
         entityName="this client"
+        description={deleteWarning}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTargetId(null)}
       />
@@ -485,6 +499,7 @@ export const ClientsTable = () => {
                   "Lease Start",
                   "Lease End",
                   "Intervention Team Worker",
+                  "Total Expenses",
                 ],
                 mappedClients.map((c) => [
                   c.firstName,
@@ -493,6 +508,7 @@ export const ClientsTable = () => {
                   c.leaseStartDate?.toLocaleDateString() ?? "",
                   c.leaseEndDate?.toLocaleDateString() ?? "",
                   c.workerName,
+                  (c.totalExpenses ?? 0).toFixed(2),
                 ]),
                 "client_list",
               )
@@ -650,6 +666,7 @@ export const ClientsTable = () => {
                   )}
                 </TableCell>
                 <TableCell />
+                <TableCell />
               </InlineFormRow>
             )}
 
@@ -797,6 +814,7 @@ export const ClientsTable = () => {
                                 </p>
                               )}
                             </TableCell>
+                            <TableCell />
                             <TableCell />
                           </InlineFormRow>
                         ) : (

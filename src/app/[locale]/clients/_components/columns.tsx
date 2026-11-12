@@ -1,15 +1,9 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
+import { formatMoney } from "@/components/detail-page";
 
 export type BackendClient = {
   id: number;
@@ -25,6 +19,8 @@ export type BackendClient = {
     supabaseId: string;
     role: string;
   } | null;
+  expenseCount?: number;
+  totalExpenses?: number;
 };
 
 export type Client = {
@@ -37,6 +33,10 @@ export type Client = {
   leaseEndDate: Date | null;
   workerName: string;
   workerId: string;
+  /** Number of expenses linked to this client. */
+  expenseCount?: number;
+  /** Sum of the linked expenses' totals. */
+  totalExpenses?: number;
 };
 
 const formatDate = (date: Date) =>
@@ -54,7 +54,37 @@ export function mapClient(c: BackendClient): Client {
     leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : null,
     workerName: c.worker?.name ?? "",
     workerId: c.worker?.supabaseId ?? "",
+    expenseCount: c.expenseCount ?? 0,
+    totalExpenses: c.totalExpenses ?? 0,
   };
+}
+
+function ClientRowActions({
+  client,
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  client: Client;
+  onView: (client: Client) => void;
+  onEdit: (client: Client) => void;
+  onDelete: (clientId: number) => void;
+}) {
+  const t = useTranslations("common");
+  return (
+    <RowActionsDropdown
+      label={`Actions for ${client.firstName} ${client.lastName}`}
+      actions={[
+        { label: t("viewDetails"), onClick: () => onView(client) },
+        { label: t("edit"), onClick: () => onEdit(client) },
+        {
+          label: t("delete"),
+          destructive: true,
+          onClick: () => onDelete(client.id),
+        },
+      ]}
+    />
+  );
 }
 
 export const createColumns = (
@@ -115,34 +145,21 @@ export const createColumns = (
     cell: (info) => info.getValue(),
   },
   {
+    accessorKey: "totalExpenses",
+    header: "TOTAL EXPENSES",
+    cell: ({ row }) =>
+      row.original.expenseCount ? formatMoney(row.original.totalExpenses) : "—",
+  },
+  {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      const client = row.original;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              Actions for {client.firstName} {client.lastName}
-            </DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onEdit(client)}>
-              Edit client
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(client.id)}>
-              Delete client
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onView(client)}>
-              View details
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    cell: ({ row }) => (
+      <ClientRowActions
+        client={row.original}
+        onView={onView}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    ),
   },
 ];

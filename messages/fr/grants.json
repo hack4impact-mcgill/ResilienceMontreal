@@ -1,0 +1,10 @@
+{
+  "changeCategoryOfSelected": "Changer la catégorie {count, plural, one {de <count_text>la subvention sélectionnée</count_text>} other {des <count_text># subventions sélectionnées</count_text>}} pour",
+  "chooseCategory": "Choisir une catégorie…",
+  "apply": "Appliquer",
+  "applying": "Application…",
+  "clearSelection": "Effacer la sélection",
+  "selectAllRows": "Sélectionner toutes les subventions de cette page",
+  "selectRow": "Sélectionner {organization}",
+  "bulkMoved": "{count, plural, =0 {Aucune subvention à déplacer} one {# subvention déplacée} other {# subventions déplacées}}"
+}

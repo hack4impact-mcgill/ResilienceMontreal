@@ -1,5 +1,6 @@
 "use client";
 
+import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
 import {
   flexRender,
@@ -22,7 +23,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { columns, Expense } from "./columns";
+import { createColumns, Expense } from "./columns";
+import { DetailSplit, useDetailPanel } from "@/components/detail-panel";
+import { ExpensePanel } from "./expense-panel";
 import { api } from "~/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +100,7 @@ const expenseSchema = z.object({
     .refine((val) => !val || z.string().url().safeParse(val).success, {
       message: "Invoice URL must be a valid URL",
     }),
+  clientId: z.string().optional(),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -118,6 +122,7 @@ function mapExpenseRow(e: {
   distributions?: Array<{
     grantDistribution: { fundPool: { category: string } | null } | null;
   }>;
+  client?: { id: number; firstName: string; lastName: string } | null;
 }): Expense {
   const amount =
     typeof e.totalAmount === "number"
@@ -134,6 +139,9 @@ function mapExpenseRow(e: {
     invoiceUrl: e.invoiceUrl,
     isFutureDated: isExpenseFutureDated(expenseDate),
     fundPoolCategory,
+    client: e.client
+      ? { id: e.client.id, name: `${e.client.firstName} ${e.client.lastName}` }
+      : null,
   };
 }
 
@@ -157,9 +165,10 @@ const EMPTY_FORM: ExpenseFormData = {
   totalAmount: "",
   fundPoolId: "",
   invoiceUrl: "",
+  clientId: "",
 };
 
-export const ExpensesTable = () => {
+const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
   const tableState = useServerTableState<ExpenseSortBy>({
     defaultSortBy: "date",
   });
@@ -171,6 +180,7 @@ export const ExpensesTable = () => {
     null,
   );
   const [groupByPool, setGroupByPool] = React.useState(false);
+  const columns = React.useMemo(() => createColumns(onView), [onView]);
 
   // Reset page when filters change
   React.useEffect(() => {
@@ -243,6 +253,15 @@ export const ExpensesTable = () => {
     refetchOnWindowFocus: false,
   });
 
+  // Only Intervention Team / Admin see clients: the list tells us which,
+  // and the client column + picker are hidden for everyone else.
+  const canViewClient = listData?.canViewClient ?? false;
+  const { data: clients } = api.clients.list.useQuery(undefined, {
+    enabled: canViewClient,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
   const createExpense = api.expenses.create.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -264,7 +283,9 @@ export const ExpensesTable = () => {
     data: localExpenses,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    state: { columnVisibility: { client: canViewClient } },
   });
+  const visibleColumnCount = table.getVisibleLeafColumns().length;
 
   // Seed fundPoolId when form opens
   React.useEffect(() => {
@@ -287,6 +308,9 @@ export const ExpensesTable = () => {
         totalAmount: parseFloat(form.formData.totalAmount),
         fundPoolId: Number(form.formData.fundPoolId),
         invoiceUrl: form.formData.invoiceUrl?.trim() || undefined,
+        clientId: form.formData.clientId
+          ? Number(form.formData.clientId)
+          : undefined,
       },
       {
         onSuccess: () => {
@@ -301,7 +325,7 @@ export const ExpensesTable = () => {
     );
   };
 
-  if (isLoading && !listData) return <div>Loading…</div>;
+  if (isLoading && !listData) return <TableLoadingState />;
   if (isError) return <div>Error loading data.</div>;
 
   const hasDraft = Boolean(
@@ -315,7 +339,7 @@ export const ExpensesTable = () => {
     <div className="relative w-full">
       {isFetching && <FetchingOverlay />}
 
-      <div className="border-t border-border -mx-8 px-8 flex flex-col gap-3 py-4">
+      <div className="flex flex-col gap-3 py-4">
         {/* Search row */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[240px] max-w-md flex-1 flex-col gap-1">
@@ -472,12 +496,19 @@ export const ExpensesTable = () => {
             className="text-black hover:bg-transparent"
             onClick={() =>
               exportToCSV(
-                ["Description", "Date", "Amount", "Invoice URL"],
+                [
+                  "Description",
+                  "Date",
+                  "Amount",
+                  "Invoice URL",
+                  ...(canViewClient ? ["Client"] : []),
+                ],
                 localExpenses.map((e) => [
                   e.description,
                   e.date.toLocaleDateString(),
                   e.totalAmount.toFixed(2),
                   e.invoiceUrl ?? "",
+                  ...(canViewClient ? [e.client?.name ?? ""] : []),
                 ]),
                 "expense_list",
               )
@@ -525,7 +556,7 @@ export const ExpensesTable = () => {
           <TableBody>
             {form.isAdding && (
               <InlineFormRow
-                colCount={columns.length}
+                colCount={visibleColumnCount}
                 onSave={() => handleSave(false)}
                 onSaveAndAddMore={() => handleSave(true)}
                 onCancel={form.closeForm}
@@ -598,6 +629,25 @@ export const ExpensesTable = () => {
                     </p>
                   )}
                 </TableCell>
+                {canViewClient && (
+                  <TableCell>
+                    <select
+                      aria-label="Client"
+                      value={form.formData.clientId ?? ""}
+                      onChange={(e) =>
+                        form.setFormData({ clientId: e.target.value })
+                      }
+                      className="w-full h-9 bg-white border rounded-md px-2 border-[#3FA9A9]"
+                    >
+                      <option value="">No client</option>
+                      {(clients ?? []).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.firstName} {c.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </TableCell>
+                )}
                 <TableCell>
                   {fundPools && fundPools.length > 0 ? (
                     <>
@@ -641,7 +691,7 @@ export const ExpensesTable = () => {
                     <React.Fragment key={key}>
                       <TableRow className="bg-muted/50">
                         <TableCell
-                          colSpan={columns.length}
+                          colSpan={visibleColumnCount}
                           className="py-1 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                         >
                           {key}
@@ -685,7 +735,9 @@ export const ExpensesTable = () => {
                       ))}
                     </TableRow>
                   ))
-              : !form.isAdding && <TableEmptyRow colCount={columns.length} />}
+              : !form.isAdding && (
+                  <TableEmptyRow colCount={visibleColumnCount} />
+                )}
           </TableBody>
 
           <TableFooter />
@@ -699,5 +751,22 @@ export const ExpensesTable = () => {
         onLimitChange={tableState.setLimit}
       />
     </div>
+  );
+};
+
+/** The table, with the selected row's details panel beside it. */
+export const ExpensesTable = () => {
+  const panel = useDetailPanel();
+  return (
+    <DetailSplit
+      panel={
+        panel.id !== null && (
+          // keyed so switching rows starts the next record fresh
+          <ExpensePanel key={panel.id} id={panel.id} {...panel.controls} />
+        )
+      }
+    >
+      <ExpensesTableContent onView={panel.open} />
+    </DetailSplit>
   );
 };

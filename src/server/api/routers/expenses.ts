@@ -6,15 +6,30 @@ import {
   expenseListInclude,
   fetchActiveDistributions,
   persistExpenseWithAllocations,
+  reallocateExpense,
   validateCustomAllocations,
 } from "~/server/api/lib/expense-allocation";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { TRPCError } from "@trpc/server";
+import {
+  bookkeeperProcedure,
+  createTRPCRouter,
+  fundPoolReadProcedure,
+  interventionTeamProcedure,
+  protectedProcedure,
+} from "~/server/api/trpc";
 import { expenseListQuerySchema } from "~/lib/schemas/expense";
 
 const customDistributionSchema = z.object({
   grantDistributionId: z.number().int().positive(),
   amount: z.coerce.number().positive(),
 });
+
+const uniqueDistributionIds = (rows: { grantDistributionId: number }[]) =>
+  rows.length === new Set(rows.map((row) => row.grantDistributionId)).size;
+
+// Client data is limited to the roles that can open the clients pages.
+const canViewClientData = (role: string | null | undefined) =>
+  role === "InterventionTeam" || role === "Admin";
 
 const createExpenseInputSchema = z
   .object({
@@ -23,16 +38,13 @@ const createExpenseInputSchema = z
     description: z.string().min(1),
     date: z.coerce.date(),
     invoiceUrl: z.string().url().optional(),
+    clientId: z.coerce.number().int().positive().optional(),
     customDistributions: z.array(customDistributionSchema).optional(),
   })
   .refine(
-    (data) => {
-      if (!data.customDistributions?.length) return true;
-      const ids = data.customDistributions.map(
-        (row) => row.grantDistributionId,
-      );
-      return ids.length === new Set(ids).size;
-    },
+    (data) =>
+      !data.customDistributions?.length ||
+      uniqueDistributionIds(data.customDistributions),
     {
       message: "Duplicate grantDistributionId in customDistributions",
       path: ["customDistributions"],
@@ -45,6 +57,19 @@ export const expensesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const totalAmount = new Prisma.Decimal(String(input.totalAmount));
       const now = new Date();
+
+      if (input.clientId !== undefined) {
+        const client = await ctx.db.client.findUnique({
+          where: { id: input.clientId },
+          select: { id: true },
+        });
+        if (!client) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected client does not exist",
+          });
+        }
+      }
 
       const allocations = input.customDistributions?.length
         ? await validateCustomAllocations(ctx.db, {
@@ -66,6 +91,7 @@ export const expensesRouter = createTRPCRouter({
             description: input.description,
             date: input.date,
             invoiceUrl: input.invoiceUrl,
+            clientId: input.clientId,
           },
           allocations,
         ),
@@ -124,23 +150,36 @@ export const expensesRouter = createTRPCRouter({
         [sortBy]: sortOrder,
       };
 
-      const [expenses, totalCount] = await Promise.all([
+      const [expenses, totalCount, viewer] = await Promise.all([
         ctx.db.expense.findMany({
           where,
           orderBy,
           skip,
           take: limit,
-          include: expenseListInclude,
+          include: {
+            ...expenseListInclude,
+            client: { select: { id: true, firstName: true, lastName: true } },
+          },
         }),
         ctx.db.expense.count({ where }),
+        ctx.db.user.findUnique({
+          where: { email: ctx.user.email ?? undefined },
+          select: { role: true },
+        }),
       ]);
+
+      const canViewClient = canViewClientData(viewer?.role);
 
       const totalPages = Math.ceil(totalCount / limit) || 0;
       const hasNextPage = page < totalPages;
       const hasPreviousPage = page > 1;
 
       return {
-        expenses,
+        expenses: expenses.map((expense) => ({
+          ...expense,
+          client: canViewClient ? expense.client : null,
+        })),
+        canViewClient,
         pagination: {
           currentPage: page,
           pageSize: limit,
@@ -152,4 +191,266 @@ export const expensesRouter = createTRPCRouter({
         },
       };
     }),
+
+  // Expense detail page: the expense, its grant/fund pool allocations and,
+  // for roles allowed to see client data, the linked client.
+  getById: fundPoolReadProcedure
+    .input(z.object({ id: z.coerce.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const expense = await ctx.db.expense.findUnique({
+        where: { id: input.id },
+        include: {
+          distributions: {
+            include: {
+              grantDistribution: {
+                include: {
+                  grant: { select: { id: true, title: true, endDate: true } },
+                  fundPool: { select: { id: true, category: true } },
+                },
+              },
+            },
+          },
+          client: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      if (!expense) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found",
+        });
+      }
+
+      const canViewClient = canViewClientData(ctx.userRole);
+
+      return {
+        ...expense,
+        client: canViewClient ? expense.client : null,
+        hasClient: expense.clientId !== null,
+        canViewClient,
+        canEditAllocations:
+          ctx.userRole === "Bookkeeper" || ctx.userRole === "Admin",
+      };
+    }),
+
+  // Link (or unlink with clientId: null) an existing expense to a client.
+  setClient: interventionTeamProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        clientId: z.number().int().positive().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const expense = await ctx.db.expense.findUnique({
+        where: { id: input.id },
+        select: { id: true },
+      });
+      if (!expense) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found",
+        });
+      }
+
+      if (input.clientId !== null) {
+        const client = await ctx.db.client.findUnique({
+          where: { id: input.clientId },
+          select: { id: true },
+        });
+        if (!client) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected client does not exist",
+          });
+        }
+      }
+
+      return ctx.db.expense.update({
+        where: { id: input.id },
+        data: { clientId: input.clientId },
+        select: { id: true, clientId: true },
+      });
+    }),
+
+  // Edit description, date, invoice URL and client. Fields left out are not
+  // changed; invoiceUrl and clientId accept null to clear them. The amount and
+  // allocations are changed through updateAllocations.
+  update: bookkeeperProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        description: z
+          .string()
+          .trim()
+          .min(1, "Description is required")
+          .optional(),
+        date: z.coerce.date({ error: "Enter a valid date" }).optional(),
+        invoiceUrl: z
+          .string()
+          .url("Invoice URL must be a valid URL")
+          .nullable()
+          .optional(),
+        clientId: z.number().int().positive().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+
+      // Bookkeepers cannot see client data, so only roles that can may change it.
+      if (data.clientId !== undefined && !canViewClientData(ctx.userRole)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permission to change the client",
+        });
+      }
+
+      const expense = await ctx.db.expense.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!expense) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found",
+        });
+      }
+
+      if (data.clientId) {
+        const client = await ctx.db.client.findUnique({
+          where: { id: data.clientId },
+          select: { id: true },
+        });
+        if (!client) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected client does not exist",
+          });
+        }
+      }
+
+      return ctx.db.expense.update({
+        where: { id },
+        data,
+        select: {
+          id: true,
+          description: true,
+          date: true,
+          invoiceUrl: true,
+          clientId: true,
+        },
+      });
+    }),
+
+  // Delete an expense and give its allocated amounts back to the grants.
+  delete: bookkeeperProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) =>
+      ctx.db.$transaction(async (tx) => {
+        const expense = await tx.expense.findUnique({
+          where: { id: input.id },
+          select: {
+            id: true,
+            distributions: {
+              select: { grantDistributionId: true, amount: true },
+            },
+          },
+        });
+        if (!expense) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Expense not found",
+          });
+        }
+
+        for (const allocation of expense.distributions) {
+          await tx.grantDistribution.update({
+            where: { id: allocation.grantDistributionId },
+            data: { spentAmount: { decrement: allocation.amount } },
+          });
+        }
+
+        // The expense's allocation rows are removed with it (onDelete: Cascade).
+        await tx.expense.delete({ where: { id: expense.id } });
+        return { id: expense.id };
+      }),
+    ),
+
+  // Grant distributions an expense can be re-allocated to: every active one in
+  // any fund pool, plus any this expense already uses (even if expired). See
+  // reallocateExpense for why both are allowed. `available` counts this
+  // expense's own current amount as free, since saving releases it first.
+  allocationOptions: bookkeeperProcedure
+    .input(z.object({ id: z.coerce.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+      const current = await ctx.db.expenseDistribution.findMany({
+        where: { expenseId: input.id },
+        select: { grantDistributionId: true, amount: true },
+      });
+      const currentById = new Map(
+        current.map((d) => [d.grantDistributionId, d.amount]),
+      );
+
+      const distributions = await ctx.db.grantDistribution.findMany({
+        where: {
+          OR: [
+            {
+              grant: {
+                status: "APPROVED",
+                OR: [{ endDate: null }, { endDate: { gte: now } }],
+              },
+            },
+            { id: { in: [...currentById.keys()] } },
+          ],
+        },
+        include: {
+          grant: {
+            select: { id: true, title: true, endDate: true, status: true },
+          },
+          fundPool: { select: { id: true, category: true } },
+        },
+        orderBy: [{ fundPoolId: "asc" }, { grantId: "asc" }],
+      });
+
+      return distributions.map((d) => {
+        const currentAmount = currentById.get(d.id) ?? new Prisma.Decimal(0);
+        return {
+          id: d.id,
+          grant: { id: d.grant.id, title: d.grant.title },
+          fundPool: d.fundPool,
+          active:
+            d.grant.status === "APPROVED" &&
+            (!d.grant.endDate || d.grant.endDate >= now),
+          currentAmount: currentAmount.toNumber(),
+          available: d.amount
+            .minus(d.spentAmount)
+            .plus(currentAmount)
+            .toNumber(),
+        };
+      });
+    }),
+
+  // Replace an expense's grant allocations (re-split or move between grants).
+  updateAllocations: bookkeeperProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        allocations: z
+          .array(customDistributionSchema)
+          .min(1)
+          .refine(uniqueDistributionIds, {
+            message: "Each grant distribution can only appear once",
+          }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) =>
+      ctx.db.$transaction((tx) =>
+        reallocateExpense(tx, {
+          expenseId: input.id,
+          allocations: input.allocations,
+          now: new Date(),
+        }),
+      ),
+    ),
 });

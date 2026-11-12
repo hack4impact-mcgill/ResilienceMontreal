@@ -1,0 +1,10 @@
+{
+  "changeCategoryOfSelected": "Change category of <count_text>{count, plural, one {# selected grant} other {# selected grants}}</count_text> to",
+  "chooseCategory": "Choose a category…",
+  "apply": "Apply",
+  "applying": "Applying…",
+  "clearSelection": "Clear selection",
+  "selectAllRows": "Select all grants on this page",
+  "selectRow": "Select {organization}",
+  "bulkMoved": "{count, plural, =0 {No grants needed moving} one {# grant moved} other {# grants moved}}"
+}

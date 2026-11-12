@@ -48,3 +48,8 @@ next-env.d.ts
 
 # webstorm
 .idea/
+
+# opencode local config (may contain secrets like FIGMA_API_KEY)
+/opencode.json
+/opencode.jsonc
+/.opencode/

@@ -15,11 +15,7 @@ export function AppSidebarWrapper({
   const hideSidebar = pathname?.includes("/update-password") ?? false;
 
   if (!isLoggedIn || hideSidebar) {
-    return (
-      <main className="w-full">
-        {children}
-      </main>
-    );
+    return <main className="w-full">{children}</main>;
   }
 
   return (

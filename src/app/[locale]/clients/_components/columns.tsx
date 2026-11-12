@@ -3,6 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
 import { RowActionsDropdown } from "@/components/data-table/RowActionsDropdown";
+import { formatMoney } from "@/components/detail-page";
 
 export type BackendClient = {
   id: number;
@@ -133,9 +134,7 @@ export const createColumns = (
     accessorKey: "totalExpenses",
     header: "TOTAL EXPENSES",
     cell: ({ row }) =>
-      row.original.expenseCount
-        ? `$${(row.original.totalExpenses ?? 0).toFixed(2)}`
-        : "—",
+      row.original.expenseCount ? formatMoney(row.original.totalExpenses) : "—",
   },
   {
     id: "actions",

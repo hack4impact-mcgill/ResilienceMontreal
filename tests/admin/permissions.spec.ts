@@ -6,10 +6,10 @@ test.describe("Admin Permissions", () => {
     await page.goto("/admin/users");
 
     // Wait for the page to load
-    // Admin should see the user role management heading
-    await expect(
-      page.getByRole("heading", { name: "User role management" }),
-    ).toBeVisible({ timeout: 15000 });
+    // Admin should see the People heading
+    await expect(page.getByRole("heading", { name: "People" })).toBeVisible({
+      timeout: 15000,
+    });
 
     // Check if the table is present
     await expect(page.getByRole("table")).toBeVisible();

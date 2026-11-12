@@ -25,7 +25,7 @@ export default async function ClientsPage() {
     sortBy: "createdAt",
     sortOrder: "desc",
   });
-  void api.users.list.prefetch();
+  void api.clients.listWorkers.prefetch();
 
   return (
     <HydrateClient>

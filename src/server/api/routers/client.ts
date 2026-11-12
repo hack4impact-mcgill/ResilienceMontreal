@@ -1,12 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { Prisma } from "~/generated/prisma/client";
+import { Prisma, RoleName } from "~/generated/prisma/client";
 
-import {
-  createTRPCRouter,
-  interventionTeamProcedure,
-  protectedProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, interventionTeamProcedure } from "~/server/api/trpc";
 
 export const clientRouter = createTRPCRouter({
   addClient: interventionTeamProcedure
@@ -19,6 +15,7 @@ export const clientRouter = createTRPCRouter({
         email: z.email().optional().nullable(),
         phone: z.string().optional().nullable(),
         landlordName: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
         leaseStart: z.date().optional().nullable(),
         leaseEnd: z.date().optional().nullable(),
       }),
@@ -46,6 +43,7 @@ export const clientRouter = createTRPCRouter({
             email: input.email,
             phone: input.phone,
             landlordName: input.landlordName,
+            notes: input.notes,
             leaseStart: input.leaseStart,
             leaseEnd: input.leaseEnd,
           },
@@ -95,6 +93,7 @@ export const clientRouter = createTRPCRouter({
         email: z.email().optional().nullable(),
         phone: z.string().optional().nullable(),
         landlordName: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
         leaseStart: z.date().optional().nullable(),
         leaseEnd: z.date().optional().nullable(),
       }),
@@ -214,7 +213,18 @@ export const clientRouter = createTRPCRouter({
       });
     }
   }),
-  getClients: protectedProcedure
+  // Intervention workers that can be assigned to a client.
+  listWorkers: interventionTeamProcedure.query(async ({ ctx }) => {
+    return ctx.db.user.findMany({
+      where: {
+        role: { in: [RoleName.InterventionTeam, RoleName.Admin] },
+      },
+      select: { supabaseId: true, name: true, email: true, role: true },
+      orderBy: { name: "asc" },
+    });
+  }),
+
+  getClients: interventionTeamProcedure
     .input(
       z.object({
         // Pagination
@@ -305,5 +315,25 @@ export const clientRouter = createTRPCRouter({
           returnedCount: clients.length,
         },
       };
+    }),
+
+  // Full profile shown in the client details modal.
+  getById: interventionTeamProcedure
+    .input(z.object({ id: z.coerce.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const client = await ctx.db.client.findUnique({
+        where: { id: input.id },
+        include: {
+          worker: {
+            select: { name: true, email: true, supabaseId: true, role: true },
+          },
+        },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      return client;
     }),
 });

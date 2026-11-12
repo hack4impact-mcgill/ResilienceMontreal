@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 
 import { Client, createColumns } from "./columns";
+import { ClientProfileModal } from "./client-profile-modal";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 import { useServerTableState } from "@/hooks/use-server-table-state";
@@ -40,12 +41,8 @@ import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog
 import { InlineFormRow } from "@/components/data-table/InlineFormRow";
 
 type ClientSortBy =
-  | "firstName"
-  | "lastName"
-  | "createdAt"
-  | "leaseEnd"
-  | "workerId";
-type ListedUser = RouterOutputs["users"]["list"][number];
+  "firstName" | "lastName" | "createdAt" | "leaseEnd" | "workerId";
+type ListedUser = RouterOutputs["clients"]["listWorkers"][number];
 
 const clientSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -94,6 +91,9 @@ export const ClientsTable = () => {
   const [deleteTargetId, setDeleteTargetId] = React.useState<number | null>(
     null,
   );
+  const [profileClientId, setProfileClientId] = React.useState<number | null>(
+    null,
+  );
   const [groupByWorker, setGroupByWorker] = React.useState(false);
 
   const setEditFormData = (update: Partial<ClientFormData>) =>
@@ -135,22 +135,17 @@ export const ClientsTable = () => {
         lastName: c.lastName,
         email: c.email ?? "",
         dateOfBirth: c.dateOfBirth ? new Date(c.dateOfBirth) : null,
-        leaseStartDate: c.leaseStart ? new Date(c.leaseStart) : new Date(0),
-        leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(0),
+        leaseStartDate: c.leaseStart ? new Date(c.leaseStart) : null,
+        leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : null,
         workerName: c.worker?.name ?? "",
         workerId: c.worker?.supabaseId ?? "",
       })),
     [pagedClients],
   );
 
-  const { data: users, isLoading: isLoadingUsers } = api.users.list.useQuery();
-  const workers = React.useMemo(
-    () =>
-      (users ?? []).filter(
-        (u: ListedUser) => u.role === "InterventionTeam" || u.role === "Admin",
-      ),
-    [users],
-  );
+  const { data: users, isLoading: isLoadingUsers } =
+    api.clients.listWorkers.useQuery();
+  const workers = users ?? [];
 
   const addClient = api.clients.addClient.useMutation();
   const editClient = api.clients.editClient.useMutation();
@@ -241,6 +236,7 @@ export const ClientsTable = () => {
       {
         onSuccess: () => {
           void utils.clients.getClients.invalidate();
+          void utils.clients.getById.invalidate();
           cancelEdit();
           toast.success("Client updated successfully!");
         },
@@ -260,6 +256,7 @@ export const ClientsTable = () => {
       {
         onSuccess: () => {
           void utils.clients.getClients.invalidate();
+          void utils.clients.getById.invalidate();
           toast.success("Client deleted successfully!");
         },
         onError: (error) => {
@@ -273,7 +270,12 @@ export const ClientsTable = () => {
   };
 
   const columns = React.useMemo(
-    () => createColumns(startEdit, (id) => setDeleteTargetId(id)),
+    () =>
+      createColumns(
+        (client) => setProfileClientId(client.id),
+        startEdit,
+        (id) => setDeleteTargetId(id),
+      ),
     [],
   );
 
@@ -324,6 +326,14 @@ export const ClientsTable = () => {
         entityName="this client"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTargetId(null)}
+      />
+
+      <ClientProfileModal
+        clientId={profileClientId}
+        open={profileClientId !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setProfileClientId(null);
+        }}
       />
 
       <div className="border-border -mx-8 px-8 flex flex-col gap-3 py-4">
@@ -472,19 +482,17 @@ export const ClientsTable = () => {
                   "First Name",
                   "Last Name",
                   "Email",
-                  "Date of Birth",
-                  "Intervention Worker",
-                  "Lease Start Date",
-                  "Lease End Date",
+                  "Lease Start",
+                  "Lease End",
+                  "Intervention Team Worker",
                 ],
                 mappedClients.map((c) => [
                   c.firstName,
                   c.lastName,
                   c.email,
-                  c.dateOfBirth ? c.dateOfBirth.toLocaleDateString() : "",
+                  c.leaseStartDate?.toLocaleDateString() ?? "",
+                  c.leaseEndDate?.toLocaleDateString() ?? "",
                   c.workerName,
-                  c.leaseStartDate.toLocaleDateString(),
-                  c.leaseEndDate.toLocaleDateString(),
                 ]),
                 "client_list",
               )
@@ -578,34 +586,42 @@ export const ClientsTable = () => {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Input
-                    type="date"
-                    value={form.formData.dateOfBirth}
-                    onChange={(e) =>
-                      form.setFormData({ dateOfBirth: e.target.value })
-                    }
-                    className={`bg-white border-[#3FA9A9] ${form.formErrors.dateOfBirth ? "border-red-500" : ""}`}
-                  />
-                  {form.formErrors.dateOfBirth && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {form.formErrors.dateOfBirth}
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="date"
-                    value={form.formData.leaseStart}
-                    onChange={(e) =>
-                      form.setFormData({ leaseStart: e.target.value })
-                    }
-                    className={`bg-white border-[#3FA9A9] ${form.formErrors.leaseStart ? "border-red-500" : ""}`}
-                  />
-                  {form.formErrors.leaseStart && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {form.formErrors.leaseStart}
-                    </p>
-                  )}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase text-muted-foreground">
+                      Date of birth
+                    </label>
+                    <Input
+                      type="date"
+                      value={form.formData.dateOfBirth}
+                      onChange={(e) =>
+                        form.setFormData({ dateOfBirth: e.target.value })
+                      }
+                      className={`bg-white border-[#3FA9A9] ${form.formErrors.dateOfBirth ? "border-red-500" : ""}`}
+                    />
+                    {form.formErrors.dateOfBirth && (
+                      <p className="text-xs text-red-500">
+                        {form.formErrors.dateOfBirth}
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-col gap-1">
+                    <label className="text-[10px] uppercase text-muted-foreground">
+                      Lease start
+                    </label>
+                    <Input
+                      type="date"
+                      value={form.formData.leaseStart}
+                      onChange={(e) =>
+                        form.setFormData({ leaseStart: e.target.value })
+                      }
+                      className={`bg-white border-[#3FA9A9] ${form.formErrors.leaseStart ? "border-red-500" : ""}`}
+                    />
+                    {form.formErrors.leaseStart && (
+                      <p className="text-xs text-red-500">
+                        {form.formErrors.leaseStart}
+                      </p>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Input
@@ -712,38 +728,46 @@ export const ClientsTable = () => {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="date"
-                                value={editFormData.dateOfBirth}
-                                onChange={(e) =>
-                                  setEditFormData({
-                                    dateOfBirth: e.target.value,
-                                  })
-                                }
-                                className={`bg-white border-[#3FA9A9] ${editFormErrors.dateOfBirth ? "border-red-500" : ""}`}
-                              />
-                              {editFormErrors.dateOfBirth && (
-                                <p className="text-xs text-red-500 mt-1">
-                                  {editFormErrors.dateOfBirth}
-                                </p>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="date"
-                                value={editFormData.leaseStart}
-                                onChange={(e) =>
-                                  setEditFormData({
-                                    leaseStart: e.target.value,
-                                  })
-                                }
-                                className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
-                              />
-                              {editFormErrors.leaseStart && (
-                                <p className="text-xs text-red-500 mt-1">
-                                  {editFormErrors.leaseStart}
-                                </p>
-                              )}
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[10px] uppercase text-muted-foreground">
+                                  Date of birth
+                                </label>
+                                <Input
+                                  type="date"
+                                  value={editFormData.dateOfBirth}
+                                  onChange={(e) =>
+                                    setEditFormData({
+                                      dateOfBirth: e.target.value,
+                                    })
+                                  }
+                                  className={`bg-white border-[#3FA9A9] ${editFormErrors.dateOfBirth ? "border-red-500" : ""}`}
+                                />
+                                {editFormErrors.dateOfBirth && (
+                                  <p className="text-xs text-red-500">
+                                    {editFormErrors.dateOfBirth}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="mt-2 flex flex-col gap-1">
+                                <label className="text-[10px] uppercase text-muted-foreground">
+                                  Lease start
+                                </label>
+                                <Input
+                                  type="date"
+                                  value={editFormData.leaseStart}
+                                  onChange={(e) =>
+                                    setEditFormData({
+                                      leaseStart: e.target.value,
+                                    })
+                                  }
+                                  className={`bg-white border-[#3FA9A9] ${editFormErrors.leaseStart ? "border-red-500" : ""}`}
+                                />
+                                {editFormErrors.leaseStart && (
+                                  <p className="text-xs text-red-500">
+                                    {editFormErrors.leaseStart}
+                                  </p>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Input

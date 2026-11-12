@@ -272,7 +272,11 @@ export async function uploadDriveFile(file: File, parentId?: string) {
 
 export async function downloadDriveFile(fileId: string) {
   await assertWithinRoot(fileId);
-  return driveFetch(`/files/${encodeURIComponent(fileId)}?alt=media`);
+  const path = `/files/${encodeURIComponent(fileId)}`;
+  const metadata = await driveFetch(`${path}?fields=name`);
+  const { name } = (await metadata.json()) as { name: string };
+  const response = await driveFetch(`${path}?alt=media`);
+  return { name, response };
 }
 
 async function assertWithinRoot(id: string) {

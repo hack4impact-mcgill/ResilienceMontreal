@@ -31,19 +31,61 @@ export const updateGrantSchema = z
     { message: "at least one field must be provided for update" },
   );
 
-// New schemas for Grants CRUD used by the new grants router
-export const createGrantFullSchema = z.object({
-  organization: z.string().trim().min(1, "Organization is required"),
-  category: z.string().trim().min(1, "Category is required"),
-  dateReceived: z.coerce.date(),
-  toBeUsedBy: z.coerce.date(),
-  email: z.string().email().optional(),
-  phoneNumber: z.string().optional(),
-  notes: z.string().optional(),
-  amount: z.coerce.number().positive("Amount must be > 0"),
-  // require a fund pool id so each grant gets one GrantDistribution associated with a FundPool
+const toCents = (amount: number) => Math.round(amount * 100);
+
+export const grantSplitSchema = z.object({
   fundPoolId: z.coerce.number().int().positive("FundPoolId required"),
+  amount: z.coerce.number().positive("Each split amount must be > 0"),
 });
+
+// New schemas for Grants CRUD used by the new grants router
+export const createGrantFullSchema = z
+  .object({
+    organization: z.string().trim().min(1, "Organization is required"),
+    category: z.string().trim().min(1, "Category is required"),
+    dateReceived: z.coerce.date(),
+    toBeUsedBy: z.coerce.date(),
+    email: z.string().email().optional(),
+    phoneNumber: z.string().optional(),
+    notes: z.string().optional(),
+    amount: z.coerce.number().positive("Amount must be > 0"),
+    // one fund pool for the whole grant, or `splits` to divide it over several
+    fundPoolId: z.coerce.number().int().positive().optional(),
+    splits: z
+      .array(grantSplitSchema)
+      .min(2, "A split needs at least two categories")
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if ((data.fundPoolId === undefined) === (data.splits === undefined)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fundPoolId"],
+        message: "Provide either a fund pool or a split",
+      });
+      return;
+    }
+    if (!data.splits) return;
+    const poolIds = data.splits.map((s) => s.fundPoolId);
+    if (new Set(poolIds).size !== poolIds.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["splits"],
+        message: "Each category can only appear once in a split",
+      });
+    }
+    const splitCents = data.splits.reduce(
+      (sum, s) => sum + toCents(s.amount),
+      0,
+    );
+    if (splitCents !== toCents(data.amount)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["splits"],
+        message: "Split amounts must add up to the grant amount",
+      });
+    }
+  });
 
 export const updateGrantFullSchema = z
   .object({

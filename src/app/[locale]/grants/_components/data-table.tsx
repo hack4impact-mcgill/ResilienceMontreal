@@ -3,6 +3,7 @@
 import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
 import {
+  ExpandedState,
   flexRender,
   getCoreRowModel,
   RowSelectionState,
@@ -25,8 +26,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { columns, Grant } from "./columns";
-import { api, type RouterOutputs } from "@/trpc/react";
+import { columns, formatMoney, Grant, type GrantSplitPart } from "./columns";
+import { GrantSplitEditor, type SplitRow } from "./grant-split-editor";
+import { api, type RouterInputs, type RouterOutputs } from "@/trpc/react";
 
 import { useServerTableState } from "@/hooks/use-server-table-state";
 import { useAdvancedFilters } from "@/hooks/use-advanced-filters";
@@ -42,6 +44,7 @@ import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog
 import { DetailSplit, useDetailPanel } from "@/components/detail-panel";
 import { GrantPanel } from "./grant-panel";
 import { parseGrantMeta } from "@/lib/grant-meta";
+import { formatPercent, splitCents, splitError } from "@/lib/grant-split";
 
 type GrantSortBy = "totalAmount" | "endDate" | "createdAt" | "title";
 type FundPool = RouterOutputs["fundPool"]["getAll"][number];
@@ -73,13 +76,33 @@ function mapDbGrant(g: DbGrant): Grant {
       sum + Number(d.spentAmount?.toString?.() ?? d.spentAmount ?? 0),
     0,
   );
+  const splits: GrantSplitPart[] =
+    distributions.length > 1
+      ? distributions.map((d) => {
+          const original = Number(d.amount);
+          const spent = Number(d.spentAmount);
+          return {
+            distributionId: d.id,
+            category: d.fundPool?.category ?? "Uncategorized",
+            percent: originalAmount > 0 ? (original / originalAmount) * 100 : 0,
+            originalAmount: original,
+            spentAmount: spent,
+            remainingAmount: original - spent,
+          };
+        })
+      : [];
   return {
     id: String(g.id),
     dbId: g.id,
     fundPoolId: g.distributions?.[0]?.fundPool?.id ?? undefined,
     organization: g.title,
-    category:
-      g.distributions?.[0]?.fundPool?.category ?? String(meta.category ?? ""),
+    category: splits.length
+      ? splits
+          .map((s) => `${s.category} ${formatPercent(s.percent)}`)
+          .join(" / ")
+      : (g.distributions?.[0]?.fundPool?.category ??
+        String(meta.category ?? "")),
+    splits,
     dateReceived: meta.dateReceived
       ? new Date(meta.dateReceived as string | number | Date)
       : new Date(g.createdAt),
@@ -91,6 +114,26 @@ function mapDbGrant(g: DbGrant): Grant {
     spentAmount,
     remainingAmount: originalAmount - spentAmount,
   };
+}
+
+// Cell content for one category row under an expanded split grant
+function splitPartCell(columnId: string, part: GrantSplitPart) {
+  switch (columnId) {
+    case "category":
+      return (
+        <span className="pl-5">
+          {part.category} · {formatPercent(part.percent)}
+        </span>
+      );
+    case "originalAmount":
+      return formatMoney(part.originalAmount);
+    case "spentAmount":
+      return formatMoney(part.spentAmount);
+    case "remainingAmount":
+      return formatMoney(part.remainingAmount);
+    default:
+      return null;
+  }
 }
 
 const SORT_FIELDS = [
@@ -133,6 +176,15 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
   const [selectedPoolId, setSelectedPoolId] = React.useState<
     number | undefined
   >(undefined);
+  // null while the new grant goes to a single fund pool
+  const [splitLines, setSplitLines] = React.useState<SplitRow[] | null>(null);
+  const nextSplitKey = React.useRef(0);
+  const newSplitLine = (fundPoolId = ""): SplitRow => ({
+    key: nextSplitKey.current++,
+    fundPoolId,
+    percent: "",
+  });
+  const [expanded, setExpanded] = React.useState<ExpandedState>({});
 
   const resetInlineForm = () => {
     setOrgField("");
@@ -144,6 +196,7 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
     setNotesField("");
     setAmountField("");
     setSelectedPoolId(undefined);
+    setSplitLines(null);
   };
 
   // Reset page when filters/sort change
@@ -304,10 +357,76 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
     columns,
     getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => row.id,
-    enableRowSelection: canBulkEdit,
-    state: { rowSelection, columnVisibility: { select: canBulkEdit } },
+    // bulk category change only works on grants in a single fund pool
+    enableRowSelection: (row) =>
+      canBulkEdit && row.original.splits.length === 0,
+    getRowCanExpand: (row) => row.original.splits.length > 0,
+    state: {
+      rowSelection,
+      expanded,
+      columnVisibility: { select: canBulkEdit },
+    },
     onRowSelectionChange: setRowSelection,
+    onExpandedChange: setExpanded,
   });
+
+  // Creates the grant from the inline form; true when it was saved.
+  const createGrant = async (): Promise<boolean> => {
+    setAddModalError(null);
+    if (!session?.user) {
+      setAddModalError("Please sign in to create grants");
+      return false;
+    }
+    const amount = Number(amountField) || 0;
+    let target: Pick<
+      RouterInputs["grant"]["create"],
+      "fundPoolId" | "splits" | "category"
+    >;
+    if (splitLines) {
+      const error = splitError(amount, splitLines);
+      if (error) {
+        setAddModalError(error);
+        return false;
+      }
+      const cents = splitCents(amount, splitLines);
+      target = {
+        splits: splitLines.map((line, i) => ({
+          fundPoolId: Number(line.fundPoolId),
+          amount: cents[i]! / 100,
+        })),
+        category: splitLines
+          .map(
+            (line) =>
+              fundPools?.find((p) => String(p.id) === line.fundPoolId)
+                ?.category,
+          )
+          .join(" / "),
+      };
+    } else {
+      const poolId = selectedPoolId ?? fundPools?.[0]?.id;
+      if (!poolId) {
+        setAddModalError("Fund pool must be selected");
+        return false;
+      }
+      target = { fundPoolId: poolId, category: categoryField };
+    }
+    try {
+      await createMutation.mutateAsync({
+        organization: orgField,
+        dateReceived: dateReceivedField || undefined,
+        toBeUsedBy: toBeUsedByField || undefined,
+        email: emailField || undefined,
+        phoneNumber: phoneField || undefined,
+        notes: notesField || undefined,
+        amount,
+        ...target,
+      });
+      return true;
+    } catch (e: unknown) {
+      setAddModalError(e instanceof Error ? e.message : "Error creating grant");
+      return false;
+    }
+  };
 
   const visibleColCount = table.getVisibleLeafColumns().length;
   const selectedGrantIds = table
@@ -607,65 +726,13 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
                 colCount={visibleColCount}
                 className="bg-blue-50 hover:!bg-blue-50"
                 onSave={async () => {
-                  setAddModalError(null);
-                  if (!session?.user) {
-                    setAddModalError("Please sign in to create grants");
-                    return;
-                  }
-                  const poolId = selectedPoolId ?? fundPools?.[0]?.id;
-                  if (!poolId) {
-                    setAddModalError("Fund pool must be selected");
-                    return;
-                  }
-                  try {
-                    await createMutation.mutateAsync({
-                      organization: orgField,
-                      category: categoryField,
-                      dateReceived: dateReceivedField || undefined,
-                      toBeUsedBy: toBeUsedByField || undefined,
-                      email: emailField || undefined,
-                      phoneNumber: phoneField || undefined,
-                      notes: notesField || undefined,
-                      amount: Number(amountField) || 0,
-                      fundPoolId: poolId,
-                    });
+                  if (await createGrant()) {
                     resetInlineForm();
                     setAddModalOpen(false);
-                  } catch (e: unknown) {
-                    setAddModalError(
-                      e instanceof Error ? e.message : "Error creating grant",
-                    );
                   }
                 }}
                 onSaveAndAddMore={async () => {
-                  setAddModalError(null);
-                  if (!session?.user) {
-                    setAddModalError("Please sign in to create grants");
-                    return;
-                  }
-                  const poolId = selectedPoolId ?? fundPools?.[0]?.id;
-                  if (!poolId) {
-                    setAddModalError("Fund pool must be selected");
-                    return;
-                  }
-                  try {
-                    await createMutation.mutateAsync({
-                      organization: orgField,
-                      category: categoryField,
-                      dateReceived: dateReceivedField || undefined,
-                      toBeUsedBy: toBeUsedByField || undefined,
-                      email: emailField || undefined,
-                      phoneNumber: phoneField || undefined,
-                      notes: notesField || undefined,
-                      amount: Number(amountField) || 0,
-                      fundPoolId: poolId,
-                    });
-                    resetInlineForm();
-                  } catch (e: unknown) {
-                    setAddModalError(
-                      e instanceof Error ? e.message : "Error creating grant",
-                    );
-                  }
+                  if (await createGrant()) resetInlineForm();
                 }}
                 onCancel={() => {
                   resetInlineForm();
@@ -674,6 +741,28 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
                 }}
                 isSaving={createMutation.isPending}
                 error={addModalError}
+                belowFields={
+                  splitLines && (
+                    <GrantSplitEditor
+                      colCount={visibleColCount}
+                      className="bg-blue-50 hover:!bg-blue-50"
+                      lines={splitLines}
+                      onChange={(lines) => {
+                        setSplitLines(lines);
+                        // the live check under the split replaces a stale save error
+                        setAddModalError(null);
+                      }}
+                      onAddLine={() =>
+                        setSplitLines((prev) => [
+                          ...(prev ?? []),
+                          newSplitLine(),
+                        ])
+                      }
+                      fundPools={fundPools ?? []}
+                      totalAmount={Number(amountField) || 0}
+                    />
+                  )
+                }
               >
                 {canBulkEdit ? <TableCell className="bg-blue-50 p-1" /> : null}
                 <TableCell className="bg-blue-50 p-1">
@@ -685,7 +774,55 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
                   />
                 </TableCell>
                 <TableCell className="bg-blue-50 p-1">
-                  {fundPools && fundPools.length > 0 ? (
+                  {splitLines ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">Split</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setSplitLines(null)}
+                      >
+                        Don&apos;t split
+                      </Button>
+                    </div>
+                  ) : fundPools && fundPools.length > 1 ? (
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={selectedPoolId ?? fundPools[0]?.id ?? ""}
+                        onChange={(e) => {
+                          const id = Number(e.target.value);
+                          setSelectedPoolId(Number.isNaN(id) ? undefined : id);
+                          const pool = fundPools.find(
+                            (p: FundPool) => p.id === id,
+                          );
+                          setCategoryField(pool?.category ?? "");
+                        }}
+                        className="w-full h-7 bg-white px-2"
+                      >
+                        {fundPools.map((p: FundPool) => (
+                          <option key={p.id} value={p.id}>
+                            {p.category}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-[#3FA9A9]"
+                        onClick={() =>
+                          setSplitLines([
+                            newSplitLine(
+                              String(selectedPoolId ?? fundPools[0]?.id ?? ""),
+                            ),
+                            newSplitLine(),
+                          ])
+                        }
+                      >
+                        Split
+                      </Button>
+                    </div>
+                  ) : fundPools && fundPools.length > 0 ? (
                     <select
                       value={selectedPoolId ?? fundPools?.[0]?.id ?? ""}
                       onChange={(e) => {
@@ -768,58 +905,72 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
 
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.original.id}
-                  data-state={row.getIsSelected() ? "selected" : undefined}
-                  className={
-                    isGrantExpired(row.original.toBeUsedBy)
-                      ? "bg-muted/30"
-                      : undefined
-                  }
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    if (cell.column.id === "actions") {
+                <React.Fragment key={row.original.id}>
+                  <TableRow
+                    data-state={row.getIsSelected() ? "selected" : undefined}
+                    className={
+                      isGrantExpired(row.original.toBeUsedBy)
+                        ? "bg-muted/30"
+                        : undefined
+                    }
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      if (cell.column.id === "actions") {
+                        return (
+                          <TableCell key={cell.id}>
+                            <div className="flex justify-end">
+                              <RowActionsDropdown
+                                label={`Actions for ${row.original.organization}`}
+                                actions={
+                                  row.original.dbId
+                                    ? [
+                                        {
+                                          label: tCommon("viewDetails"),
+                                          onClick: () =>
+                                            onView(row.original.dbId!),
+                                        },
+                                        {
+                                          label: tCommon("delete"),
+                                          destructive: true,
+                                          onClick: () =>
+                                            setDeleteTarget({
+                                              id: row.original.dbId!,
+                                              name: row.original.organization,
+                                            }),
+                                        },
+                                      ]
+                                    : []
+                                }
+                              />
+                            </div>
+                          </TableCell>
+                        );
+                      }
+
                       return (
                         <TableCell key={cell.id}>
-                          <div className="flex justify-end">
-                            <RowActionsDropdown
-                              label={`Actions for ${row.original.organization}`}
-                              actions={
-                                row.original.dbId
-                                  ? [
-                                      {
-                                        label: tCommon("viewDetails"),
-                                        onClick: () =>
-                                          onView(row.original.dbId!),
-                                      },
-                                      {
-                                        label: tCommon("delete"),
-                                        destructive: true,
-                                        onClick: () =>
-                                          setDeleteTarget({
-                                            id: row.original.dbId!,
-                                            name: row.original.organization,
-                                          }),
-                                      },
-                                    ]
-                                  : []
-                              }
-                            />
-                          </div>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
                         </TableCell>
                       );
-                    }
-
-                    return (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
+                    })}
+                  </TableRow>
+                  {row.getIsExpanded() &&
+                    row.original.splits.map((part) => (
+                      <TableRow
+                        key={part.distributionId}
+                        className="bg-muted/40 text-sm hover:bg-muted/40"
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id} className="py-1.5">
+                            {splitPartCell(cell.column.id, part)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                </React.Fragment>
               ))
             ) : (
               <TableEmptyRow colCount={visibleColCount} />

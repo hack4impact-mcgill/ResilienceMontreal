@@ -13,6 +13,8 @@ interface Props {
   isSaving?: boolean;
   className?: string;
   error?: string | null;
+  // extra rows shown under the fields, above the error and buttons
+  belowFields?: React.ReactNode;
 }
 
 export function InlineFormRow({
@@ -24,10 +26,12 @@ export function InlineFormRow({
   isSaving,
   className = "bg-[#D1EDED] hover:bg-[#D1EDED]",
   error,
+  belowFields,
 }: Props) {
   return (
     <>
       <TableRow className={className}>{children}</TableRow>
+      {belowFields}
 
       {error && (
         <TableRow className={className}>

@@ -27,7 +27,9 @@ interface Props {
 
 export function RowActionsDropdown({ label, actions }: Props) {
   return (
-    <DropdownMenu>
+    // Non-modal so a dialog opened from a menu item (e.g. delete confirm) can't
+    // leave the page with pointer-events: none after it closes
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
           <span className="sr-only">Open menu</span>

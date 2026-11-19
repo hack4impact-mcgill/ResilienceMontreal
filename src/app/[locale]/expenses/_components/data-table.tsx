@@ -755,8 +755,22 @@ const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
 };
 
 /** The table, with the selected row's details panel beside it. */
-export const ExpensesTable = () => {
+export const ExpensesTable = ({
+  initialViewId,
+}: {
+  initialViewId: number | null;
+}) => {
   const panel = useDetailPanel();
+  const { open } = panel;
+
+  // Arriving from a linked expense (/expenses?view=12): open its panel, then
+  // drop ?view so closing it and refreshing doesn't reopen it.
+  React.useEffect(() => {
+    if (initialViewId === null) return;
+    open(initialViewId);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [initialViewId, open]);
+
   return (
     <DetailSplit
       panel={

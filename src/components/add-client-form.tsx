@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function AddClientForm() {
@@ -18,6 +19,7 @@ export function AddClientForm() {
     email: "",
     phone: "",
     landlordName: "",
+    notes: "",
     leaseStart: "",
     leaseEnd: "",
   });
@@ -75,6 +77,7 @@ export function AddClientForm() {
       email: formData.email || null,
       phone: formData.phone || null,
       landlordName: formData.landlordName || null,
+      notes: formData.notes || null,
       leaseStart: formData.leaseStart ? new Date(formData.leaseStart) : null,
       leaseEnd: formData.leaseEnd ? new Date(formData.leaseEnd) : null,
     });
@@ -244,6 +247,16 @@ export function AddClientForm() {
                   onChange={(e) => handleChange("leaseEnd", e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => handleChange("notes", e.target.value)}
+                placeholder="Add any notes about this client"
+              />
             </div>
           </div>
 

@@ -29,8 +29,8 @@ export type Client = {
   lastName: string;
   email: string;
   dateOfBirth: Date | null;
-  leaseStartDate: Date;
-  leaseEndDate: Date;
+  leaseStartDate: Date | null;
+  leaseEndDate: Date | null;
   workerName: string;
   workerId: string;
   /** Number of expenses linked to this client. */
@@ -38,6 +38,9 @@ export type Client = {
   /** Sum of the linked expenses' totals. */
   totalExpenses?: number;
 };
+
+const formatDate = (date: Date) =>
+  date.toLocaleDateString(undefined, { timeZone: "UTC" });
 
 // Map backend client to frontend Client
 export function mapClient(c: BackendClient): Client {
@@ -47,8 +50,8 @@ export function mapClient(c: BackendClient): Client {
     lastName: c.lastName,
     email: c.email ?? "",
     dateOfBirth: c.dateOfBirth ? new Date(c.dateOfBirth) : null,
-    leaseStartDate: c.leaseStart ? new Date(c.leaseStart) : new Date(0),
-    leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : new Date(0),
+    leaseStartDate: c.leaseStart ? new Date(c.leaseStart) : null,
+    leaseEndDate: c.leaseEnd ? new Date(c.leaseEnd) : null,
     workerName: c.worker?.name ?? "",
     workerId: c.worker?.supabaseId ?? "",
     expenseCount: c.expenseCount ?? 0,
@@ -58,10 +61,12 @@ export function mapClient(c: BackendClient): Client {
 
 function ClientRowActions({
   client,
+  onView,
   onEdit,
   onDelete,
 }: {
   client: Client;
+  onView: (client: Client) => void;
   onEdit: (client: Client) => void;
   onDelete: (clientId: number) => void;
 }) {
@@ -70,7 +75,7 @@ function ClientRowActions({
     <RowActionsDropdown
       label={`Actions for ${client.firstName} ${client.lastName}`}
       actions={[
-        { label: t("viewDetails"), href: `/clients/${client.id}` },
+        { label: t("viewDetails"), onClick: () => onView(client) },
         { label: t("edit"), onClick: () => onEdit(client) },
         {
           label: t("delete"),
@@ -83,12 +88,14 @@ function ClientRowActions({
 }
 
 export const createColumns = (
+  onView: (client: Client) => void,
   onEdit: (client: Client) => void,
   onDelete: (clientId: number) => void,
 ): ColumnDef<Client>[] => [
   {
     accessorKey: "firstName",
     header: "FIRST NAME",
+    // plain text: the row menu's "View details" opens the profile
     cell: (info) => info.getValue(),
   },
   {
@@ -102,32 +109,24 @@ export const createColumns = (
     cell: (info) => info.getValue(),
   },
   {
-    accessorKey: "dateOfBirth",
-    header: "DATE OF BIRTH",
-    cell: ({ row }) => {
-      const date: Date | null = row.original.dateOfBirth;
-      return <div>{date ? date.toLocaleDateString() : "N/A"}</div>;
-    },
-  },
-  {
     accessorKey: "leaseStartDate",
-    header: "LEASE START DATE",
+    header: "LEASE START",
     cell: ({ row }) => {
-      const date: Date = row.original.leaseStartDate;
-      return <div>{date.toLocaleDateString()}</div>;
+      const date = row.original.leaseStartDate;
+      return <div>{date ? formatDate(date) : "—"}</div>;
     },
   },
   {
     accessorKey: "leaseEndDate",
-    header: "LEASE END DATE",
+    header: "LEASE END",
     cell: ({ row }) => {
-      const date: Date = row.original.leaseEndDate;
-      return <div>{date.toLocaleDateString()}</div>;
+      const date = row.original.leaseEndDate;
+      return <div>{date ? formatDate(date) : "—"}</div>;
     },
   },
   {
     accessorKey: "workerName",
-    header: "INTERVENTION WORKER",
+    header: "INTERVENTION TEAM WORKER",
     cell: (info) => info.getValue(),
   },
   {
@@ -142,6 +141,7 @@ export const createColumns = (
     cell: ({ row }) => (
       <ClientRowActions
         client={row.original}
+        onView={onView}
         onEdit={onEdit}
         onDelete={onDelete}
       />

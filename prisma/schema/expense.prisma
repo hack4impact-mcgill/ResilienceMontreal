@@ -4,6 +4,8 @@ model Expense {
   description   String
   date          DateTime              @default(now())
   invoiceUrl    String?
+  invoiceDriveFileId String?
+  invoiceDriveFileName String?
   clientId      Int?
   client        Client?               @relation(fields: [clientId], references: [id], onDelete: SetNull)
   distributions ExpenseDistribution[]

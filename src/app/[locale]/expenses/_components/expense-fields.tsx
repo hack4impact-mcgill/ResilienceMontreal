@@ -1,4 +1,6 @@
 "use client";
+import { InvoiceDisplay } from "~/components/expenses/invoice-display";
+import { InvoiceInput } from "~/components/expenses/invoice-input";
 
 import * as React from "react";
 
@@ -18,6 +20,8 @@ export type ExpenseDraft = {
   description: string;
   date: string;
   invoiceUrl: string;
+  invoiceDriveFileId: string | null;
+  invoiceDriveFileName: string | null;
 };
 
 export function expenseDraftFrom(expense: ExpenseDetailData): ExpenseDraft {
@@ -25,6 +29,8 @@ export function expenseDraftFrom(expense: ExpenseDetailData): ExpenseDraft {
     description: expense.description,
     date: new Date(expense.date).toISOString().slice(0, 10),
     invoiceUrl: expense.invoiceUrl ?? "",
+    invoiceDriveFileId: expense.invoiceDriveFileId,
+    invoiceDriveFileName: expense.invoiceDriveFileName,
   };
 }
 
@@ -65,23 +71,11 @@ export function expenseFields(
       { label: "Amount", value: formatMoney(expense.totalAmount) },
       {
         label: "Invoice",
-        value: expense.invoiceUrl ? (
-          <a
-            href={expense.invoiceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-[#3FA9A9] underline-offset-2 hover:underline"
-          >
-            Open invoice
-          </a>
-        ) : (
-          "—"
-        ),
+        value: <InvoiceDisplay expense={expense} />,
         input: edit && (
-          <Input
-            type="url"
-            value={edit.draft.invoiceUrl}
-            onChange={(e) => edit.setDraft({ invoiceUrl: e.target.value })}
+          <InvoiceInput
+            value={edit.draft}
+            onChange={(value) => edit.setDraft(value)}
           />
         ),
       },

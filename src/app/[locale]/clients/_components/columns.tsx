@@ -95,28 +95,13 @@ export const createColumns = (
   {
     accessorKey: "firstName",
     header: "FIRST NAME",
-    cell: ({ row }) => (
-      <button
-        type="button"
-        onClick={() => onView(row.original)}
-        className="text-[#3FA9A9] underline-offset-2 hover:underline"
-      >
-        {row.original.firstName}
-      </button>
-    ),
+    // plain text: the row menu's "View details" opens the profile
+    cell: (info) => info.getValue(),
   },
   {
     accessorKey: "lastName",
     header: "LAST NAME",
-    cell: ({ row }) => (
-      <button
-        type="button"
-        onClick={() => onView(row.original)}
-        className="text-[#3FA9A9] underline-offset-2 hover:underline"
-      >
-        {row.original.lastName}
-      </button>
-    ),
+    cell: (info) => info.getValue(),
   },
   {
     accessorKey: "email",

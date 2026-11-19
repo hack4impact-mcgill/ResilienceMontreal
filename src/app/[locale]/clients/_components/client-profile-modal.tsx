@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { toast } from "sonner";
 
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -81,6 +83,7 @@ export function ClientProfileModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations("common");
   const utils = api.useUtils();
   const [mode, setMode] = React.useState<Mode>("view");
   const [form, setForm] = React.useState<ClientFormData>(EMPTY_FORM);
@@ -416,7 +419,13 @@ export function ClientProfileModal({
               <DialogTitle>Delete client?</DialogTitle>
               <DialogDescription>
                 Are you sure you want to delete {client.firstName}{" "}
-                {client.lastName}? This action cannot be undone.
+                {client.lastName}?{" "}
+                {/* same warning as the clients table's delete dialog */}
+                {client.expenses.length > 0 &&
+                  `This client has ${client.expenses.length} linked ${
+                    client.expenses.length === 1 ? "expense" : "expenses"
+                  }. ${client.expenses.length === 1 ? "It" : "They"} will be kept but no longer linked to any client. `}
+                This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -461,6 +470,12 @@ export function ClientProfileModal({
                     onClick={() => setMode("delete")}
                   >
                     Delete
+                  </Button>
+                  {/* full page has the client's linked expenses */}
+                  <Button type="button" variant="outline" asChild>
+                    <Link href={`/clients/${client.id}`}>
+                      {t("viewAsPage")}
+                    </Link>
                   </Button>
                 </div>
               </div>

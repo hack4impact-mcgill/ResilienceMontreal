@@ -88,6 +88,8 @@ interface Props extends DetailPanelControls {
   deleteName?: string;
   deleteDescription?: string;
   notes?: React.ReactNode;
+  // shown below the details, e.g. a linked records table
+  linked?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -139,6 +141,7 @@ export function DetailPanel({
   deleteName,
   deleteDescription,
   notes,
+  linked,
   children,
 }: Props) {
   const t = useTranslations("common");
@@ -273,6 +276,7 @@ export function DetailPanel({
             )}
           </div>
           <Separator className={DIVIDER} />
+          {linked}
         </>
       )}
 

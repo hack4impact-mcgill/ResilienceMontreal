@@ -13,6 +13,10 @@ import {
   type DetailPanelControls,
   mutationErrorMessage,
 } from "@/components/detail-panel";
+import {
+  type LinkedExpenseRow,
+  LinkedExpensesTable,
+} from "@/components/linked-expenses-table";
 import { api, type RouterInputs } from "~/trpc/react";
 import { type GrantDraft, grantDraftFrom, grantFields } from "./grant-fields";
 
@@ -107,6 +111,24 @@ export function GrantPanel({
     ? grantFields(grant, edit)
     : { fields: [], notes: undefined };
 
+  // One row per category the expense was paid from in this grant, with the
+  // amount taken from this grant (not the expense's full total).
+  const linkedRows: LinkedExpenseRow[] = (grant?.distributions ?? [])
+    .flatMap((d) =>
+      d.expenseDistributions.map((ed) => ({
+        key: ed.id,
+        expenseId: ed.expense.id,
+        clientName: ed.expense.client
+          ? `${ed.expense.client.firstName} ${ed.expense.client.lastName}`
+          : null,
+        clientRestricted: !ed.expense.client && ed.expense.clientId !== null,
+        categories: d.fundPool ? [d.fundPool.category] : [],
+        date: ed.expense.date,
+        amount: ed.amount,
+      })),
+    )
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   return (
     <DetailPanel
       title={t("grant")}
@@ -132,6 +154,7 @@ export function GrantPanel({
       }}
       isDeleting={remove.isPending}
       deleteName={grant?.title}
+      linked={<LinkedExpensesTable rows={linkedRows} />}
       notes={
         notes && (
           <DetailNotes

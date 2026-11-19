@@ -42,7 +42,11 @@ import { DeleteConfirmDialog } from "@/components/data-table/DeleteConfirmDialog
 import { InlineFormRow } from "@/components/data-table/InlineFormRow";
 
 type ClientSortBy =
-  "firstName" | "lastName" | "createdAt" | "leaseEnd" | "workerId";
+  | "firstName"
+  | "lastName"
+  | "createdAt"
+  | "leaseEnd"
+  | "workerId";
 type ListedUser = RouterOutputs["clients"]["listWorkers"][number];
 
 const clientSchema = z.object({

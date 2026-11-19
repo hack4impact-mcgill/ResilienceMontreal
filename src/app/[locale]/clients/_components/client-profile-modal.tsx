@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TableErrorState } from "@/components/data-table/TableErrorState";
 import { TableLoadingState } from "@/components/data-table/TableLoadingState";
+import { LinkedExpensesTable } from "@/components/linked-expenses-table";
 import { api } from "~/trpc/react";
 
 type Mode = "view" | "edit" | "delete";
@@ -471,7 +472,6 @@ export function ClientProfileModal({
                   >
                     Delete
                   </Button>
-                  {/* full page has the client's linked expenses */}
                   <Button type="button" variant="outline" asChild>
                     <Link href={`/clients/${client.id}`}>
                       {t("viewAsPage")}
@@ -515,6 +515,28 @@ export function ClientProfileModal({
                 />
               </dl>
             </section>
+
+            <div className="border-t pt-5">
+              <LinkedExpensesTable
+                rows={client.expenses.map((e) => ({
+                  key: e.id,
+                  expenseId: e.id,
+                  clientName: `${client.firstName} ${client.lastName}`,
+                  // normally one; several only after Edit allocations re-splits it
+                  categories: [
+                    ...new Set(
+                      e.distributions.flatMap((d) =>
+                        d.grantDistribution.fundPool
+                          ? [d.grantDistribution.fundPool.category]
+                          : [],
+                      ),
+                    ),
+                  ],
+                  date: e.date,
+                  amount: e.totalAmount,
+                }))}
+              />
+            </div>
           </div>
         )}
       </DialogContent>

@@ -18,5 +18,15 @@
   "lastEditedBy": "Last editor",
   "dateLastEdited": "Date last edited",
   "grant": "Grant",
-  "expense": "Expense"
+  "expense": "Expense",
+  "linkedExpenses": {
+    "title": "Linked expenses",
+    "client": "Client",
+    "category": "Category",
+    "date": "Date",
+    "amount": "Amount",
+    "empty": "No linked expenses.",
+    "uncategorized": "Uncategorized",
+    "restricted": "Restricted"
+  }
 }

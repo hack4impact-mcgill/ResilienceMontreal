@@ -9,6 +9,7 @@ const DRIVE_API = "https://www.googleapis.com/drive/v3";
 export type DriveItem = {
   id: string;
   name: string;
+  fullFileExtension?: string;
   mimeType: string;
   modifiedTime: string;
   size?: string;
@@ -289,6 +290,89 @@ async function assertWithinRoot(id: string) {
     );
     const data = (await response.json()) as { parents?: string[] };
     current = data.parents?.[0];
+  }
+  throw new Error("That item is outside the configured documents folder.");
+}
+
+/** Paginated listing shared by Documents and invoice selection; legacy list stays compatible. */
+export async function listDriveFolderPage(
+  folderId?: string,
+  pageToken?: string,
+) {
+  const parentId = folderId ?? config().rootFolderId;
+  if (!/^[\w-]+$/.test(parentId)) throw new Error("Invalid folder ID.");
+  await assertInvoiceWithinRoot(parentId);
+  const parent = await driveFetch(
+    `/files/${encodeURIComponent(parentId)}?fields=mimeType,trashed`,
+  );
+  const metadata = (await parent.json()) as {
+    mimeType: string;
+    trashed?: boolean;
+  };
+  if (
+    metadata.trashed ||
+    metadata.mimeType !== "application/vnd.google-apps.folder"
+  )
+    throw new Error("Select an available folder.");
+  const query = new URLSearchParams({
+    q: `'${parentId}' in parents and trashed = false`,
+    fields:
+      "nextPageToken,files(id,name,fullFileExtension,mimeType,modifiedTime,capabilities(canDownload))",
+    orderBy: "folder,name",
+    pageSize: "100",
+    ...(pageToken ? { pageToken } : {}),
+  });
+  const response = await driveFetch(`/files?${query}`);
+  const result = (await response.json()) as {
+    files?: (DriveItem & { capabilities?: { canDownload?: boolean } })[];
+    nextPageToken?: string;
+  };
+  return { items: result.files ?? [], nextPageToken: result.nextPageToken };
+}
+
+export async function validateInvoiceDriveFile(id: string) {
+  if (!/^[\w-]+$/.test(id)) throw new Error("Invalid file ID.");
+  const response = await driveFetch(
+    `/files/${encodeURIComponent(id)}?fields=id,name,fullFileExtension,mimeType,trashed,capabilities(canDownload)`,
+  );
+  const item = (await response.json()) as DriveItem & {
+    trashed?: boolean;
+    capabilities?: { canDownload?: boolean };
+  };
+  if (
+    item.trashed ||
+    item.mimeType.startsWith("application/vnd.google-apps.") ||
+    item.capabilities?.canDownload !== true
+  )
+    throw new Error(
+      "Choose a downloadable file such as a PDF or image, not a folder, shortcut or Google document.",
+    );
+  await assertInvoiceWithinRoot(id);
+  return item;
+}
+
+async function assertInvoiceWithinRoot(id: string) {
+  const { rootFolderId } = config();
+  let current: string | undefined = id;
+  const seen = new Set<string>();
+  for (let depth = 0; current && depth < 32; depth++) {
+    if (seen.has(current)) break;
+    seen.add(current);
+    const response = await driveFetch(
+      `/files/${encodeURIComponent(current)}?fields=parents,trashed,mimeType`,
+    );
+    const item = (await response.json()) as {
+      parents?: string[];
+      trashed?: boolean;
+      mimeType: string;
+    };
+    if (item.trashed) throw new Error("That item is in the trash.");
+    if (
+      current === rootFolderId &&
+      item.mimeType === "application/vnd.google-apps.folder"
+    )
+      return;
+    current = item.parents?.[0];
   }
   throw new Error("That item is outside the configured documents folder.");
 }

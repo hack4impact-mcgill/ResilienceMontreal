@@ -16,6 +16,8 @@ interface Action {
   label: string;
   // href renders a real link (supports middle-click / open in new tab)
   href?: string;
+  // Downloads use a native anchor without locale routing or prefetching.
+  download?: boolean;
   onClick?: () => void;
   destructive?: boolean;
 }
@@ -46,7 +48,13 @@ export function RowActionsDropdown({ label, actions }: Props) {
           );
           return action.href ? (
             <DropdownMenuItem key={action.label} className={className} asChild>
-              <Link href={action.href}>{action.label}</Link>
+              {action.download ? (
+                <a href={action.href} download>
+                  {action.label}
+                </a>
+              ) : (
+                <Link href={action.href}>{action.label}</Link>
+              )}
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem

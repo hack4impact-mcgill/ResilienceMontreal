@@ -20,7 +20,9 @@ export type ExpenseCreateData = {
   totalAmount: Prisma.Decimal;
   description: string;
   date: Date;
-  invoiceUrl?: string;
+  invoiceUrl?: string | null;
+  invoiceDriveFileId?: string | null;
+  invoiceDriveFileName?: string | null;
   clientId?: number;
 };
 
@@ -201,6 +203,8 @@ export async function persistExpenseWithAllocations(
       description: input.description,
       date: input.date,
       invoiceUrl: input.invoiceUrl,
+      invoiceDriveFileId: input.invoiceDriveFileId,
+      invoiceDriveFileName: input.invoiceDriveFileName,
       clientId: input.clientId,
     },
   });

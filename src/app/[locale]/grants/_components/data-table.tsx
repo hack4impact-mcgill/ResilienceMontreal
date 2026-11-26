@@ -84,6 +84,7 @@ function mapDbGrant(g: DbGrant): Grant {
           return {
             distributionId: d.id,
             category: d.fundPool?.category ?? "Uncategorized",
+            notes: d.notes ?? undefined,
             percent: originalAmount > 0 ? (original / originalAmount) * 100 : 0,
             originalAmount: original,
             spentAmount: spent,
@@ -125,6 +126,12 @@ function splitPartCell(columnId: string, part: GrantSplitPart) {
           {part.category} · {formatPercent(part.percent)}
         </span>
       );
+    case "notes":
+      return part.notes ? (
+        <span title={part.notes}>
+          {part.notes.length > 80 ? `${part.notes.slice(0, 80)}…` : part.notes}
+        </span>
+      ) : null;
     case "originalAmount":
       return formatMoney(part.originalAmount);
     case "spentAmount":
@@ -183,6 +190,7 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
     key: nextSplitKey.current++,
     fundPoolId,
     percent: "",
+    notes: "",
   });
   const [expanded, setExpanded] = React.useState<ExpandedState>({});
 
@@ -393,6 +401,7 @@ const GrantsTableContent = ({ onView }: { onView: (id: number) => void }) => {
         splits: splitLines.map((line, i) => ({
           fundPoolId: Number(line.fundPoolId),
           amount: cents[i]! / 100,
+          notes: line.notes || undefined,
         })),
         category: splitLines
           .map(

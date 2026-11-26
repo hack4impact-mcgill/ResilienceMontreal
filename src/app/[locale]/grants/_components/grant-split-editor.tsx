@@ -97,6 +97,15 @@ export function GrantSplitEditor({
                   ? formatMoney(cents[i] / 100)
                   : ""}
               </span>
+              <Input
+                aria-label="Split category notes"
+                placeholder="Notes"
+                value={line.notes}
+                onChange={(e) =>
+                  updateLine(line.key, { notes: e.target.value })
+                }
+                className="h-7 w-48 bg-white px-2"
+              />
               <Button
                 variant="ghost"
                 size="sm"

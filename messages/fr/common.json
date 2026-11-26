@@ -18,5 +18,15 @@
   "lastEditedBy": "Dernière modification par",
   "dateLastEdited": "Date de dernière modification",
   "grant": "Subvention",
-  "expense": "Dépense"
+  "expense": "Dépense",
+  "linkedExpenses": {
+    "title": "Dépenses liées",
+    "client": "Client",
+    "category": "Catégorie",
+    "date": "Date",
+    "amount": "Montant",
+    "empty": "Aucune dépense liée.",
+    "uncategorized": "Non catégorisée",
+    "restricted": "Restreint"
+  }
 }

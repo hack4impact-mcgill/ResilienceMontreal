@@ -15,13 +15,13 @@ export function AppSidebarWrapper({
   const hideSidebar = pathname?.includes("/update-password") ?? false;
 
   if (!isLoggedIn || hideSidebar) {
-    return <main className="w-full">{children}</main>;
+    return <main className="min-w-0 flex-1">{children}</main>;
   }
 
   return (
     <>
       <AppSidebar />
-      <main className="w-full">
+      <main className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
           <SidebarTrigger />
         </div>

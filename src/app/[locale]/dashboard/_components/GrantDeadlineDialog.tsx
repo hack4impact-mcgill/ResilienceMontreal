@@ -28,7 +28,16 @@ export function GrantDeadlineDialog({
         <DialogHeader>
           <DialogTitle>{grant?.title ?? "Grant"}</DialogTitle>
           <DialogDescription>
-            {grant ? `Deadline: ${formatDeadline(grant.deadline)}` : ""}
+            {grant && (
+              <>
+                <span className="block">
+                  Start Date: {formatDeadline(grant.start)}
+                </span>
+                <span className="block">
+                  Deadline: {formatDeadline(grant.deadline)}
+                </span>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         {grant && (

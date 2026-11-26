@@ -152,8 +152,16 @@ export function DetailPanel({
     // the delete pop-up handles its own clicks and Esc
     if (confirmingDelete || closing) return;
 
+    // Dialogs opened from this panel render in a portal outside the aside.
+    // Let the dialog handle its own content and backdrop until it closes.
+    const hasOpenDialog = () =>
+      Boolean(
+        panelRef.current?.querySelector(
+          '[aria-haspopup="dialog"][aria-expanded="true"]',
+        ),
+      );
     const isOutside = (e: Event) =>
-      !panelRef.current?.contains(e.target as Node);
+      !hasOpenDialog() && !panelRef.current?.contains(e.target as Node);
     const swallowWhileEditing = (e: Event) => {
       if (editing && isOutside(e)) {
         e.preventDefault();
@@ -181,7 +189,7 @@ export function DetailPanel({
       onClose();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !editing) onClose();
+      if (e.key === "Escape" && !editing && !hasOpenDialog()) onClose();
     };
 
     document.addEventListener("pointerdown", onPointerDown, true);

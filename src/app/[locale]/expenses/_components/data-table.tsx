@@ -1,4 +1,5 @@
 "use client";
+import { InvoiceInput } from "~/components/expenses/invoice-input";
 
 import { TableLoadingState } from "@/components/data-table/TableLoadingState";
 import * as React from "react";
@@ -100,6 +101,8 @@ const expenseSchema = z.object({
     .refine((val) => !val || z.string().url().safeParse(val).success, {
       message: "Invoice URL must be a valid URL",
     }),
+  invoiceDriveFileId: z.string().nullable().default(null),
+  invoiceDriveFileName: z.string().nullable().default(null),
   clientId: z.string().optional(),
 });
 
@@ -119,6 +122,8 @@ function mapExpenseRow(e: {
   date: Date;
   totalAmount: unknown;
   invoiceUrl: string | null;
+  invoiceDriveFileId: string | null;
+  invoiceDriveFileName: string | null;
   distributions?: Array<{
     grantDistribution: { fundPool: { category: string } | null } | null;
   }>;
@@ -137,6 +142,8 @@ function mapExpenseRow(e: {
     date: expenseDate,
     totalAmount: amount,
     invoiceUrl: e.invoiceUrl,
+    invoiceDriveFileId: e.invoiceDriveFileId,
+    invoiceDriveFileName: e.invoiceDriveFileName,
     isFutureDated: isExpenseFutureDated(expenseDate),
     fundPoolCategory,
     client: e.client
@@ -165,6 +172,8 @@ const EMPTY_FORM: ExpenseFormData = {
   totalAmount: "",
   fundPoolId: "",
   invoiceUrl: "",
+  invoiceDriveFileId: null,
+  invoiceDriveFileName: null,
   clientId: "",
 };
 
@@ -308,6 +317,7 @@ const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
         totalAmount: parseFloat(form.formData.totalAmount),
         fundPoolId: Number(form.formData.fundPoolId),
         invoiceUrl: form.formData.invoiceUrl?.trim() || undefined,
+        invoiceDriveFileId: form.formData.invoiceDriveFileId ?? undefined,
         clientId: form.formData.clientId
           ? Number(form.formData.clientId)
           : undefined,
@@ -567,7 +577,7 @@ const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
                     : null
                 }
               >
-                <TableCell>
+                <TableCell className="align-top px-1 py-4 last:pr-8">
                   <Input
                     value={form.formData.description}
                     onChange={(e) =>
@@ -582,7 +592,7 @@ const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
                     </p>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="align-top px-1 py-4 last:pr-8">
                   <Input
                     type="date"
                     value={form.formData.date}
@@ -595,7 +605,7 @@ const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
                     </p>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="align-top px-1 py-4 last:pr-8">
                   <Input
                     type="number"
                     step="0.01"
@@ -613,15 +623,14 @@ const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
                     </p>
                   )}
                 </TableCell>
-                <TableCell>
-                  <Input
-                    type="url"
-                    value={form.formData.invoiceUrl ?? ""}
-                    onChange={(e) =>
-                      form.setFormData({ invoiceUrl: e.target.value })
-                    }
-                    placeholder="Invoice URL (optional)"
-                    className={`bg-white border-[#3FA9A9] ${form.formErrors.invoiceUrl ? "border-red-500" : ""}`}
+                <TableCell className="align-top px-1 py-4 last:pr-8">
+                  <InvoiceInput
+                    value={{
+                      invoiceUrl: form.formData.invoiceUrl ?? "",
+                      invoiceDriveFileId: form.formData.invoiceDriveFileId,
+                      invoiceDriveFileName: form.formData.invoiceDriveFileName,
+                    }}
+                    onChange={(value) => form.setFormData(value)}
                   />
                   {form.formErrors.invoiceUrl && (
                     <p className="text-xs text-red-500 mt-1">
@@ -630,7 +639,7 @@ const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
                   )}
                 </TableCell>
                 {canViewClient && (
-                  <TableCell>
+                  <TableCell className="align-top px-1 py-4 last:pr-8">
                     <select
                       aria-label="Client"
                       value={form.formData.clientId ?? ""}
@@ -648,7 +657,7 @@ const ExpensesTableContent = ({ onView }: { onView: (id: number) => void }) => {
                     </select>
                   </TableCell>
                 )}
-                <TableCell>
+                <TableCell className="align-top px-1 py-4 last:pr-8">
                   {fundPools && fundPools.length > 0 ? (
                     <>
                       <select

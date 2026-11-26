@@ -40,8 +40,9 @@ export const grantRouter = createTRPCRouter({
         ? input.splits.map((s) => ({
             fundPoolId: s.fundPoolId,
             amount: new Prisma.Decimal(String(s.amount)),
+            notes: s.notes || null,
           }))
-        : [{ fundPoolId: input.fundPoolId!, amount }];
+        : [{ fundPoolId: input.fundPoolId!, amount, notes: null }];
 
       return await ctx.db.$transaction(async (tx) => {
         const fundPools = await tx.fundPool.findMany({
@@ -81,6 +82,7 @@ export const grantRouter = createTRPCRouter({
               grantId: createdGrant.id,
               fundPoolId: share.fundPoolId,
               amount: share.amount,
+              notes: share.notes,
             },
           });
           await tx.fundPool.update({

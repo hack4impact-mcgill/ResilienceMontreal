@@ -36,6 +36,7 @@ const toCents = (amount: number) => Math.round(amount * 100);
 export const grantSplitSchema = z.object({
   fundPoolId: z.coerce.number().int().positive("FundPoolId required"),
   amount: z.coerce.number().positive("Each split amount must be > 0"),
+  notes: z.string().trim().optional(),
 });
 
 // New schemas for Grants CRUD used by the new grants router

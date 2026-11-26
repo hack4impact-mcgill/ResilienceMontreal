@@ -36,6 +36,7 @@ export type Grant = {
 export type GrantSplitPart = {
   distributionId: number;
   category: string;
+  notes?: string;
   percent: number;
   originalAmount: number;
   spentAmount: number;

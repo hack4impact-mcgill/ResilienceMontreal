@@ -16,7 +16,7 @@ import {
 import { type RouterOutputs } from "~/trpc/react";
 
 type FundPool = RouterOutputs["fundPool"]["getAll"][number];
-export type SplitRow = SplitLine & { key: number };
+export type SplitRow = SplitLine & { key: number; notes: string };
 
 /** Row under the add-grant form for dividing the grant over fund pools by percentage. */
 export function GrantSplitEditor({
@@ -41,7 +41,7 @@ export function GrantSplitEditor({
   const cents =
     totalAmount > 0 && lines.length > 0 ? splitCents(totalAmount, lines) : [];
   const chosen = new Set(lines.map((line) => line.fundPoolId));
-  const updateLine = (key: number, patch: Partial<SplitLine>) =>
+  const updateLine = (key: number, patch: Partial<SplitRow>) =>
     onChange(
       lines.map((line) => (line.key === key ? { ...line, ...patch } : line)),
     );
@@ -97,6 +97,15 @@ export function GrantSplitEditor({
                   ? formatMoney(cents[i] / 100)
                   : ""}
               </span>
+              <Input
+                aria-label="Split category notes"
+                placeholder="Notes"
+                value={line.notes}
+                onChange={(e) =>
+                  updateLine(line.key, { notes: e.target.value })
+                }
+                className="h-7 w-48 bg-white px-2"
+              />
               <Button
                 variant="ghost"
                 size="sm"

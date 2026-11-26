@@ -663,7 +663,15 @@ export const grantRouter = createTRPCRouter({
             include: {
               fundPool: { select: { id: true, category: true } },
               expenseDistributions: {
-                include: { expense: true },
+                include: {
+                  expense: {
+                    include: {
+                      client: {
+                        select: { id: true, firstName: true, lastName: true },
+                      },
+                    },
+                  },
+                },
                 orderBy: { expense: { date: "desc" } },
               },
             },
@@ -675,6 +683,29 @@ export const grantRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Grant not found" });
       }
 
-      return grant;
+      // Client names follow the same rule as the expenses list: Intervention
+      // Team and Admin only. Others still get clientId, to show "Restricted".
+      const viewer = ctx.user?.email
+        ? await ctx.db.user.findUnique({
+            where: { email: ctx.user.email },
+            select: { role: true },
+          })
+        : null;
+      const canViewClient =
+        viewer?.role === "InterventionTeam" || viewer?.role === "Admin";
+
+      return {
+        ...grant,
+        distributions: grant.distributions.map((d) => ({
+          ...d,
+          expenseDistributions: d.expenseDistributions.map((ed) => ({
+            ...ed,
+            expense: {
+              ...ed.expense,
+              client: canViewClient ? ed.expense.client : null,
+            },
+          })),
+        })),
+      };
     }),
 });

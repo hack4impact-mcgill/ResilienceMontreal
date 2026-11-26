@@ -78,6 +78,9 @@ export function ExpensePanel({
     if (draft.invoiceUrl !== initial.invoiceUrl)
       payload.invoiceUrl = draft.invoiceUrl.trim() || null;
 
+    if (draft.invoiceDriveFileId !== initial.invoiceDriveFileId)
+      payload.invoiceDriveFileId = draft.invoiceDriveFileId;
+
     setError(null);
     if (Object.keys(payload).length === 1) {
       setDraftRaw(null);

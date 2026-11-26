@@ -4,6 +4,7 @@ import {
   createDriveFolder,
   getGoogleDriveStatus,
   listDriveFolder,
+  listDriveFolderPage,
   renameDriveItem,
   trashDriveItem,
 } from "~/server/google-drive";
@@ -23,6 +24,20 @@ export const documentsRouter = createTRPCRouter({
     .query(async ({ input }) => {
       try {
         return await listDriveFolder(input.folderId);
+      } catch (error) {
+        throw asDriveError(error);
+      }
+    }),
+  listPage: protectedProcedure
+    .input(
+      z.object({
+        folderId: z.string().optional(),
+        pageToken: z.string().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      try {
+        return await listDriveFolderPage(input.folderId, input.pageToken);
       } catch (error) {
         throw asDriveError(error);
       }

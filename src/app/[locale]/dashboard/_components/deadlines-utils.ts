@@ -21,7 +21,10 @@ export type DeadlineGrant = {
  * so design can update without touching the chart.
  */
 export const POOL_COLORS: Record<string, string> = {
+  Emergency: "#D062E6",
+  Admin: "#67B95B",
   Housing: "#3FA9A9",
+  Wellness: "#85A1A7",
   Furniture: "#F8D655",
   Clothing: "#3789E1",
 };
@@ -34,13 +37,22 @@ export const FALLBACK_POOL_COLORS = [
   "#B03B40",
 ];
 
-export const PROGRESS_COLOR = "#67B95B";
-
 export function poolColor(poolName: string, poolIndex: number): string {
   return (
     POOL_COLORS[poolName] ??
     FALLBACK_POOL_COLORS[poolIndex % FALLBACK_POOL_COLORS.length]
   );
+}
+
+/** Use the same hue as the pool, with each RGB channel darkened by 30%. */
+export function poolProgressColor(poolName: string, poolIndex: number): string {
+  const color = poolColor(poolName, poolIndex);
+  const channels = [1, 3, 5].map((offset) =>
+    Math.round(parseInt(color.slice(offset, offset + 2), 16) * 0.7)
+      .toString(16)
+      .padStart(2, "0"),
+  );
+  return `#${channels.join("")}`;
 }
 
 function toNumber(value: unknown): number {
@@ -135,6 +147,20 @@ export function getYearDomain(year: number): TimeDomain {
   return { min: new Date(year, 0, 1), max: new Date(year + 1, 0, 1) };
 }
 
+/** Start at the selected year and extend to the latest deadline if needed. */
+export function getTimelineDomain(
+  year: number,
+  grants: DeadlineGrant[],
+): TimeDomain {
+  const domain = getYearDomain(year);
+  for (const grant of grants) {
+    if (grant.deadline >= domain.max) {
+      domain.max = new Date(grant.deadline);
+    }
+  }
+  return domain;
+}
+
 export function getTimeDomain(grants: DeadlineGrant[]): TimeDomain | null {
   const withDates = grants.filter(
     (g) =>
@@ -181,7 +207,7 @@ export function barPosition(
   const max = domain.max.getTime();
   const leftPct = toPct(start.getTime(), min, max);
   const rightPct = toPct(deadline.getTime(), min, max);
-  return { leftPct, widthPct: Math.max(1.5, rightPct - leftPct) };
+  return { leftPct, widthPct: Math.max(0, rightPct - leftPct) };
 }
 
 export function progressPct(spent: number, total: number): number {

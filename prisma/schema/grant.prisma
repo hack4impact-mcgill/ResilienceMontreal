@@ -6,7 +6,10 @@ model Grant {
   unassignedAmount Decimal             @db.Decimal(10, 2)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
-  createdBy.       String?      
+  createdById      String?             
+  lastEditedById   String?
+  createdBy        User?               @relation("GrantCreatedBy", fields: [createdById], references: [supabaseId], onDelete: Restrict)
+  lastEditedBy     User?               @relation("GrantLastEditedBy", fields: [lastEditedById], references: [supabaseId], onDelete: Restrict)
   endDate          DateTime?
   status           Status              @default(APPROVED)
   distributions    GrantDistribution[]

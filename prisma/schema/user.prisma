@@ -1,8 +1,10 @@
 model User {
-  name        String
-  email       String   @unique
-  isConfirmed Boolean  @default(false)
-  supabaseId  String   @id
-  role        RoleName @default(Unassigned)
-  clients     Client[]
+  name           String
+  email          String      @unique
+  isConfirmed    Boolean     @default(false)
+  supabaseId     String      @id
+  role           RoleName    @default(Unassigned)
+  clients        Client[]
+  createdGrants  Grant[]     @relation("GrantCreatedBy")
+  editedGrants   Grant[]     @relation("GrantLastEditedBy")
 }

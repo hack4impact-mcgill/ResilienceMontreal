@@ -10,7 +10,7 @@ export const grantDistributionRouter = createTRPCRouter({
   createGrantDistribution: protectedProcedure
     .input(createGrantDistributionSchema)
     .mutation(async ({ ctx, input }) => {
-      const { grantId, fundPoolId, amount, notes } = input;
+      const { grantId, fundPoolId, amount } = input;
 
       const distributionAmount = new Prisma.Decimal(String(amount));
       const result = await ctx.db.$transaction(async (tx) => {
@@ -47,7 +47,6 @@ export const grantDistributionRouter = createTRPCRouter({
             grantId,
             fundPoolId,
             amount: distributionAmount,
-            notes: notes || null,
           },
           include: { grant: true, fundPool: true },
         });

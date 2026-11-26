@@ -1,11 +1,7 @@
 // Splitting a grant over several fund pools by percentage. Percentages are
 // worked in hundredths and amounts in cents so the parts always add up exactly.
 
-export type SplitLine = {
-  fundPoolId: string;
-  percent: string;
-  notes: string;
-};
+export type SplitLine = { fundPoolId: string; percent: string };
 
 const toHundredths = (percent: string) => Math.round(Number(percent) * 100);
 

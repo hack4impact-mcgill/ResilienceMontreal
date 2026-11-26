@@ -1,4 +1,5 @@
 "use client";
+import { InvoiceDisplay } from "~/components/expenses/invoice-display";
 
 import { ColumnDef } from "@tanstack/react-table";
 import { useTranslations } from "next-intl";
@@ -11,6 +12,8 @@ export type Expense = {
   date: Date;
   totalAmount: number;
   invoiceUrl: string | null;
+  invoiceDriveFileId: string | null;
+  invoiceDriveFileName: string | null;
   /** True when the expense date is after today (local calendar day). */
   isFutureDated: boolean;
   /** Fund pool category derived from the first distribution (empty string if none). */
@@ -31,7 +34,18 @@ function ExpenseRowActions({
   return (
     <RowActionsDropdown
       label="Actions for expense"
-      actions={[{ label: t("viewDetails"), onClick: () => onView(expense.id) }]}
+      actions={[
+        { label: t("viewDetails"), onClick: () => onView(expense.id) },
+        ...(expense.invoiceDriveFileId
+          ? [
+              {
+                label: "Download invoice",
+                href: `/api/expenses/${expense.id}/invoice?download=1`,
+                download: true,
+              },
+            ]
+          : []),
+      ]}
     />
   );
 }
@@ -72,20 +86,13 @@ export const createColumns = (
   {
     accessorKey: "invoiceUrl",
     header: "INVOICE",
-    cell: ({ row }) => {
-      const url = row.original.invoiceUrl;
-      if (!url) return <div>—</div>;
-      return (
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs underline text-blue-600"
-        >
-          Link
-        </a>
-      );
-    },
+    cell: ({ row }) => (
+      <InvoiceDisplay
+        expense={row.original}
+        urlLabel="Link"
+        showDownload={false}
+      />
+    ),
   },
   {
     // Hidden for roles that can't see client data (see ExpensesTable)

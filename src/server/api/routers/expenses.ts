@@ -1,3 +1,4 @@
+import { resolveExpenseInvoice } from "~/server/api/lib/expense-invoice";
 import { z } from "zod";
 import { Prisma } from "~/generated/prisma/client";
 
@@ -38,6 +39,7 @@ const createExpenseInputSchema = z
     description: z.string().min(1),
     date: z.coerce.date(),
     invoiceUrl: z.string().url().optional(),
+    invoiceDriveFileId: z.string().min(1).optional(),
     clientId: z.coerce.number().int().positive().optional(),
     customDistributions: z.array(customDistributionSchema).optional(),
   })
@@ -55,6 +57,7 @@ export const expensesRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createExpenseInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const invoice = await resolveExpenseInvoice(input);
       const totalAmount = new Prisma.Decimal(String(input.totalAmount));
       const now = new Date();
 
@@ -90,7 +93,7 @@ export const expensesRouter = createTRPCRouter({
             totalAmount,
             description: input.description,
             date: input.date,
-            invoiceUrl: input.invoiceUrl,
+            ...invoice,
             clientId: input.clientId,
           },
           allocations,
@@ -291,6 +294,7 @@ export const expensesRouter = createTRPCRouter({
           .url("Invoice URL must be a valid URL")
           .nullable()
           .optional(),
+        invoiceDriveFileId: z.string().min(1).nullable().optional(),
         clientId: z.number().int().positive().nullable().optional(),
       }),
     )
@@ -329,14 +333,17 @@ export const expensesRouter = createTRPCRouter({
         }
       }
 
+      const invoice = await resolveExpenseInvoice(input);
       return ctx.db.expense.update({
         where: { id },
-        data,
+        data: { ...data, ...invoice },
         select: {
           id: true,
           description: true,
           date: true,
           invoiceUrl: true,
+          invoiceDriveFileId: true,
+          invoiceDriveFileName: true,
           clientId: true,
         },
       });

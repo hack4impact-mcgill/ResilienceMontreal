@@ -6,6 +6,7 @@ model Grant {
   unassignedAmount Decimal             @db.Decimal(10, 2)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
+  createdBy.       String?      
   endDate          DateTime?
   status           Status              @default(APPROVED)
   distributions    GrantDistribution[]

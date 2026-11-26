@@ -27,7 +27,7 @@ export async function GET(
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   try {
     const file = await validateInvoiceDriveFile(expense.invoiceDriveFileId);
-    const source = await downloadDriveFile(file.id);
+    const { response: source } = await downloadDriveFile(file.id);
     // Only inert formats are rendered on the app origin; SVG/HTML always download.
     const inline =
       new URL(request.url).searchParams.get("download") !== "1" &&
